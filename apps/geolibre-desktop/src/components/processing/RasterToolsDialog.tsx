@@ -39,6 +39,8 @@ import {
   useState,
   type ReactElement,
 } from "react";
+import { useTranslation } from "react-i18next";
+import type { ParseKeys } from "i18next";
 import {
   isTauri,
   pickLocalPathWithFallback,
@@ -72,6 +74,7 @@ function toolDefaults(tool: RasterTool): Record<string, unknown> {
 }
 
 export function RasterToolsDialog(): ReactElement {
+  const { t } = useTranslation();
   const openTool = useAppStore((s) => s.ui.rasterToolOpen);
   const setRasterToolOpen = useAppStore((s) => s.setRasterToolOpen);
 
@@ -180,6 +183,25 @@ export function RasterToolsDialog(): ReactElement {
     [],
   );
 
+  // Whether a parameter is shown, given another parameter's value (e.g. hide
+  // the IDW power field when the kriging method is selected).
+  const isParamVisible = useCallback(
+    (param: AlgorithmParameter): boolean => {
+      const vw = param.visibleWhen;
+      if (!vw) return true;
+      // Fall back to the controlling param's declared default, so dependent
+      // fields resolve correctly on the first render — before the effect that
+      // seeds `params` from toolDefaults has run (avoids a one-frame flicker).
+      const controller = tool.parameters.find((p) => p.id === vw.param);
+      const current = (params[vw.param] ?? controller?.default) as
+        | string
+        | undefined;
+      if ("in" in vw) return current != null && vw.in.includes(current);
+      return current == null || !vw.notIn.includes(current);
+    },
+    [params, tool],
+  );
+
   const pickInput = useCallback(async () => {
     const path = await pickLocalPathWithFallback({ filters: tool.inputFilters });
     if (path) setInputPath(path);
@@ -228,9 +250,10 @@ export function RasterToolsDialog(): ReactElement {
       setError("Choose an output file.");
       return;
     }
-    // Validate required operation parameters before submitting the job.
+    // Validate required operation parameters before submitting the job. A
+    // hidden parameter (e.g. an IDW knob while kriging is selected) is skipped.
     for (const param of tool.parameters) {
-      if (!param.required) continue;
+      if (!param.required || !isParamVisible(param)) continue;
       const value = params[param.id];
       if (
         value === undefined ||
@@ -256,7 +279,7 @@ export function RasterToolsDialog(): ReactElement {
         err instanceof Error ? err.message : "Could not start raster tool.",
       );
     }
-  }, [tool, inputPath, outputPath, params]);
+  }, [tool, inputPath, outputPath, params, isParamVisible]);
 
   const running = Boolean(job && RUNNING_JOB_STATUSES.has(job.status));
 
@@ -340,7 +363,8 @@ export function RasterToolsDialog(): ReactElement {
             {/* Input file */}
             <div className="grid gap-1.5">
               <Label htmlFor="raster-input" className="text-xs">
-                Input raster<span className="text-destructive"> *</span>
+                {t((tool.inputLabel ?? "toolbar.rasterTool.inputRaster") as ParseKeys)}
+                <span className="text-destructive"> *</span>
               </Label>
               <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
                 <Input
@@ -386,7 +410,7 @@ export function RasterToolsDialog(): ReactElement {
             </div>
 
             {/* Operation parameters */}
-            {tool.parameters.map((param) => (
+            {tool.parameters.filter(isParamVisible).map((param) => (
               <RasterParameterField
                 key={param.id}
                 param={param}
