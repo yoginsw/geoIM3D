@@ -3,6 +3,13 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { normalizeStringList } from "../lib/string-lists";
 import { DESKTOP_SETTINGS_STORAGE_KEY } from "../lib/storage-keys";
+import {
+  DEFAULT_CUSTOM_COLOR,
+  DEFAULT_THEME_SCHEME,
+  isHexColor,
+  isThemeScheme,
+  type ThemeScheme,
+} from "../lib/theme-schemes";
 import type { UpdateNotificationLevel } from "../lib/updates";
 
 /** Notification-granularity options, in order. Single source of truth. */
@@ -34,6 +41,11 @@ export interface DesktopSettings {
    */
   shareToken: string;
   /**
+   * Appearance preferences (the accent color scheme). The light/dark mode is
+   * handled separately by `useThemeMode` (it tracks the OS / embed preference).
+   */
+  theme: ThemeSettings;
+  /**
    * Customizable UI profile: which data sources / web services / plugins are
    * visible, an optional experience-level preset, first-launch onboarding state,
    * and an admin lock. See `src/lib/ui-profile.ts` and `docs/ui-profiles.md`.
@@ -44,6 +56,13 @@ export interface DesktopSettings {
    * desktop (Tauri) build; on the web these settings are inert.
    */
   updates: UpdateSettings;
+}
+
+export interface ThemeSettings {
+  /** Accent color scheme. Presets set a `data-theme` attribute on <html>. */
+  scheme: ThemeScheme;
+  /** Hex color backing the "custom" scheme (ignored by the presets). */
+  customColor: string;
 }
 
 export interface UpdateSettings {
@@ -123,12 +142,18 @@ export const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
   notificationLevel: "all",
 };
 
+export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
+  scheme: DEFAULT_THEME_SCHEME,
+  customColor: DEFAULT_CUSTOM_COLOR,
+};
+
 const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   additionalPluginDirectories: [],
   language: "",
   layout: DEFAULT_DESKTOP_LAYOUT_SETTINGS,
   pluginManifestUrls: [],
   shareToken: "",
+  theme: DEFAULT_THEME_SETTINGS,
   uiProfile: DEFAULT_UI_PROFILE_SETTINGS,
   updates: DEFAULT_UPDATE_SETTINGS,
 };
@@ -160,8 +185,30 @@ function normalizeDesktopSettings(settings: unknown): DesktopSettings {
     ),
     shareToken:
       typeof candidate.shareToken === "string" ? candidate.shareToken.trim() : "",
+    theme: normalizeThemeSettings(candidate.theme),
     uiProfile: normalizeUiProfileSettings(candidate.uiProfile),
     updates: normalizeUpdateSettings(candidate.updates),
+  };
+}
+
+function normalizeThemeSettings(theme: unknown): ThemeSettings {
+  if (!theme || typeof theme !== "object") {
+    return DEFAULT_THEME_SETTINGS;
+  }
+
+  // Require a known scheme id and a valid hex color so tampered localStorage
+  // values cannot smuggle an unknown scheme into the `data-theme` attribute or an
+  // arbitrary string into the inline custom-color tokens.
+  const candidate = theme as Partial<ThemeSettings>;
+  return {
+    scheme: isThemeScheme(candidate.scheme)
+      ? candidate.scheme
+      : DEFAULT_THEME_SETTINGS.scheme,
+    // Normalize so the value bound to `<input type="color">` is exactly
+    // `#rrggbb` lowercase (isHexColor already requires the leading `#`).
+    customColor: isHexColor(candidate.customColor)
+      ? candidate.customColor.trim().toLowerCase()
+      : DEFAULT_THEME_SETTINGS.customColor,
   };
 }
 
