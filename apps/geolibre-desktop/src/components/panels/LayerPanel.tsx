@@ -102,6 +102,7 @@ import {
   shapefileFieldWarnings,
   type VectorExportFormat,
 } from "../../lib/vector-export";
+import { BasemapPickerDialog } from "./BasemapPickerDialog";
 
 interface LayerPanelProps {
   mapControllerRef: RefObject<MapController | null>;
@@ -223,6 +224,7 @@ export function LayerPanel({
   const setAttributeTableOpen = useAppStore((s) => s.setAttributeTableOpen);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [basemapPickerOpen, setBasemapPickerOpen] = useState(false);
   const [metadataLayer, setMetadataLayer] = useState<GeoLibreLayer | null>(
     null,
   );
@@ -1840,9 +1842,17 @@ export function LayerPanel({
                 ? "border-primary bg-primary/5"
                 : "border-border bg-background hover:border-muted-foreground/40 hover:bg-muted/20"
             }`}
+            title={t("layers.doubleClickToChangeBasemap")}
             onClick={() => selectLayer(BACKGROUND_SELECTION_ID)}
+            onDoubleClick={() => setBasemapPickerOpen(true)}
             onKeyDown={(e) => {
               if (e.key === "Enter") selectLayer(BACKGROUND_SELECTION_ID);
+              // Keyboard equivalent of the double-click: Space opens the basemap
+              // picker (preventDefault stops the panel from scrolling).
+              if (e.key === " ") {
+                e.preventDefault();
+                setBasemapPickerOpen(true);
+              }
             }}
             role="button"
             tabIndex={0}
@@ -1910,6 +1920,10 @@ export function LayerPanel({
           {t("layers.advancedFormatsNote")}
         </p>
       ) : null}
+      <BasemapPickerDialog
+        open={basemapPickerOpen}
+        onOpenChange={setBasemapPickerOpen}
+      />
       <Dialog
         open={!!bindTimeSliderLayerId}
         onOpenChange={(open: boolean) => {

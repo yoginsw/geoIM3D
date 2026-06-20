@@ -1,12 +1,16 @@
 import {
   BLANK_BASEMAP,
   createDefaultMapView,
-  getProtomapsStyleUrl,
   OPENFREEMAP_BASEMAPS,
   PROTOMAPS_BASEMAPS,
   useAppStore,
   type MapViewState,
 } from "@geolibre/core";
+import {
+  LIBERTY_3D_ID,
+  resolveProtomapsPresets,
+  type PresetBasemap,
+} from "../../lib/basemap-presets";
 import {
   Button,
   cn,
@@ -42,25 +46,6 @@ type BasemapChoice =
   | (typeof PROTOMAPS_BASEMAPS)[number]["id"]
   | typeof CUSTOM_BASEMAP_ID
   | typeof BLANK_BASEMAP_ID;
-
-interface PresetBasemap {
-  id: BasemapChoice;
-  name: string;
-  styleUrl: string;
-}
-
-/**
- * Resolves the selectable Protomaps basemaps for the current runtime
- * environment. Returns an empty list when no `VITE_PROTOMAPS_API_KEY` is
- * configured (build-time or via Settings → Environment variables), in which
- * case the Protomaps section is hidden.
- */
-function resolveProtomapsPresets(): PresetBasemap[] {
-  return PROTOMAPS_BASEMAPS.flatMap((basemap) => {
-    const styleUrl = getProtomapsStyleUrl(basemap.flavor);
-    return styleUrl ? [{ id: basemap.id, name: basemap.name, styleUrl }] : [];
-  });
-}
 
 interface BasemapButtonProps {
   id: BasemapChoice;
@@ -182,7 +167,7 @@ export function NewProjectDialog({
       name: projectName.trim() || DEFAULT_PROJECT_NAME,
       basemapStyleUrl,
       mapView:
-        selectedBasemapId === "liberty-3d"
+        selectedBasemapId === LIBERTY_3D_ID
           ? THREE_D_MAP_VIEW
           : createDefaultMapView(),
     });
