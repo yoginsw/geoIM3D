@@ -466,3 +466,168 @@ describe("PluginManager URL parameters", () => {
     assert.deepEqual(calls, ["handled"]);
   });
 });
+
+describe("PluginManager async activation", () => {
+  it("rolls back the active state when an async mount resolves false", async () => {
+    const deactivations: string[] = [];
+    const manager = new PluginManager();
+    let resolveMount: (value: boolean) => void = () => {};
+
+    manager.register(
+      testPlugin({
+        id: "async-plugin",
+        activate: () =>
+          new Promise<boolean>((resolve) => {
+            resolveMount = resolve;
+          }),
+        deactivate: () => {
+          deactivations.push("async-plugin");
+        },
+      }),
+    );
+
+    manager.activate("async-plugin", app);
+    // Optimistically active while the mount is in flight.
+    assert.equal(manager.isActive("async-plugin"), true);
+
+    resolveMount(false);
+    // watchAsyncActivation wraps the plugin promise in Promise.resolve().then(),
+    // so two microtask ticks are needed: one for the wrapper, one for the
+    // callback. (The other async tests below flush twice for the same reason.)
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // A failed mount reverts the menu and tears down the partial activation.
+    assert.equal(manager.isActive("async-plugin"), false);
+    assert.deepEqual(deactivations, ["async-plugin"]);
+  });
+
+  it("rolls back the active state when an async mount rejects", async () => {
+    const manager = new PluginManager();
+
+    manager.register(
+      testPlugin({
+        id: "rejecting-plugin",
+        activate: () => Promise.reject(new Error("chunk failed to load")),
+      }),
+    );
+
+    manager.activate("rejecting-plugin", app);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(manager.isActive("rejecting-plugin"), false);
+  });
+
+  it("keeps the plugin active when the async mount succeeds", async () => {
+    const manager = new PluginManager();
+
+    manager.register(
+      testPlugin({
+        id: "ok-plugin",
+        activate: () => Promise.resolve(true),
+      }),
+    );
+
+    manager.activate("ok-plugin", app);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(manager.isActive("ok-plugin"), true);
+  });
+
+  it("rolls back a restored project's failed async activation", async () => {
+    const manager = new PluginManager();
+    let resolveMount: (value: boolean) => void = () => {};
+
+    manager.register(
+      testPlugin({
+        id: "restored-plugin",
+        activate: () =>
+          new Promise<boolean>((resolve) => {
+            resolveMount = resolve;
+          }),
+      }),
+    );
+
+    // Re-opening a saved project that had the plugin active goes through
+    // restoreProjectState, not the interactive activate() path.
+    manager.restoreProjectState(
+      {
+        manifestUrls: [],
+        activePluginIds: ["restored-plugin"],
+        mapControlPositions: {},
+        settings: {},
+      },
+      app,
+    );
+    assert.equal(manager.isActive("restored-plugin"), true);
+
+    resolveMount(false);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The chunk failed to mount, so the menu must not keep showing it active.
+    assert.equal(manager.isActive("restored-plugin"), false);
+  });
+
+  it("does not revert when the user deactivates before the mount fails", async () => {
+    const manager = new PluginManager();
+    let resolveMount: (value: boolean) => void = () => {};
+
+    manager.register(
+      testPlugin({
+        id: "race-plugin",
+        activate: () =>
+          new Promise<boolean>((resolve) => {
+            resolveMount = resolve;
+          }),
+      }),
+    );
+
+    manager.activate("race-plugin", app);
+    manager.deactivate("race-plugin", app);
+    assert.equal(manager.isActive("race-plugin"), false);
+
+    // A late failure for an already-inactive plugin must be a no-op.
+    resolveMount(false);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(manager.isActive("race-plugin"), false);
+  });
+
+  it("does not let a stale failure revert a newer reactivation", async () => {
+    const manager = new PluginManager();
+    const resolvers: Array<(value: boolean) => void> = [];
+
+    manager.register(
+      testPlugin({
+        id: "reactivated-plugin",
+        activate: () =>
+          new Promise<boolean>((resolve) => {
+            resolvers.push(resolve);
+          }),
+      }),
+    );
+
+    // First activation (its mount is still pending).
+    manager.activate("reactivated-plugin", app);
+    // User deactivates, then reactivates before the first mount settles.
+    manager.deactivate("reactivated-plugin", app);
+    manager.activate("reactivated-plugin", app);
+    assert.equal(manager.isActive("reactivated-plugin"), true);
+
+    // The first (now superseded) activation fails. It must not roll back the
+    // newer activation that is still mounting.
+    resolvers[0](false);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(manager.isActive("reactivated-plugin"), true);
+
+    // The newer activation then succeeds and stays active.
+    resolvers[1](true);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(manager.isActive("reactivated-plugin"), true);
+  });
+});

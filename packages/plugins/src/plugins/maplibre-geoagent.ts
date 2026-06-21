@@ -83,6 +83,10 @@ const GEOAGENT_OPTIONS = {
 let geoAgentControl: GeoAgentControl | null = null;
 let geoAgentControlPromise: Promise<GeoAgentControl> | null = null;
 let geoAgentActive = false;
+// Bumped on every (re)mount so a slow async mount from an earlier
+// activate/deactivate cycle cannot resume and mount over a newer one. Only the
+// continuation whose generation still matches the latest is allowed to apply.
+let geoAgentActivationGeneration = 0;
 let earthEngineAccessTokenOverride = "";
 let earthEngineTokenTypeOverride = "Bearer";
 let earthEngineTokenExpiresInOverride = 3600;
@@ -94,7 +98,11 @@ export const maplibreGeoAgentPlugin: GeoLibrePlugin = {
   version: "0.4.2",
   activate: (app: GeoLibreAppAPI) => {
     geoAgentActive = true;
-    void mountGeoAgentControl(app);
+    // Return the mount promise so the host can roll back the Plugins menu when
+    // the GeoAgent chunk fails to load (e.g. a stale chunk after a web
+    // redeploy). It resolves false when the control never mounts, instead of
+    // leaving GeoAgent marked active with no visible panel.
+    return mountGeoAgentControl(app, ++geoAgentActivationGeneration);
   },
   deactivate: (app: GeoLibreAppAPI) => {
     geoAgentActive = false;
@@ -114,7 +122,14 @@ export const maplibreGeoAgentPlugin: GeoLibrePlugin = {
   ) => {
     geoAgentPosition = position;
     if (!geoAgentControl) {
-      if (geoAgentActive) void mountGeoAgentControl(app);
+      // Only kick off a mount if one is not already in flight. A mount started
+      // by activate() reads the updated geoAgentPosition when it adds the
+      // control, so starting a second (generation-bumping) mount here would
+      // needlessly invalidate that in-flight attempt and make its host-side
+      // rollback tear the freshly added control back down.
+      if (geoAgentActive && !geoAgentControlPromise) {
+        void mountGeoAgentControl(app, ++geoAgentActivationGeneration);
+      }
       return;
     }
     app.removeMapControl(geoAgentControl);
@@ -132,19 +147,46 @@ export const maplibreGeoAgentPlugin: GeoLibrePlugin = {
   },
 };
 
-async function mountGeoAgentControl(app: GeoLibreAppAPI): Promise<void> {
-  const control = await loadGeoAgentControl();
-  if (!geoAgentActive) return;
+async function mountGeoAgentControl(
+  app: GeoLibreAppAPI,
+  activationGeneration: number,
+): Promise<boolean> {
+  let control: GeoAgentControl;
+  try {
+    control = await loadGeoAgentControl();
+  } catch (error) {
+    // The dynamic import failed (offline, or a chunk orphaned by a web
+    // redeploy). Clear the active flag and report the failure so the host can
+    // revert the Plugins menu rather than leaving GeoAgent stuck on "active"
+    // with no panel. The stale-chunk recovery (host side) decides whether to
+    // reload; here we only need to surface that the mount did not happen. Only
+    // clear the flag for the latest attempt so a stale failure does not
+    // deactivate a newer activation that is already in flight.
+    if (activationGeneration === geoAgentActivationGeneration) {
+      geoAgentActive = false;
+    }
+    // warn (not error): the stale-chunk path already records an actionable
+    // diagnostic when the project is dirty, and rollbackFailedActivation cleans
+    // up the active state, so this should not read as a fatal error.
+    console.warn("GeoAgent failed to load.", error);
+    return false;
+  }
+  // Ignore a continuation superseded by a later activate/deactivate cycle so it
+  // cannot mount a stale control on top of the current one.
+  if (!geoAgentActive || activationGeneration !== geoAgentActivationGeneration) {
+    return false;
+  }
 
   const added = app.addMapControl(control, geoAgentPosition);
   if (!added) {
     if (geoAgentControl === control) geoAgentControl = null;
-    return;
+    return false;
   }
   patchGeoAgentToolRunner(control);
   setTimeout(() => geoAgentControl?.expand(), 0);
   setTimeout(enhanceEarthEngineSignIn, 0);
   preloadEarthEngineAuthLibrary();
+  return true;
 }
 
 async function loadGeoAgentControl(): Promise<GeoAgentControl> {
