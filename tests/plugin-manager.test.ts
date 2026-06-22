@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 import { PluginManager } from "../packages/plugins/src/plugin-manager";
+import {
+  __resetToolbarMenuRegistryForTests,
+  getToolbarMenusSnapshot,
+  registerToolbarMenu,
+} from "../packages/plugins/src/toolbar-menu-registry";
 import type {
   GeoLibreAppAPI,
   GeoLibrePlugin,
@@ -629,5 +634,145 @@ describe("PluginManager async activation", () => {
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(manager.isActive("reactivated-plugin"), true);
+  });
+});
+
+describe("PluginManager toolbar menu scoping", () => {
+  afterEach(() => __resetToolbarMenuRegistryForTests());
+
+  it("tags registerToolbarMenu with the activating plugin's id", () => {
+    const manager = new PluginManager();
+    const seen: Array<string | undefined> = [];
+    // The raw mock app handed to activate(); the manager scopes it internally
+    // via scopeAppToPlugin before the plugin ever sees it.
+    const mockApp = {
+      registerToolbarMenu: (
+        _menu: unknown,
+        ownerPluginId?: string,
+      ) => {
+        seen.push(ownerPluginId);
+        return () => undefined;
+      },
+    } as unknown as GeoLibreAppAPI;
+
+    manager.register(
+      testPlugin({
+        id: "menu-plugin",
+        // A plugin registers its menu with a single argument; the host injects
+        // the owner id via the scoped app it was handed.
+        activate: (api) =>
+          void api.registerToolbarMenu?.({
+            id: "menu-plugin-menu",
+            label: "Workbench",
+            items: [],
+          }),
+      }),
+    );
+    manager.activate("menu-plugin", mockApp);
+
+    assert.deepEqual(seen, ["menu-plugin"]);
+  });
+
+  it("records the owner on the real registry when wired through activate", () => {
+    // Guards the TypeScript-invisible contract between scopeAppToPlugin's cast
+    // and the real registry's optional second parameter: drive the genuine
+    // registerToolbarMenu (not a mock) through activate and assert the snapshot
+    // carries the owner. Breaks if the registry ever drops the owner argument.
+    const manager = new PluginManager();
+    const realApp = { registerToolbarMenu } as unknown as GeoLibreAppAPI;
+
+    manager.register(
+      testPlugin({
+        id: "real-menu-plugin",
+        activate: (api) =>
+          void api.registerToolbarMenu?.({
+            id: "real-menu",
+            label: "Workbench",
+            items: [{ id: "open", label: "Open", onSelect: () => undefined }],
+          }),
+      }),
+    );
+    manager.activate("real-menu-plugin", realApp);
+
+    const { entries } = getToolbarMenusSnapshot();
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].menu.id, "real-menu");
+    assert.equal(entries[0].ownerPluginId, "real-menu-plugin");
+  });
+
+  it("scopes a menu registered asynchronously after activate resolves", async () => {
+    const manager = new PluginManager();
+    const seen: Array<string | undefined> = [];
+    const mockApp = {
+      registerToolbarMenu: (
+        _menu: unknown,
+        ownerPluginId?: string,
+      ) => {
+        seen.push(ownerPluginId);
+        return () => undefined;
+      },
+    } as unknown as GeoLibreAppAPI;
+
+    let register: (() => void) | undefined;
+    manager.register(
+      testPlugin({
+        id: "async-menu-plugin",
+        activate: (api) => {
+          // The plugin keeps the scoped app and registers its menu later, after
+          // its activation has returned. The owner tag must still be applied.
+          register = () =>
+            api.registerToolbarMenu?.({
+              id: "async-menu",
+              label: "Late",
+              items: [],
+            });
+          return Promise.resolve(true);
+        },
+      }),
+    );
+    manager.activate("async-menu-plugin", mockApp);
+    await Promise.resolve();
+    register?.();
+
+    assert.deepEqual(seen, ["async-menu-plugin"]);
+  });
+
+  it("tags a menu (re)registered from applyProjectState, not just activate", () => {
+    const manager = new PluginManager();
+    const seen: Array<string | undefined> = [];
+    const mockApp = {
+      registerToolbarMenu: (
+        _menu: unknown,
+        ownerPluginId?: string,
+      ) => {
+        seen.push(ownerPluginId);
+        return () => undefined;
+      },
+    } as unknown as GeoLibreAppAPI;
+
+    manager.register(
+      testPlugin({
+        id: "settings-menu-plugin",
+        // Plugins rebuild their menu as state changes; that can happen from
+        // applyProjectState during a project load, not only from activate.
+        applyProjectState: (api) =>
+          void api.registerToolbarMenu?.({
+            id: "settings-menu",
+            label: "Workbench",
+            items: [],
+          }),
+      }),
+    );
+    manager.restoreProjectState(
+      {
+        manifestUrls: [],
+        activePluginIds: [],
+        mapControlPositions: {},
+        settings: { "settings-menu-plugin": {} },
+      },
+      mockApp,
+    );
+
+    assert.deepEqual(seen, ["settings-menu-plugin"]);
   });
 });

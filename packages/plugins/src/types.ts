@@ -244,6 +244,10 @@ export interface GeoLibreAppAPI {
    * an unregister function (call it from `deactivate`). Re-registering the same
    * id replaces the menu. Typed optional for forward-compatibility with hosts
    * that have no top toolbar, so call it with optional chaining.
+   *
+   * The host tracks which plugin owns each menu so the toolbar can place it by
+   * owner (e.g. external plugin menus after Help); that is injected internally
+   * by the PluginManager, so plugins never pass an owner here.
    */
   registerToolbarMenu?: (menu: GeoLibreToolbarMenu) => () => void;
   /** Remove a previously registered toolbar menu. */
