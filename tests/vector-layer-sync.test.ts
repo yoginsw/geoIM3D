@@ -599,6 +599,15 @@ describe("wireVectorStoreSync", () => {
       labelHaloWidth: 1.5,
       labelPlacement: "point",
       labelAllowOverlap: false,
+      // Extrusion fields default through from DEFAULT_LAYER_STYLE; the height is
+      // the chosen property scaled (default property "height", scale 1) and the
+      // color resolves to a flat value so its expression field is undefined.
+      extrusionEnabled: false,
+      extrusionColor: "#3b82f6",
+      extrusionColorExpression: undefined,
+      extrusionOpacity: 0.8,
+      extrusionHeight: ["*", ["to-number", ["get", "height"], 0], 1],
+      extrusionBase: 0,
     };
     assert.deepEqual(calls, [
       { method: "setLayerStyle", args: ["vector-1", expectedStyle] },
@@ -954,5 +963,74 @@ describe("savedVectorState", () => {
     const layer = createVectorStoreLayer(vectorInfo());
     delete layer.metadata.vectorState;
     assert.deepEqual(savedVectorState(layer), {});
+  });
+
+  it("restores 3D extrusion fields from the persisted style", () => {
+    const heightExpr = ["*", ["to-number", ["get", "height"], 0], 2];
+    const colorExpr = [
+      "match",
+      ["to-string", ["get", "kind"]],
+      "tower",
+      "#ff0000",
+      "#3388ff",
+    ];
+    const layer = createVectorStoreLayer(vectorInfo());
+    (layer.metadata.vectorState as Record<string, unknown>).style = {
+      ...vectorStyle(),
+      extrusionEnabled: true,
+      extrusionColor: "#abcdef",
+      extrusionColorExpression: colorExpr,
+      extrusionOpacity: 0.6,
+      extrusionBase: 3,
+      extrusionHeight: heightExpr,
+    };
+
+    const restored = savedVectorState(layer).style;
+    assert.ok(restored != null);
+    assert.equal(restored.extrusionEnabled, true);
+    assert.equal(restored.extrusionColor, "#abcdef");
+    assert.deepEqual(restored.extrusionColorExpression, colorExpr);
+    assert.equal(restored.extrusionOpacity, 0.6);
+    assert.equal(restored.extrusionBase, 3);
+    assert.deepEqual(restored.extrusionHeight, heightExpr);
+  });
+
+  it("restores a flat numeric extrusion height", () => {
+    const layer = createVectorStoreLayer(vectorInfo());
+    (layer.metadata.vectorState as Record<string, unknown>).style = {
+      ...vectorStyle(),
+      extrusionEnabled: true,
+      extrusionHeight: 12,
+    };
+
+    const restored = savedVectorState(layer).style;
+    assert.ok(restored != null);
+    assert.equal(restored.extrusionHeight, 12);
+  });
+
+  it("drops malformed extrusion fields from a hand-edited project file", () => {
+    const circular: unknown[] = [];
+    circular.push(circular);
+    const layer = createVectorStoreLayer(vectorInfo());
+    (layer.metadata.vectorState as Record<string, unknown>).style = {
+      fillColor: "#123456",
+      // MapLibre clamps a negative height/base to 0, so both are rejected.
+      extrusionHeight: -50,
+      extrusionBase: -10,
+      // Opacity must be a 0-1 fraction.
+      extrusionOpacity: 5,
+      // A circular array cannot serialize, so the height expression is dropped.
+      extrusionColorExpression: circular,
+      extrusionColor: `#${"f".repeat(200)}`,
+    };
+
+    const restored = savedVectorState(layer).style;
+    assert.ok(restored != null);
+    assert.equal(restored.fillColor, "#123456");
+    assert.equal("extrusionHeight" in restored, false);
+    assert.equal("extrusionBase" in restored, false);
+    assert.equal("extrusionOpacity" in restored, false);
+    assert.equal("extrusionColorExpression" in restored, false);
+    assert.equal("extrusionColor" in restored, false);
   });
 });
