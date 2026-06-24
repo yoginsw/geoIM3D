@@ -23,6 +23,9 @@ import {
   saveProjectFileToPath,
 } from "../lib/tauri-io";
 import { mergeStringLists } from "../lib/string-lists";
+import { fetchProjectFromUrl } from "../lib/project-url";
+import { resolveShareBaseUrl } from "../lib/share-geolibre";
+import { shareAuthorizedFetch } from "../lib/share-gallery";
 import { normalizeProjectUrl } from "../lib/urls";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 import type { MapControllerRef } from "../components/layout/toolbar/constants";
@@ -129,6 +132,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   const [saveNameInput, setSaveNameInput] = useState("");
   const projectUrlAbortRef = useRef<AbortController | null>(null);
   const recentAbortRef = useRef<AbortController | null>(null);
+  // Separate from projectUrlAbortRef so a gallery open and an Open-from-URL
+  // submit can't abort each other's in-flight fetch.
+  const shareUrlAbortRef = useRef<AbortController | null>(null);
   // Guards against overlapping saves: a second save started while a prompt
   // dialog is open would overwrite the pending prompt and strand the first
   // call's unresolved promise.
@@ -195,6 +201,67 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         projectUrlAbortRef.current = null;
       }
       setProjectUrlLoading(false);
+    }
+  };
+
+  // Load a project directly from a known URL (e.g. a Project Gallery card's raw
+  // JSON URL), bypassing the URL-input dialog. Mirrors handleOpenFromUrl's
+  // fetch → resolve → loadProject flow but takes the URL as an argument and
+  // rethrows on failure so the caller (the gallery dialog) can show the error
+  // inline next to the card it came from.
+  //
+  // When `authToken` is set (the user has a share.geolibre.app API token), the
+  // request to the share host carries it as a Bearer token so the owner's
+  // unlisted and private projects load too. The token is attached only for the
+  // share host (see shareAuthorizedFetch), never to third-party hosts a project
+  // might reference. Token-authenticated opens are not remembered as recent
+  // (path = null), since reopening a private URL on restart would 403 without
+  // the header.
+  const openProjectFromShareUrl = async (
+    url: string,
+    options: { authToken?: string } = {},
+  ): Promise<void> => {
+    const normalizedUrl = normalizeProjectUrl(url);
+    if (!normalizedUrl) {
+      throw new Error(t("toolbar.error.invalidProjectUrl"));
+    }
+
+    shareUrlAbortRef.current?.abort();
+    const controller = new AbortController();
+    shareUrlAbortRef.current = controller;
+
+    try {
+      if (options.authToken) {
+        const fetched = await fetchProjectFromUrl(normalizedUrl, {
+          signal: controller.signal,
+          fetchImpl: shareAuthorizedFetch(
+            options.authToken,
+            resolveShareBaseUrl(),
+          ),
+        });
+        const project = await resolveProjectXyzLayers(
+          fetched,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        loadProject(project, null);
+        return;
+      }
+
+      const result = await openRecentProjectFile(
+        normalizedUrl,
+        controller.signal,
+      );
+      const project = await resolveProjectXyzLayers(
+        result.project,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      loadProject(project, result.path);
+    } finally {
+      if (shareUrlAbortRef.current === controller) {
+        shareUrlAbortRef.current = null;
+      }
     }
   };
 
@@ -594,6 +661,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     cancelSaveNamePrompt,
     handleOpenFromFile,
     handleOpenFromUrl,
+    openProjectFromShareUrl,
     handleOpenRecent,
     buildCurrentProject,
     buildEmbeddedProject,
