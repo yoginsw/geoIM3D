@@ -1671,18 +1671,66 @@ export class MapController {
     ) {
       return false;
     }
-    this.geolocateControl = new maplibregl.GeolocateControl({
+    const control = new maplibregl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true,
       },
       trackUserLocation: true,
     });
-    this.map.addControl(this.geolocateControl, this.controlPositions.geolocate);
+    // MapLibre permanently disables the GeolocateControl button on a
+    // PERMISSION_DENIED error (code 1). Browsers report code 1 both for a real
+    // denial and when the user simply dismisses the permission prompt without
+    // choosing, which leaves the button stuck in a blocked state with no way to
+    // retry (issue #839). Re-create the control whenever the permission was not
+    // actually denied so the button returns to a neutral, clickable state.
+    control.on("error", this.handleGeolocateError);
+    this.geolocateControl = control;
+    this.map.addControl(control, this.controlPositions.geolocate);
     return true;
   }
 
+  private handleGeolocateError = (event: { code?: number }): void => {
+    // Only react to PERMISSION_DENIED; other errors (timeout, position
+    // unavailable) leave the button usable, so MapLibre's own handling is fine.
+    if (!this.map || !this.geolocateControl || event?.code !== 1) return;
+
+    // Snapshot the control that errored. The reset always runs in a later
+    // microtask (the Permissions API query's `.then`, or `queueMicrotask`), so
+    // we never tear down the control mid error-dispatch. It also means the
+    // control could be torn down or replaced in between (e.g. the user toggles
+    // it off then on), so recreate() bails unless this exact instance is still
+    // mounted and never disturbs a healthy replacement.
+    const controlAtError = this.geolocateControl;
+
+    const recreate = (): void => {
+      if (!this.map || !this.controlVisibility.geolocate) return;
+      if (this.geolocateControl !== controlAtError) return;
+      // Re-create the control to clear MapLibre's permanently-disabled button.
+      this.removeGeolocateControl();
+      this.addGeolocateControl();
+    };
+
+    const permissions =
+      typeof navigator !== "undefined" ? navigator.permissions : undefined;
+    if (!permissions?.query) {
+      // No Permissions API: assume a dismissal so the user is never stuck.
+      queueMicrotask(recreate);
+      return;
+    }
+    permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((status) => {
+        // Only a pending "prompt" means the dialog was dismissed, so reset to
+        // allow a retry. "denied" keeps MapLibre's disabled state, and
+        // "granted" (a contradictory code-1) is left alone rather than reset.
+        if (status.state === "prompt") recreate();
+      })
+      .catch(() => recreate());
+  };
+
   private removeGeolocateControl(): void {
     if (!this.geolocateControl) return;
+    this.geolocateControl.off("error", this.handleGeolocateError);
     this.removeControl(this.geolocateControl);
     this.geolocateControl = null;
   }
