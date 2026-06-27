@@ -776,3 +776,170 @@ describe("PluginManager toolbar menu scoping", () => {
     assert.deepEqual(seen, ["settings-menu-plugin"]);
   });
 });
+
+describe("PluginManager panel auto-expand on restore", () => {
+  // A control like the Basemaps panel: starts expanded and pops itself open
+  // (with setTimeout(0), the way the real plugins do) when its plugin activates.
+  function fakeControl() {
+    return {
+      collapsed: false,
+      expand() {
+        this.collapsed = false;
+      },
+      collapse() {
+        this.collapsed = true;
+      },
+    };
+  }
+
+  function panelPlugin(id: string, control: ReturnType<typeof fakeControl>) {
+    return testPlugin({
+      id,
+      activate: (api) => {
+        api.addMapControl(control as never);
+        setTimeout(() => control.expand(), 0);
+      },
+    });
+  }
+
+  // Drain several macrotask ticks: the re-collapse is double-deferred so it
+  // lands after the plugin's own setTimeout(0) expand, and an async activation
+  // adds another tick before its control even exists.
+  async function flushTimers(times = 4) {
+    for (let i = 0; i < times; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  it("keeps restored plugin panels collapsed", async () => {
+    const manager = new PluginManager();
+    const control = fakeControl();
+    const addMapControl = () => true;
+    const mockApp = { addMapControl } as unknown as GeoLibreAppAPI;
+    manager.register(panelPlugin("basemaps", control));
+
+    manager.restoreProjectState(
+      {
+        manifestUrls: [],
+        activePluginIds: ["basemaps"],
+        mapControlPositions: {},
+        settings: {},
+      },
+      mockApp,
+    );
+
+    await flushTimers();
+    assert.equal(
+      control.collapsed,
+      true,
+      "a project restore must not leave plugin panels expanded over the map",
+    );
+  });
+
+  it("collapses panels added by an async activation", async () => {
+    const manager = new PluginManager();
+    const control = fakeControl();
+    const addMapControl = () => true;
+    const mockApp = { addMapControl } as unknown as GeoLibreAppAPI;
+
+    // A plugin mounted behind a dynamic import: it adds its control (and
+    // auto-expands) only after activate()'s promise has begun resolving, so the
+    // collapse must follow each control rather than fire once after the loop.
+    manager.register(
+      testPlugin({
+        id: "async-basemaps",
+        activate: (api) =>
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              api.addMapControl(control as never);
+              setTimeout(() => control.expand(), 0);
+              resolve();
+            }, 0);
+          }),
+      }),
+    );
+
+    manager.restoreProjectState(
+      {
+        manifestUrls: [],
+        activePluginIds: ["async-basemaps"],
+        mapControlPositions: {},
+        settings: {},
+      },
+      mockApp,
+    );
+
+    await flushTimers();
+    assert.equal(
+      control.collapsed,
+      true,
+      "a panel added by an async activation during restore must end collapsed",
+    );
+  });
+
+  it("collapses a panel re-added when a restored position differs", async () => {
+    const manager = new PluginManager();
+    const control = fakeControl();
+    let currentPosition = "top-right";
+    const addMapControl = () => true;
+    const mockApp = { addMapControl } as unknown as GeoLibreAppAPI;
+
+    // A plugin whose saved position differs from the live one: restore calls
+    // setMapControlPosition, which re-adds (and re-expands) the control. That
+    // re-add must go through the restore collapse too, not just activate().
+    manager.register(
+      testPlugin({
+        id: "positioned-plugin",
+        activate: (api) => {
+          api.addMapControl(control as never, "top-right" as never);
+          setTimeout(() => control.expand(), 0);
+        },
+        getMapControlPosition: () => currentPosition as never,
+        setMapControlPosition: (api, position) => {
+          currentPosition = position;
+          api.addMapControl(control as never, position);
+          setTimeout(() => control.expand(), 0);
+        },
+      }),
+    );
+
+    manager.activate("positioned-plugin", mockApp);
+    await flushTimers();
+
+    manager.restoreProjectState(
+      {
+        manifestUrls: [],
+        activePluginIds: ["positioned-plugin"],
+        mapControlPositions: { "positioned-plugin": "bottom-left" as never },
+        settings: {},
+      },
+      mockApp,
+    );
+
+    await flushTimers();
+    assert.equal(
+      control.collapsed,
+      true,
+      "a panel re-added by a position change during restore must stay collapsed",
+    );
+  });
+
+  it("still expands the panel on a user activation", async () => {
+    const manager = new PluginManager();
+    const control = fakeControl();
+    // Start collapsed so the assertion only passes if activate() really expands.
+    control.collapsed = true;
+    const addMapControl = () => true;
+    const mockApp = { addMapControl } as unknown as GeoLibreAppAPI;
+    manager.register(panelPlugin("basemaps", control));
+
+    manager.activate("basemaps", mockApp);
+
+    await flushTimers();
+    assert.equal(
+      control.collapsed,
+      false,
+      "activating a plugin from the menu should still open its panel",
+    );
+  });
+});

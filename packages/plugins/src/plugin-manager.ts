@@ -1,4 +1,5 @@
 import type { ProjectPluginState } from "@geolibre/core";
+import type { IControl } from "maplibre-gl";
 import type {
   GeoLibreAppAPI,
   GeoLibreMapControlPosition,
@@ -359,6 +360,31 @@ export class PluginManager {
     );
     let changed = false;
 
+    // Plugins pop their control panel open when activated so a user who just
+    // enabled one lands in it. On a project restore that is unwanted: a loaded
+    // project (e.g. a gallery `?url=` link) would bury the map under every
+    // expanded panel it carries (#952). Collapse each control added while
+    // restoring so panels stay closed. This also closes a panel re-added by
+    // setMapControlPosition for an already-active plugin whose saved position
+    // differs, which matches the project-load intent.
+    const collapseRestoredPanel = (control: IControl): void => {
+      const collapsible = control as { collapse?: () => void };
+      if (typeof collapsible.collapse !== "function") return;
+      // Collapse now so the first paint is collapsed, then again after the
+      // plugin's own auto-expand. Plugins open their panel with a setTimeout(0)
+      // expand from activate(), queued after this control was added, so a single
+      // deferred collapse here would run before that expand and lose; defer twice
+      // so the re-collapse lands after it. Doing this per control (instead of
+      // once after the activate loop) also covers controls a plugin adds
+      // asynchronously while restoring, e.g. behind a dynamic-import mount.
+      collapsible.collapse();
+      setTimeout(() => {
+        setTimeout(() => collapsible.collapse?.(), 0);
+      }, 0);
+    };
+    const scopeForRestore = (id: string): GeoLibreAppAPI =>
+      scopeAppToPlugin(app, id, { onControlAdded: collapseRestoredPanel });
+
     // Deactivate first so plugins that should be inactive tear down their live
     // controls before we touch positions or settings. This keeps the order of
     // operations from rebuilding a control only to remove it on the next pass.
@@ -377,7 +403,7 @@ export class PluginManager {
     for (const [id, plugin] of this.plugins) {
       // One scoped app per plugin so any menu it (re)registers from
       // setMapControlPosition/applyProjectState is owner-tagged correctly.
-      const scopedApp = scopeAppToPlugin(app, id);
+      const scopedApp = scopeForRestore(id);
       const defaultPosition = this.defaultMapControlPositions.get(id);
       const targetPosition = state?.mapControlPositions[id] ?? defaultPosition;
       if (targetPosition && plugin.setMapControlPosition) {
@@ -407,7 +433,7 @@ export class PluginManager {
       if (this.active.has(id)) continue;
       const plugin = this.plugins.get(id);
       if (!plugin) continue;
-      const scopedApp = scopeAppToPlugin(app, id);
+      const scopedApp = scopeForRestore(id);
       const activated = plugin.activate(scopedApp);
       if (activated === false) continue;
       const generation = this.nextActivationGeneration(id);
@@ -446,26 +472,52 @@ export class PluginManager {
  * lifecycle callback that hands a plugin the app (activate, deactivate,
  * handleUrlParameters, setMapControlPosition, applyProjectState) passes a scoped
  * app, so a menu the plugin (re)registers from any of them is tagged correctly,
- * including one registered asynchronously after the callback returns. Returns
- * the app unchanged when the host exposes no `registerToolbarMenu`.
+ * including one registered asynchronously after the callback returns. With
+ * `onControlAdded` it also intercepts `addMapControl` (used by project restore
+ * to collapse newly added panels, #952). Returns the app unchanged when neither
+ * applies.
  */
+interface ScopeAppOptions {
+  /**
+   * Called with every control a plugin adds through `addMapControl` while the
+   * scope is active. Used during project restore to keep newly added panels
+   * collapsed (#952).
+   */
+  onControlAdded?: (control: IControl) => void;
+}
+
 function scopeAppToPlugin(
   app: GeoLibreAppAPI,
   pluginId: string,
+  options: ScopeAppOptions = {},
 ): GeoLibreAppAPI {
+  const { onControlAdded } = options;
   const register = app.registerToolbarMenu;
-  if (!register) return app;
-  // The public `registerToolbarMenu` is single-arg; the host's concrete impl
-  // accepts an owner id as a second argument (see toolbar-menu-registry). Cast
-  // here so the owner stays a host-side injection that plugins never see.
-  const registerWithOwner = register as (
-    menu: GeoLibreToolbarMenu,
-    ownerPluginId: string,
-  ) => () => void;
-  return {
-    ...app,
-    registerToolbarMenu: (menu) => registerWithOwner(menu, pluginId),
-  };
+  if (!register && !onControlAdded) return app;
+
+  const scoped: GeoLibreAppAPI = { ...app };
+
+  if (register) {
+    // The public `registerToolbarMenu` is single-arg; the host's concrete impl
+    // accepts an owner id as a second argument (see toolbar-menu-registry). Cast
+    // here so the owner stays a host-side injection that plugins never see.
+    const registerWithOwner = register as (
+      menu: GeoLibreToolbarMenu,
+      ownerPluginId: string,
+    ) => () => void;
+    scoped.registerToolbarMenu = (menu) => registerWithOwner(menu, pluginId);
+  }
+
+  if (onControlAdded) {
+    const addMapControl = app.addMapControl;
+    scoped.addMapControl = (control, position) => {
+      const added = addMapControl(control, position);
+      if (added !== false) onControlAdded(control);
+      return added;
+    };
+  }
+
+  return scoped;
 }
 
 // Retaining several recent contexts (rather than only the latest) keeps dedup
