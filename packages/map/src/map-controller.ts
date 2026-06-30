@@ -260,6 +260,11 @@ export class MapController {
   private logoControl: maplibregl.LogoControl | null = null;
   private layerControl: LayerControl | null = null;
   private layerControlSignature = "";
+  // Debounce timer for refreshing the layer control on style changes, so a
+  // plugin adding/removing native style layers (e.g. ones flagged
+  // `metadata["geolibre:internal"]`) updates the control's exclusion list.
+  private layerControlStyleRefreshTimer: ReturnType<typeof setTimeout> | null =
+    null;
   // True while pushing store paint back into the layer control's open style
   // editor, so onLayerStyleChange callbacks during that refresh are ignored
   // (reentrancy guard against a sync loop). See syncLayerControlState.
@@ -347,6 +352,22 @@ export class MapController {
     this.map.on("style.load", handleStyleReady);
     this.map.once("load", handleStyleReady);
     this.map.once("idle", () => this.enforceProjection());
+    // Plugins can add native style layers directly (outside the layer store);
+    // refresh the layer control on style changes so internal-flagged layers are
+    // excluded reactively. Debounced (trailing edge) because styledata fires
+    // frequently, and refreshLayerControl no-ops when the computed signature is
+    // unchanged. Resetting the timer on each event waits until the burst of
+    // style updates quiets so the control never rebuilds against a half-built
+    // style.
+    this.map.on("styledata", () => {
+      if (this.layerControlStyleRefreshTimer !== null) {
+        clearTimeout(this.layerControlStyleRefreshTimer);
+      }
+      this.layerControlStyleRefreshTimer = setTimeout(() => {
+        this.layerControlStyleRefreshTimer = null;
+        this.refreshLayerControl(this.syncedLayers);
+      }, 200);
+    });
     // Add the fullscreen toggle first so it anchors the top of the top-right
     // control cluster, matching the universal placement users expect (issue
     // #512). MapLibre stacks controls in insertion order within a corner.
@@ -664,6 +685,10 @@ export class MapController {
     this.removeAttributionControl();
     this.removeLogoControl();
     this.removeLayerControl();
+    if (this.layerControlStyleRefreshTimer !== null) {
+      clearTimeout(this.layerControlStyleRefreshTimer);
+      this.layerControlStyleRefreshTimer = null;
+    }
     this.map?.remove();
     this.map = null;
     this.styleReady = false;
@@ -1474,10 +1499,28 @@ export class MapController {
     const nativeStyleLayerIds = layers.flatMap((layer) =>
       this.getCandidateStyleLayers(layer).map(({ id }) => id),
     );
-    const excludeLayers = [
-      ...LAYER_CONTROL_EXCLUDED_LAYERS,
-      ...nativeStyleLayerIds,
-    ];
+    // Hide style layers a plugin marks as internal chrome (e.g. selection
+    // footprints, draw/highlight helpers) so they don't clutter the control.
+    const internalStyleLayerIds = (this.map?.getStyle()?.layers ?? [])
+      .filter((styleLayer) =>
+        Boolean(
+          (styleLayer.metadata as Record<string, unknown> | undefined)?.[
+            "geolibre:internal"
+          ],
+        ),
+      )
+      .map((styleLayer) => styleLayer.id)
+      // Sort so a plugin reordering an already-hidden internal layer (which
+      // shuffles live style order) doesn't change the exclusion signature and
+      // force an unnecessary control rebuild.
+      .sort();
+    const excludeLayers = Array.from(
+      new Set([
+        ...LAYER_CONTROL_EXCLUDED_LAYERS,
+        ...nativeStyleLayerIds,
+        ...internalStyleLayerIds,
+      ]),
+    );
     const controllableLayers = layers.filter(
       (layer) =>
         this.getNativeLayerIds(layer).length > 0 ||
