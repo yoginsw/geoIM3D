@@ -6,11 +6,14 @@ import {
   type AsyncDuckDBConnection,
 } from "@duckdb/duckdb-wasm";
 import {
+  acquireSqlDatabase,
   ensureSpatialExtension,
-  getDatabase,
+  getSqlDatabase,
   isGeometryColumnType,
   quoteIdentifier,
   quoteSqlString,
+  releaseSqlDatabase,
+  resetSqlDatabase,
   rowsFromResult,
 } from "./duckdb-vector-loader";
 import { GDAL_AUTO_FID_COLUMN, stripAutoFidColumn } from "./duckdb-geometry";
@@ -588,14 +591,7 @@ async function registerRemoteSources(
   statement: string,
   registeredFiles: string[],
 ): Promise<{ statement: string; readerCalls: string[] }> {
-  // Match against the masked SQL so a reader call that appears inside a string
-  // literal or comment is ignored: a match whose start is blanked in the mask is
-  // not real code. Match indices are valid against the original string, and the
-  // reader keyword and URL the pattern captures are code (never masked).
-  const masked = maskSqlLiterals(statement);
-  const matches = [...statement.matchAll(REMOTE_READER_ARG_PATTERN)].filter(
-    (match) => masked[match.index ?? 0] !== " ",
-  );
+  const matches = matchRemoteReaderCalls(statement);
 
   // Collect each distinct URL that is a native reader's argument, keeping the
   // first reader function it appears with (used to warm up the HTTP path).
@@ -714,7 +710,79 @@ export async function runSqlQuery(
   // convenient `SELECT * FROM https://…/x.parquet` form runs.
   const rewritten = rewriteBareSources(withCloudUrls);
 
-  const db = await getDatabase();
+  // Only a query that actually reads a remote source can hit the poisoned-
+  // instance path, so gate the recovery on a real remote reader call (not an
+  // http URL that merely appears in a string literal or WHERE clause).
+  const hasRemoteReader = statementHasRemoteReader(rewritten);
+
+  // Run one attempt, ref-counting the instance so a poison recovery can defer
+  // terminating it until no query is still using it.
+  const attempt = async (db: AsyncDuckDB): Promise<SqlQueryResult> => {
+    acquireSqlDatabase(db);
+    try {
+      return await runSqlStatementOnce(rewritten, layers, db);
+    } finally {
+      await releaseSqlDatabase(db);
+    }
+  };
+
+  const db = await getSqlDatabase();
+  try {
+    return await attempt(db);
+  } catch (error) {
+    // Recover from a poisoned WASM instance: duckdb-wasm 1.33.1-dev45 breaks
+    // remote read_parquet with "stoi: no conversion" on an instance that ran
+    // LOAD spatial before its first successful remote read (e.g. after an
+    // earlier query's warm-up failed). That state cannot be undone in place, so
+    // rebuild the SQL Workspace's dedicated instance — which re-runs the
+    // pre-spatial warm-up — and retry once. `attempt` has already released `db`,
+    // so resetSqlDatabase tears it down now unless another query is still on it.
+    if (hasRemoteReader && isStoiConversionError(error)) {
+      await resetSqlDatabase(db);
+      return await attempt(await getSqlDatabase());
+    }
+    throw error;
+  }
+}
+
+/** True when an error is the duckdb-wasm poisoned-instance "stoi" symptom. */
+function isStoiConversionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /stoi:\s*no conversion/i.test(message);
+}
+
+/**
+ * The native reader calls with an http(s) URL argument in a statement, ignoring
+ * any that appear inside a string literal or comment. Matches against the masked
+ * SQL (a match whose start is blanked in the mask is not real code); the match
+ * indices are valid against the original string, and the reader keyword and URL
+ * the pattern captures are code (never masked).
+ */
+function matchRemoteReaderCalls(statement: string): RegExpMatchArray[] {
+  const masked = maskSqlLiterals(statement);
+  return [...statement.matchAll(REMOTE_READER_ARG_PATTERN)].filter(
+    (match) => masked[match.index ?? 0] !== " ",
+  );
+}
+
+/**
+ * True when the statement contains a real remote-reader call (a native reader
+ * with an http(s) URL argument), ignoring URLs inside string literals.
+ */
+function statementHasRemoteReader(statement: string): boolean {
+  return matchRemoteReaderCalls(statement).length > 0;
+}
+
+/**
+ * Runs one attempt of a prepared SQL statement against a DuckDB instance. Split
+ * out of {@link runSqlQuery} so it can be retried against a freshly rebuilt
+ * instance when the current one's remote read path is poisoned.
+ */
+async function runSqlStatementOnce(
+  rewritten: string,
+  layers: GeoLibreLayer[],
+  db: AsyncDuckDB,
+): Promise<SqlQueryResult> {
   const connection = await db.connect();
   // Per-run prefix so concurrent queries on the shared database do not register
   // or drop one another's VFS files. Populated by registerLayerTables and
@@ -752,7 +820,7 @@ export async function runSqlQuery(
     ) {
       warmups.push(`read_parquet(${quoteSqlString(SAMPLE_DATASET_URL)})`);
     }
-    await ensureSpatialExtension(connection, async () => {
+    await ensureSpatialExtension(db, connection, async () => {
       for (const readerCall of warmups) {
         await connection.query(`SELECT 1 FROM ${readerCall} LIMIT 0`);
       }
