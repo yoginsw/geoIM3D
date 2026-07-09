@@ -35,6 +35,7 @@ import {
   Server,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   isTauri,
   pickLocalPathWithFallback,
@@ -340,6 +341,7 @@ function jobStatusTone(job: ConversionJob | null): string {
 }
 
 export function ConversionDialog() {
+  const { t } = useTranslation();
   const kind = useAppStore((s) => s.ui.conversionOpen);
   const setConversionOpen = useAppStore((s) => s.setConversionOpen);
 
@@ -866,14 +868,14 @@ export function ConversionDialog() {
                 <Input
                   id="conversion-input"
                   value={browserFiles.map((file) => file.name).join(", ")}
-                  placeholder="Choose a file"
+                  placeholder={t("processing.filePicker.chooseFilePlaceholder")}
                   readOnly
                 />
               ) : (
                 <Input
                   id="conversion-input"
                   value={inputPath}
-                  placeholder="File path"
+                  placeholder={t("processing.filePicker.filePath")}
                   onChange={(event) => setInputPath(event.target.value)}
                 />
               )}
@@ -881,7 +883,7 @@ export function ConversionDialog() {
                 type="button"
                 variant="outline"
                 size="icon"
-                title="Choose input file"
+                title={t("processing.filePicker.chooseInputFile")}
                 onClick={() => void pickInput()}
               >
                 <FolderOpen className="h-4 w-4" />
@@ -911,7 +913,7 @@ export function ConversionDialog() {
                 placeholder={
                   usesBrowserRuntime
                     ? (config?.defaultOutputName ?? "output")
-                    : "File path"
+                    : t("processing.filePicker.filePath")
                 }
                 onChange={(event) => setOutputPath(event.target.value)}
               />
@@ -920,7 +922,7 @@ export function ConversionDialog() {
                   type="button"
                   variant="outline"
                   size="icon"
-                  title="Choose output file"
+                  title={t("processing.filePicker.chooseOutputFile")}
                   onClick={() => void pickOutput()}
                 >
                   <Save className="h-4 w-4" />
