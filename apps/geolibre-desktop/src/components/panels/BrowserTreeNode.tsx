@@ -7,9 +7,11 @@ import {
   FolderOpen,
   Globe2,
   Loader2,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { ServiceLibraryKind } from "../layout/add-data/service-library";
 import type { BrowserNode } from "../../lib/browser-tree";
 
 interface BrowserTreeNodeProps {
@@ -24,6 +26,8 @@ interface BrowserTreeNodeProps {
   onToggle: (id: string) => void;
   /** Activate a leaf (add a service layer, or open a recent project). */
   onActivate: (node: BrowserNode) => void;
+  /** Add a new connection for a service-kind group (opens Add Data at it). */
+  onNewConnection: (kind: ServiceLibraryKind) => void;
 }
 
 /** The leading icon for a node, chosen by kind (and expanded state for groups). */
@@ -50,6 +54,7 @@ export function BrowserTreeNode({
   busyId,
   onToggle,
   onActivate,
+  onNewConnection,
 }: BrowserTreeNodeProps) {
   const { t } = useTranslation();
   const isGroup = Boolean(node.children);
@@ -62,49 +67,68 @@ export function BrowserTreeNode({
   const isDisabled = !isGroup && busyId != null;
   // Indent by depth; groups reserve room for the chevron, leaves align to it.
   const paddingLeft = 8 + depth * 14;
+  // The kind group's service kind (or undefined). Captured as a const so its
+  // non-undefined narrowing survives into the button's onClick closure — a
+  // property access (node.serviceKind) would not, which is why a cast would
+  // otherwise be needed there.
+  const categoryKind =
+    node.kind === "category" ? node.serviceKind : undefined;
 
   return (
     <li>
-      <button
-        type="button"
-        disabled={isDisabled}
-        className={cn(
-          "flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-sm",
-          "hover:bg-accent hover:text-accent-foreground",
-          "disabled:pointer-events-none disabled:opacity-50",
-          node.kind === "section" && "font-semibold",
-        )}
-        style={{ paddingLeft }}
-        aria-expanded={isGroup ? isExpanded : undefined}
-        aria-busy={isBusy || undefined}
-        onClick={() => (isGroup ? onToggle(node.id) : onActivate(node))}
-      >
-        {isGroup ? (
-          isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <div className="flex items-center">
+        <button
+          type="button"
+          disabled={isDisabled}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded px-2 py-1 text-left text-sm",
+            "hover:bg-accent hover:text-accent-foreground",
+            "disabled:pointer-events-none disabled:opacity-50",
+            node.kind === "section" && "font-semibold",
+          )}
+          style={{ paddingLeft }}
+          aria-expanded={isGroup ? isExpanded : undefined}
+          aria-busy={isBusy || undefined}
+          onClick={() => (isGroup ? onToggle(node.id) : onActivate(node))}
+        >
+          {isGroup ? (
+            isExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            )
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          )
-        ) : (
-          <span className="w-3.5 shrink-0" />
-        )}
-        {isBusy ? (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
-        ) : (
-          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <span className="truncate">{node.label}</span>
-        {node.builtin ? (
-          <span className="ml-1 shrink-0 rounded border px-1 text-[10px] uppercase leading-tight text-muted-foreground">
-            {t("browser.builtinBadge")}
-          </span>
+            <span className="w-3.5 shrink-0" />
+          )}
+          {isBusy ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+          ) : (
+            <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <span className="truncate">{node.label}</span>
+          {node.builtin ? (
+            <span className="ml-1 shrink-0 rounded border px-1 text-[10px] uppercase leading-tight text-muted-foreground">
+              {t("browser.builtinBadge")}
+            </span>
+          ) : null}
+          {typeof node.count === "number" && node.count > 0 ? (
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              {node.count}
+            </span>
+          ) : null}
+        </button>
+        {categoryKind ? (
+          <button
+            type="button"
+            className="mr-1 shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            title={t("browser.newConnection", { kind: node.label })}
+            aria-label={t("browser.newConnection", { kind: node.label })}
+            onClick={() => onNewConnection(categoryKind)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
         ) : null}
-        {typeof node.count === "number" && node.count > 0 ? (
-          <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-            {node.count}
-          </span>
-        ) : null}
-      </button>
+      </div>
       {isGroup && isExpanded ? (
         node.children && node.children.length > 0 ? (
           <ul>
@@ -117,6 +141,7 @@ export function BrowserTreeNode({
                 busyId={busyId}
                 onToggle={onToggle}
                 onActivate={onActivate}
+                onNewConnection={onNewConnection}
               />
             ))}
           </ul>
