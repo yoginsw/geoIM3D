@@ -1821,6 +1821,7 @@
       "maplibre-gl-annotations": "Anotações",
       "maplibre-gl-streetview": "Visão da rua",
       "maplibre-gl-time-slider": "Controle de tempo",
+      "geolibre-timelapse": "Timelapse",
       "maplibre-gl-esri-wayback": "Imagens históricas",
       "maplibre-gl-swipe": "Comparação de camadas",
       "geolibre-elevation-profile": "Perfil de elevação",
@@ -2024,6 +2025,22 @@
     "edgesAll": "Todos os lados",
     "labelColor": "Cor do rótulo",
     "labelSize": "Tamanho do rótulo"
+  },
+  "timelapse": {
+    "title": "Timelapse",
+    "yearSlider": "Ano do timelapse",
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "speed": "Velocidade",
+    "secondsPerYear": "Segundos por ano",
+    "secondsPerYearSuffix": "s/ano",
+    "loop": "Repetir",
+    "record": "Gravar vídeo",
+    "stopRecording": "Parar gravação",
+    "recording": "Gravando",
+    "recordingFailed": "Falha na gravação.",
+    "recordingUnsupported": "A gravação do canvas não é suportada neste navegador.",
+    "loadingTiles": "Carregando blocos…"
   },
   "basemaps": {
     "confirmStyleReplace_one": "Mudar para \"{{name}}\" substitui todo o estilo do mapa e removerá o mapa base empilhado que você adicionou. Continuar?",

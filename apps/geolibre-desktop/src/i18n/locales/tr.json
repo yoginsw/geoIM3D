@@ -1821,6 +1821,7 @@
       "maplibre-gl-annotations": "Ek açıklamalar",
       "maplibre-gl-streetview": "Sokak Görünümü",
       "maplibre-gl-time-slider": "Zaman Kaydırıcısı",
+      "geolibre-timelapse": "Timelapse",
       "maplibre-gl-esri-wayback": "Tarihsel Görüntüler",
       "maplibre-gl-swipe": "Katman Kaydırma",
       "geolibre-elevation-profile": "Yükseklik Profili",
@@ -2024,6 +2025,22 @@
     "edgesAll": "Tüm kenarlar",
     "labelColor": "Etiket rengi",
     "labelSize": "Etiket boyutu"
+  },
+  "timelapse": {
+    "title": "Timelapse",
+    "yearSlider": "Timelapse yılı",
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "speed": "Hız",
+    "secondsPerYear": "Yıl başına saniye",
+    "secondsPerYearSuffix": "sn/yıl",
+    "loop": "Döngü",
+    "record": "Video kaydet",
+    "stopRecording": "Kaydı durdur",
+    "recording": "Kaydediliyor",
+    "recordingFailed": "Kayıt başarısız oldu.",
+    "recordingUnsupported": "Bu tarayıcıda tuval kaydı desteklenmiyor.",
+    "loadingTiles": "Karolar yükleniyor…"
   },
   "basemaps": {
     "confirmStyleReplace_one": "\"{{name}}\" öğesine geçmek tüm harita stilini değiştirir ve eklediğiniz üst üste bindirilmiş temel haritayı kaldırır. Devam edilsin mi?",

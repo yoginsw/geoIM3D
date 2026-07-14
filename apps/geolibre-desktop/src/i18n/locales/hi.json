@@ -1821,6 +1821,7 @@
       "maplibre-gl-annotations": "एनोटेशन",
       "maplibre-gl-streetview": "स्ट्रीट व्यू",
       "maplibre-gl-time-slider": "समय स्लाइडर",
+      "geolibre-timelapse": "टाइमलैप्स",
       "maplibre-gl-esri-wayback": "ऐतिहासिक इमेजरी",
       "maplibre-gl-swipe": "लेयर स्वाइप",
       "geolibre-elevation-profile": "ऊँचाई प्रोफ़ाइल",
@@ -2024,6 +2025,22 @@
     "edgesAll": "सभी तरफ़",
     "labelColor": "लेबल का रंग",
     "labelSize": "लेबल का आकार"
+  },
+  "timelapse": {
+    "title": "टाइमलैप्स",
+    "yearSlider": "टाइमलैप्स वर्ष",
+    "play": "चलाएँ",
+    "pause": "रोकें",
+    "speed": "गति",
+    "secondsPerYear": "प्रति वर्ष सेकंड",
+    "secondsPerYearSuffix": "से./वर्ष",
+    "loop": "लूप",
+    "record": "वीडियो रिकॉर्ड करें",
+    "stopRecording": "रिकॉर्डिंग रोकें",
+    "recording": "रिकॉर्डिंग",
+    "recordingFailed": "रिकॉर्डिंग विफल रही।",
+    "recordingUnsupported": "इस ब्राउज़र में कैनवास रिकॉर्डिंग समर्थित नहीं है।",
+    "loadingTiles": "टाइलें लोड हो रही हैं…"
   },
   "basemaps": {
     "confirmStyleReplace_one": "\"{{name}}\" पर स्विच करने से पूरी मैप शैली बदल जाएगी और आपके द्वारा जोड़ा गया स्टैक्ड बेसमैप हट जाएगा। जारी रखें?",
