@@ -76,6 +76,11 @@ import type {
   GeoLibrePlugin,
 } from "../types";
 import { ensureMercatorProjection } from "./map-projection-utils";
+import {
+  attachTerrainMeasure,
+  measurePanelElement,
+  type TerrainMapLike,
+} from "./terrain-measure";
 import { INTERNAL_HELPER_LAYER_PATTERNS } from "./internal-layers";
 import {
   KerchunkReferenceStore,
@@ -700,6 +705,7 @@ let printControl: PrintControl | null = null;
 let searchControl: SearchControl | null = null;
 let spinGlobeControl: SpinGlobeControl | null = null;
 let measureControl: MeasureControl | null = null;
+let measureTerrainDetach: (() => void) | null = null;
 let bookmarkControl: BookmarkControl | null = null;
 let minimapControl: MinimapControl | null = null;
 let viewStateControl: ViewStateControl | null = null;
@@ -2334,6 +2340,13 @@ async function openStandaloneMeasureControl(
       return false;
     }
     measureControlMounted = true;
+    // Terrain-aware 3D readouts (surface distance/area) appended to the
+    // control's panel; requires the panel from onAdd, so attach after mounting.
+    measureTerrainDetach = attachTerrainMeasure(
+      measureControl,
+      () => (app.getMap?.() ?? null) as TerrainMapLike | null,
+    );
+    makeMeasurePanelResizable(measureControl);
   }
 
   setTimeout(() => {
@@ -3411,6 +3424,29 @@ function createMeasureControl(
   return control;
 }
 
+/**
+ * The MeasureControl's panel ships with a hard pixel max-height that forces
+ * its content (measurement list, terrain section) to scroll. Let the panel
+ * size to its content up to most of the viewport instead, and hand the user
+ * the native bottom-right resize handle for manual control.
+ */
+function makeMeasurePanelResizable(control: MeasureControl): void {
+  const panel = measurePanelElement(control);
+  if (!panel) return;
+  // Fit content instead of scrolling at the fixed cap, but never outgrow the
+  // viewport; the map's own chrome needs the remaining room.
+  panel.style.height = "auto";
+  panel.style.maxHeight = "min(75vh, 900px)";
+  // The native CSS resize handle (bottom-right in LTR, mirrored in RTL)
+  // requires a non-visible overflow; content scrolls once the user shrinks
+  // the panel below its natural size.
+  panel.style.overflow = "auto";
+  panel.style.resize = "both";
+  panel.style.minWidth = "220px";
+  panel.style.minHeight = "160px";
+  panel.style.maxWidth = "min(90vw, 560px)";
+}
+
 function createBookmarkControl(
   BookmarkControlClass: BookmarkControlConstructor,
   app: GeoLibreAppAPI
@@ -3805,6 +3841,8 @@ function setSearchPlacesPanelVisible(visible: boolean): void {
 }
 
 function teardownMeasureControl(app: GeoLibreAppAPI): void {
+  measureTerrainDetach?.();
+  measureTerrainDetach = null;
   if (measureControl && measureControlMounted) {
     app.removeMapControl(measureControl);
   }
