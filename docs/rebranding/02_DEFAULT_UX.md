@@ -20,7 +20,7 @@
 
 기존 프로젝트를 열 때 Project Schema, Layer, Map View 및 내부 식별자를 변경하지 않는다. 제품 지도 기본값은 신규 또는 초기 Clean Project에만 적용하며 적용 직후 `markSaved()`로 Dirty 상태를 남기지 않는다.
 
-2D/3D Renderer는 Tab 전환 시 재생성하지 않고 Mount 상태를 유지한다. Tab은 `role="tablist"`, `role="tab"`, `role="tabpanel"` 구조와 좌/우/Home/End 키보드 이동을 지원한다.
+2D/3D Renderer는 Tab 전환 시 재생성하지 않고 Mount 상태를 유지한다. 비활성 Cesium은 Default Render Loop를 일시 중지하며, 재활성화 시 `resize()`와 즉시 Render를 수행한다. Tab은 `role="tablist"`, `role="tab"`, `role="tabpanel"` 구조와 좌/우/Home/End 키보드 이동을 지원한다.
 
 ## 숨김 기능과 우회 차단
 

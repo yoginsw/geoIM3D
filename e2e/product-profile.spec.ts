@@ -16,8 +16,12 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
 
   const mapLibreTab = page.getByRole("tab", { name: "MapLibre 2D Pane" });
   const cesiumTab = page.getByRole("tab", { name: "Cesium 3D Globe" });
+  const cesiumCanvas = page.getByTestId("cesium-canvas");
+  await expect(page.getByTestId("map-canvas")).toHaveCount(1);
+  await expect(cesiumCanvas).toHaveCount(1);
   await expect(cesiumTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByTestId("cesium-canvas")).toBeVisible({
+  await expect(cesiumCanvas).toHaveAttribute("data-active", "true");
+  await expect(cesiumCanvas).toBeVisible({
     timeout: 30_000,
   });
   await expect(page.getByTestId("map-canvas")).toBeHidden();
@@ -28,13 +32,47 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByTestId("cesium-canvas")).toBeHidden();
+  await expect(cesiumCanvas).toBeHidden();
+  await expect(cesiumCanvas).toHaveAttribute("data-active", "false");
 
   await cesiumTab.click();
-  await expect(page.getByTestId("cesium-canvas")).toBeVisible();
+  await expect(cesiumCanvas).toBeVisible();
+  await expect(cesiumCanvas).toHaveAttribute("data-active", "true");
+  const workspaceBox = await page.getByTestId("map-view-tabs").boundingBox();
+  const cesiumBox = await cesiumCanvas.boundingBox();
+  expect(workspaceBox).not.toBeNull();
+  expect(cesiumBox).not.toBeNull();
+  expect(cesiumBox!.width).toBeGreaterThanOrEqual(workspaceBox!.width - 1);
+  expect(cesiumBox!.height).toBeGreaterThanOrEqual(workspaceBox!.height - 1);
+
+  const renderCanvas = cesiumCanvas.locator("canvas").first();
+  const renderBox = await renderCanvas.boundingBox();
+  expect(renderBox).not.toBeNull();
+  await page.mouse.move(
+    renderBox!.x + renderBox!.width / 2,
+    renderBox!.y + renderBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    renderBox!.x + renderBox!.width / 2 + 120,
+    renderBox!.y + renderBox!.height / 2,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(1_000);
+
   await cesiumTab.press("ArrowLeft");
   await expect(mapLibreTab).toHaveAttribute("aria-selected", "true");
   await expect(mapLibreTab).toBeFocused();
+
+  await page.getByRole("button", { name: "프로젝트", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "새로 만들기...", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "현재 프로젝트를 저장하시겠습니까?" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "설정", exact: true }).click();
   await expectMenuItemHidden(page, "언어");

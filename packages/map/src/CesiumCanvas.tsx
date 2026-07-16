@@ -37,6 +37,8 @@ const CESIUM_CSS_LINK_ID = "cesium-widgets-css";
 export interface CesiumCanvasProps {
   /** Secondary pane id. Omit it to render and update the primary map view. */
   viewId?: string;
+  /** Pause the render loop while a mounted tab is not visible. */
+  active?: boolean;
   /**
    * Cesium Ion access token. When present the globe uses Ion world imagery +
    * terrain; when empty it falls back to keyless OpenStreetMap imagery on the
@@ -72,6 +74,7 @@ function prepareCesiumEnvironment(): void {
 export const CesiumCanvas = memo(function CesiumCanvas({
   viewId,
   ionToken,
+  active = true,
 }: CesiumCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -98,6 +101,8 @@ export const CesiumCanvas = memo(function CesiumCanvas({
   viewIdRef.current = viewId;
   const ionTokenRef = useRef(ionToken);
   ionTokenRef.current = ionToken;
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   // Primary mode always follows the global camera. Secondary mode mirrors
   // SecondaryMapCanvas: global when sync is on, otherwise the pane's camera.
@@ -177,6 +182,7 @@ export const CesiumCanvas = memo(function CesiumCanvas({
           timeline: false,
           animation: false,
           fullscreenButton: false,
+          useDefaultRenderLoop: activeRef.current,
           // No default click popup / selection outline: clicking a GeoJSON
           // feature must not pop Cesium's unstyled InfoBox (it isn't wired to
           // GeoLibre's identify UI and would overflow a small grid pane).
@@ -334,6 +340,20 @@ export const CesiumCanvas = memo(function CesiumCanvas({
     layerSyncRef.current?.sync(paneLayers);
   }, [ready, paneLayers]);
 
+  // Keep the viewer mounted for camera/layer continuity, but do not spend a
+  // continuous animation frame budget while its tab is hidden. Re-entering the
+  // tab explicitly resizes and renders before the default loop resumes.
+  useEffect(() => {
+    if (!ready) return;
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.useDefaultRenderLoop = active;
+    if (active) {
+      viewer.resize();
+      viewer.render();
+    }
+  }, [active, ready]);
+
   // Primary mode and synced secondary panes follow the shared global camera.
   // Depend on primitives so an equal-valued mapView object does not re-apply.
   useEffect(() => {
@@ -372,6 +392,7 @@ export const CesiumCanvas = memo(function CesiumCanvas({
       className="relative h-full w-full"
       data-testid="cesium-canvas"
       data-view-id={viewId ?? "primary"}
+      data-active={active}
     >
       <div ref={containerRef} className="h-full w-full" />
       {error ? (

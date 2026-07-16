@@ -244,7 +244,10 @@ function TabbedMapWorkspace({
             : "invisible pointer-events-none"
         }`}
       >
-        <CesiumCanvas ionToken={cesiumToken} />
+        <CesiumCanvas
+          ionToken={cesiumToken}
+          active={activeTab === "cesium"}
+        />
       </div>
     </div>
   );
