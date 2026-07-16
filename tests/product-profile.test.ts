@@ -22,18 +22,18 @@ describe("geoIM3D product profile", () => {
   it("fixes the product defaults", () => {
     assert.equal(PRODUCT_PROFILE.language, "ko");
     assert.equal(PRODUCT_PROFILE.theme, "light");
-    assert.deepEqual(PRODUCT_PROFILE.mapGrid, { rows: 1, cols: 2 });
+    assert.deepEqual(PRODUCT_PROFILE.mapGrid, { rows: 1, cols: 1 });
+    assert.equal(PRODUCT_PROFILE.defaultMapTab, "cesium");
     assert.deepEqual(PRODUCT_PROFILE.hiddenMenuItems, HIDDEN_FEATURES);
   });
 
-  it("creates a clean new project with a Cesium globe pane", () => {
+  it("creates a clean single-pane project for the 2D/3D tab workspace", () => {
     createGeoIm3dNewProject({ name: "제목 없는 프로젝트" });
 
     const state = useAppStore.getState();
     assert.equal(state.projectName, "제목 없는 프로젝트");
-    assert.deepEqual(state.mapLayout, { rows: 1, cols: 2, syncView: true });
-    assert.equal(state.secondaryMapViews.length, 1);
-    assert.equal(state.secondaryMapViews[0].viewKind, "cesium");
+    assert.deepEqual(state.mapLayout, { rows: 1, cols: 1, syncView: true });
+    assert.equal(state.secondaryMapViews.length, 0);
     assert.equal(state.isDirty, false);
   });
 

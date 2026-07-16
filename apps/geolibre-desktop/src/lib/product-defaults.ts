@@ -1,13 +1,8 @@
 import { DEFAULT_PROJECT_NAME, useAppStore } from "@geolibre/core";
-import { PRODUCT_PROFILE } from "../config/product-profile";
-
-function shouldApplyProductMapDefaults(): boolean {
-  if (import.meta.env?.VITE_E2E_EXPOSE_ALL_LOCALES !== "true") return true;
-  if (typeof window === "undefined") return true;
-  return (
-    new URLSearchParams(window.location.search).get("geoim3dProfile") === "1"
-  );
-}
+import {
+  isGeoIm3dProductMapWorkspaceEnabled,
+  PRODUCT_PROFILE,
+} from "../config/product-profile";
 
 type NewProjectOptions = NonNullable<
   Parameters<ReturnType<typeof useAppStore.getState>["newProject"]>[0]
@@ -16,7 +11,7 @@ type NewProjectOptions = NonNullable<
 function applyGeoIm3dProjectDefaults(localizedProjectName: string): void {
   // Production always uses the product layout. The E2E compatibility build
   // opts into Cesium only in the dedicated product test to avoid WebGL buildup.
-  if (!shouldApplyProductMapDefaults()) return;
+  if (!isGeoIm3dProductMapWorkspaceEnabled()) return;
 
   const initial = useAppStore.getState();
   let changed = false;
@@ -34,12 +29,6 @@ function applyGeoIm3dProjectDefaults(localizedProjectName: string): void {
       PRODUCT_PROFILE.mapGrid.rows,
       PRODUCT_PROFILE.mapGrid.cols,
     );
-    changed = true;
-  }
-
-  const secondary = useAppStore.getState().secondaryMapViews[0];
-  if (secondary && secondary.viewKind !== "cesium") {
-    useAppStore.getState().setSecondaryViewKind(secondary.id, "cesium");
     changed = true;
   }
 

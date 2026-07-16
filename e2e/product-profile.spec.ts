@@ -4,7 +4,7 @@ async function expectMenuItemHidden(page: Page, name: string) {
   await expect(page.getByRole("menuitem", { name, exact: true })).toHaveCount(0);
 }
 
-test("starts with the geoIM3D Korean light 3D product profile", async ({ page }) => {
+test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async ({ page }) => {
   await page.goto("/?locale=ko&geoim3dProfile=1");
 
   await expect(page.locator("html")).toHaveAttribute("lang", "ko");
@@ -14,13 +14,27 @@ test("starts with the geoIM3D Korean light 3D product profile", async ({ page })
     "제목 없는 프로젝트",
   );
 
+  const mapLibreTab = page.getByRole("tab", { name: "MapLibre 2D Pane" });
+  const cesiumTab = page.getByRole("tab", { name: "Cesium 3D Globe" });
+  await expect(cesiumTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("cesium-canvas")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId("map-canvas")).toBeHidden();
+
+  await mapLibreTab.click();
+  await expect(mapLibreTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("map-canvas")).toBeVisible();
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByTestId("cesium-canvas")).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(page.getByTestId("cesium-canvas")).toBeHidden();
+
+  await cesiumTab.click();
+  await expect(page.getByTestId("cesium-canvas")).toBeVisible();
+  await cesiumTab.press("ArrowLeft");
+  await expect(mapLibreTab).toHaveAttribute("aria-selected", "true");
+  await expect(mapLibreTab).toBeFocused();
 
   await page.getByRole("button", { name: "설정", exact: true }).click();
   await expectMenuItemHidden(page, "언어");

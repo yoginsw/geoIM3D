@@ -35,8 +35,8 @@ const CESIUM_BASE_URL = `${APP_BASE_URL}cesium`;
 const CESIUM_CSS_LINK_ID = "cesium-widgets-css";
 
 export interface CesiumCanvasProps {
-  /** Id of the `secondaryMapViews` entry this pane renders (label/telemetry). */
-  viewId: string;
+  /** Secondary pane id. Omit it to render and update the primary map view. */
+  viewId?: string;
   /**
    * Cesium Ion access token. When present the globe uses Ion world imagery +
    * terrain; when empty it falls back to keyless OpenStreetMap imagery on the
@@ -99,12 +99,15 @@ export const CesiumCanvas = memo(function CesiumCanvas({
   const ionTokenRef = useRef(ionToken);
   ionTokenRef.current = ionToken;
 
-  // Camera sync inputs, mirrored from SecondaryMapCanvas: the shared global
-  // camera when sync is on, otherwise this pane's own saved camera.
+  // Primary mode always follows the global camera. Secondary mode mirrors
+  // SecondaryMapCanvas: global when sync is on, otherwise the pane's camera.
   const syncView = useAppStore((s) => s.mapLayout.syncView);
   const globalView = useAppStore((s) => s.mapView);
   const entryView = useAppStore(
-    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.view,
+    (s) =>
+      viewId === undefined
+        ? undefined
+        : s.secondaryMapViews.find((p) => p.id === viewId)?.view,
   );
 
   // Layer sync inputs, mirrored from SecondaryMapCanvas: the shared layers with
@@ -112,7 +115,10 @@ export const CesiumCanvas = memo(function CesiumCanvas({
   const layers = useAppStore((s) => s.layers);
   const layerGroups = useAppStore((s) => s.layerGroups);
   const layerVisibility = useAppStore(
-    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.layerVisibility,
+    (s) =>
+      viewId === undefined
+        ? undefined
+        : s.secondaryMapViews.find((p) => p.id === viewId)?.layerVisibility,
   );
   const paneLayers = useMemo<GeoLibreLayer[]>(() => {
     const withOverrides = !layerVisibility
@@ -178,9 +184,8 @@ export const CesiumCanvas = memo(function CesiumCanvas({
           selectionIndicator: false,
           // Without an Ion token, fall back to keyless OpenStreetMap imagery so
           // the globe still renders (Ion's default imagery requires a token).
-          // MapGrid only mounts this pane once a token is set, but CesiumCanvas
-          // is a public @geolibre/map export with an optional `ionToken`, so the
-          // no-token path stays supported for that direct use.
+          // This tokenless fallback is used by the primary tab workspace and by
+          // public @geolibre/map consumers that omit the optional `ionToken`.
           baseLayer: token
             ? undefined
             : Cesium.ImageryLayer.fromProviderAsync(
@@ -250,10 +255,15 @@ export const CesiumCanvas = memo(function CesiumCanvas({
 
         // Seed the camera from the shared store camera before the first frame.
         const state = useAppStore.getState();
-        const pane = state.secondaryMapViews.find(
-          (p) => p.id === viewIdRef.current,
+        const currentViewId = viewIdRef.current;
+        const pane = currentViewId
+          ? state.secondaryMapViews.find((p) => p.id === currentViewId)
+          : undefined;
+        applyView(
+          !currentViewId || state.mapLayout.syncView
+            ? state.mapView
+            : pane?.view ?? state.mapView,
         );
-        applyView(state.mapLayout.syncView ? state.mapView : pane?.view ?? state.mapView);
 
         // Render the store layers on the globe before the first frame.
         layerSyncRef.current?.sync(paneLayersRef.current);
@@ -274,6 +284,13 @@ export const CesiumCanvas = memo(function CesiumCanvas({
           const userDriven = userMovedRef.current;
           userMovedRef.current = false;
           const live = useAppStore.getState();
+          const currentViewId = viewIdRef.current;
+          if (!currentViewId) {
+            if (!isSameView(view, live.mapView)) {
+              live.setMapView(view, userDriven);
+            }
+            return;
+          }
           // Write only when the view actually differs from the stored camera:
           // `setMapView` has no same-camera guard in the store, and
           // `setSecondaryMapView`'s guard uses exact equality (which Cesium's
@@ -282,10 +299,10 @@ export const CesiumCanvas = memo(function CesiumCanvas({
             live.setMapView(view, userDriven);
           }
           const paneView = live.secondaryMapViews.find(
-            (p) => p.id === viewIdRef.current,
+            (p) => p.id === currentViewId,
           )?.view;
           if (!paneView || !isSameView(view, paneView)) {
-            live.setSecondaryMapView(viewIdRef.current, view, userDriven);
+            live.setSecondaryMapView(currentViewId, view, userDriven);
           }
         });
 
@@ -317,15 +334,15 @@ export const CesiumCanvas = memo(function CesiumCanvas({
     layerSyncRef.current?.sync(paneLayers);
   }, [ready, paneLayers]);
 
-  // Synced: follow the shared global camera. Depend on primitives so an
-  // equal-valued mapView object does not re-apply. `ready` re-runs this once the
-  // viewer exists (the initial seed above already covers the mount value).
+  // Primary mode and synced secondary panes follow the shared global camera.
+  // Depend on primitives so an equal-valued mapView object does not re-apply.
   useEffect(() => {
-    if (!ready || !syncView) return;
+    if (!ready || (viewId !== undefined && !syncView)) return;
     applyView(globalView);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     ready,
+    viewId,
     syncView,
     globalView.center[0],
     globalView.center[1],
@@ -334,13 +351,14 @@ export const CesiumCanvas = memo(function CesiumCanvas({
     globalView.pitch,
   ]);
 
-  // Not synced: follow this pane's own saved camera.
+  // Unsynced secondary panes follow their own saved camera.
   useEffect(() => {
-    if (!ready || syncView || !entryView) return;
+    if (!ready || viewId === undefined || syncView || !entryView) return;
     applyView(entryView);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     ready,
+    viewId,
     syncView,
     entryView?.center[0],
     entryView?.center[1],
@@ -353,7 +371,7 @@ export const CesiumCanvas = memo(function CesiumCanvas({
     <div
       className="relative h-full w-full"
       data-testid="cesium-canvas"
-      data-view-id={viewId}
+      data-view-id={viewId ?? "primary"}
     >
       <div ref={containerRef} className="h-full w-full" />
       {error ? (

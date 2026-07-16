@@ -16,6 +16,10 @@ import {
 import { Globe, Layers, Map as MapIcon, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  isGeoIm3dProductMapWorkspaceEnabled,
+  PRODUCT_PROFILE,
+} from "../../config/product-profile";
 
 /**
  * The current Cesium Ion token, re-resolved whenever the runtime environment
@@ -96,7 +100,12 @@ export function MapGrid({ children }: MapGridProps) {
   const cesiumToken = useCesiumIonToken();
 
   if (rows * cols <= 1) {
-    return <>{children}</>;
+    if (!isGeoIm3dProductMapWorkspaceEnabled()) return <>{children}</>;
+    return (
+      <TabbedMapWorkspace cesiumToken={cesiumToken}>
+        {children}
+      </TabbedMapWorkspace>
+    );
   }
 
   return (
@@ -124,6 +133,119 @@ export function MapGrid({ children }: MapGridProps) {
           cesiumToken={cesiumToken}
         />
       ))}
+    </div>
+  );
+}
+
+type MapWorkspaceTab = "maplibre" | "cesium";
+
+function TabbedMapWorkspace({
+  children,
+  cesiumToken,
+}: {
+  children: ReactNode;
+  cesiumToken?: string;
+}) {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<MapWorkspaceTab>(
+    PRODUCT_PROFILE.defaultMapTab,
+  );
+  const tabs: Array<{
+    id: MapWorkspaceTab;
+    label: string;
+    icon: typeof MapIcon;
+  }> = [
+    { id: "maplibre", label: t("mapGrid.mapLibre2d"), icon: MapIcon },
+    { id: "cesium", label: t("mapGrid.cesium3d"), icon: Globe },
+  ];
+
+  const selectTab = (tab: MapWorkspaceTab, focus = false) => {
+    setActiveTab(tab);
+    if (focus) {
+      requestAnimationFrame(() =>
+        document.getElementById(`map-view-tab-${tab}`)?.focus(),
+      );
+    }
+  };
+
+  const handleTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    let nextIndex: number | undefined;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+    if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + tabs.length) % tabs.length;
+    }
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = tabs.length - 1;
+    if (nextIndex === undefined) return;
+    event.preventDefault();
+    selectTab(tabs[nextIndex].id, true);
+  };
+
+  return (
+    <div
+      className="relative h-full w-full overflow-hidden"
+      data-testid="map-view-tabs"
+    >
+      <div
+        role="tablist"
+        aria-label={t("mapGrid.viewMode")}
+        className="absolute left-1/2 top-2 z-30 flex -translate-x-1/2 rounded-lg border border-border bg-background/95 p-1 shadow-md backdrop-blur"
+      >
+        {tabs.map((tab, index) => {
+          const Icon = tab.icon;
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              id={`map-view-tab-${tab.id}`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`map-view-panel-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
+              className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors ${
+                selected
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+              onClick={() => selectTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        id="map-view-panel-maplibre"
+        role="tabpanel"
+        aria-labelledby="map-view-tab-maplibre"
+        aria-hidden={activeTab !== "maplibre"}
+        className={`absolute inset-0 ${
+          activeTab === "maplibre"
+            ? "visible"
+            : "invisible pointer-events-none"
+        }`}
+      >
+        {children}
+      </div>
+      <div
+        id="map-view-panel-cesium"
+        role="tabpanel"
+        aria-labelledby="map-view-tab-cesium"
+        aria-hidden={activeTab !== "cesium"}
+        className={`absolute inset-0 ${
+          activeTab === "cesium"
+            ? "visible"
+            : "invisible pointer-events-none"
+        }`}
+      >
+        <CesiumCanvas ionToken={cesiumToken} />
+      </div>
     </div>
   );
 }
