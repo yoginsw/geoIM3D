@@ -28,8 +28,8 @@
   },
   "about": {
     "trigger": "About",
-    "title": "About GeoLibre",
-    "description": "GeoLibre is a lightweight cloud-native GIS platform.",
+    "title": "About geoIM3D",
+    "description": "geoIM3D is JBT's immersive 3D platform for architecture, civil engineering, real estate, environment, safety, and spatial analysis.",
     "version": "Version",
     "checkForUpdates": "Check for updates",
     "tryAgain": "Try again",
@@ -37,8 +37,9 @@
     "upToDate": "You are up to date ({{version}}).",
     "upToDateNoVersion": "You are up to date.",
     "generalSectionTitle": "General",
-    "homePage": "Home page",
-    "githubRepository": "GitHub repository"
+    "homePage": "JBT website",
+    "githubRepository": "Original GeoLibre project",
+    "upstreamNotice": "Based on {{name}} · {{license}} License"
   },
   "updates": {
     "changelogTitle": "What's new",

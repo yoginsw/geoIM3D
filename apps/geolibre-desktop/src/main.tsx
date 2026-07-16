@@ -57,7 +57,7 @@ if (isTauri()) {
       // If the install fails, geocoding stays on the browser fetch (the
       // CORS-buggy path this fixes), so surface it rather than let it become a
       // silent unhandled rejection.
-      console.error("[GeoLibre] Failed to install native geocoding fetch", error);
+      console.error("[geoIM3D] Failed to install native geocoding fetch", error);
     });
   // Likewise route share.geolibre.app (project Share + gallery) through the
   // native HTTP client: the share server's CORS policy allows the web origin but
@@ -69,7 +69,7 @@ if (isTauri()) {
     .catch((error: unknown) => {
       // On failure the share client stays on the browser fetch (the CORS-blocked
       // path this fixes); surface it rather than swallow the rejection.
-      console.error("[GeoLibre] Failed to install native share fetch", error);
+      console.error("[geoIM3D] Failed to install native share fetch", error);
     });
 }
 // Recover from chunks orphaned by a web redeploy (stale lazy import → 404). A
@@ -108,7 +108,7 @@ registerSW({
   onRegisterError(error) {
     // Registration can fail in production (non-secure origin, scope conflict).
     // The app still works without the SW, so surface it rather than fail.
-    console.error("[GeoLibre] Service worker registration failed", error);
+    console.error("[geoIM3D] Service worker registration failed", error);
   },
 });
 
@@ -130,5 +130,5 @@ void Promise.all([import("./App"), import("./components/common/error-boundaries"
     );
   })
   .catch((error: unknown) => {
-    console.error("Failed to start GeoLibre", error);
+    console.error("Failed to start geoIM3D", error);
   });

@@ -2033,7 +2033,7 @@ export function DesktopShell({
               `page-has-heading-one` check) expect, without altering the
               chrome-free visual layout. Placed inside the main landmark so it
               is not flagged as content outside a landmark. */}
-          <h1 className="sr-only">GeoLibre map workspace</h1>
+          <h1 className="sr-only">geoIM3D map workspace</h1>
           <SectionErrorBoundary label="Map" fallbackClassName="h-full w-full">
             <MapGrid>
               <MapCanvas

@@ -28,8 +28,8 @@
   },
   "about": {
     "trigger": "정보",
-    "title": "GeoLibre 정보",
-    "description": "GeoLibre는 경량 클라우드 네이티브 GIS 플랫폼입니다.",
+    "title": "geoIM3D 정보",
+    "description": "geoIM3D는 건축·토목·부동산·환경·안전 분야를 위한 JBT의 실감형 3D 공간 플랫폼입니다.",
     "version": "버전",
     "checkForUpdates": "업데이트 확인",
     "tryAgain": "다시 시도",
@@ -37,8 +37,9 @@
     "upToDate": "최신 버전입니다 ({{version}}).",
     "upToDateNoVersion": "최신 버전입니다.",
     "generalSectionTitle": "일반",
-    "homePage": "홈페이지",
-    "githubRepository": "GitHub 저장소"
+    "homePage": "JBT 홈페이지",
+    "githubRepository": "원본 GeoLibre 프로젝트",
+    "upstreamNotice": "{{name}} 기반 · {{license}} 라이선스"
   },
   "updates": {
     "changelogTitle": "새로운 기능",

@@ -75,6 +75,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BRAND } from "../../config/brand";
 import {
   createAppAPI,
   getPluginManager,
@@ -85,7 +86,7 @@ import { useOsmPbfLoader } from "../../hooks/useOsmPbfLoader";
 import type { ProjectFileActions } from "../../hooks/useProjectFileActions";
 import { useToolbarPanels } from "../../hooks/useToolbarPanels";
 import type { ThemeMode } from "../../hooks/useThemeMode";
-import { isTauri } from "../../lib/tauri-io";
+
 import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
 import {
   MENU_MANAGED_PLUGIN_IDS,
@@ -1098,7 +1099,7 @@ export function TopToolbar({
     "hidden md:inline-flex",
   );
   const toolbarIconClassName = cn("h-3.5 w-3.5", showLabels && "sm:me-1");
-  const appTitle = isTauri() ? "GeoLibre Desktop" : "GeoLibre";
+  const appTitle = BRAND.productName;
   const renderToolbarLabel = (label: string) =>
     showLabels ? <span className="hidden sm:inline">{label}</span> : null;
   const chrome: ToolbarChrome = {
