@@ -1,5 +1,7 @@
 # geoIM3D Rebranding 및 Customizing 개발 계획
 
+> 현재 진행 상태, 다음 Sprint, 재개 절차는 Repository Root의 [`PLAN.md`](../../PLAN.md)를 Source of Truth로 사용한다.
+
 ## Phase 0 — Baseline과 Inventory
 
 목표:
