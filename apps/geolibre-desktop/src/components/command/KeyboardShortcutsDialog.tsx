@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@geolibre/ui";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   type Command,
   type Shortcut,
@@ -31,19 +32,6 @@ interface ShortcutRow {
 }
 
 /**
- * Map navigation keys handled by MapLibre's own keyboard interaction (not the
- * command registry), listed for discoverability. These mirror Google Earth's
- * navigation keys and only work while the map canvas has focus.
- */
-const MAP_NAVIGATION_ROWS: ShortcutRow[] = [
-  { id: "nav.zoom-in", label: "Zoom in", display: "+" },
-  { id: "nav.zoom-out", label: "Zoom out", display: "−" },
-  { id: "nav.pan", label: "Pan", display: "← ↑ ↓ →" },
-  { id: "nav.rotate", label: "Rotate", display: "⇧ ← / →" },
-  { id: "nav.tilt", label: "Tilt", display: "⇧ ↑ / ↓" },
-];
-
-/**
  * A cheat sheet (opened with `?`) listing every global keyboard shortcut,
  * grouped the same way as the command palette.
  */
@@ -52,6 +40,7 @@ export function KeyboardShortcutsDialog({
   commands,
   onOpenChange,
 }: KeyboardShortcutsDialogProps) {
+  const { t } = useTranslation();
   const isMac = useMemo(() => isMacPlatform(), []);
 
   const groups = useMemo(() => {
@@ -69,14 +58,14 @@ export function KeyboardShortcutsDialog({
 
     // The palette and cheat-sheet shortcuts are not commands, so list them
     // first under a "General" group.
-    pushRow("General", {
+    pushRow(t("common.general"), {
       id: "general.open-command-palette",
-      label: "Open command palette",
+      label: t("common.openCommandPalette"),
       shortcut: PALETTE_SHORTCUT,
     });
-    pushRow("General", {
+    pushRow(t("common.general"), {
       id: "general.show-keyboard-shortcuts",
-      label: "Show keyboard shortcuts",
+      label: t("common.showKeyboardShortcuts"),
       shortcut: SHORTCUTS_HELP_SHORTCUT,
     });
 
@@ -90,21 +79,30 @@ export function KeyboardShortcutsDialog({
       }
     }
 
-    // Append the MapLibre-native navigation keys as a final, display-only group.
-    for (const row of MAP_NAVIGATION_ROWS) {
-      pushRow("Map navigation", row);
+    // MapLibre-native navigation keys are not commands. List them as the final,
+    // display-only group; they work only while the map canvas has focus.
+    const mapNavigationRows: ShortcutRow[] = [
+      { id: "nav.zoom-in", label: t("common.zoomIn"), display: "+" },
+      { id: "nav.zoom-out", label: t("common.zoomOut"), display: "−" },
+      { id: "nav.pan", label: t("common.pan"), display: "← ↑ ↓ →" },
+      { id: "nav.rotate", label: t("common.rotate"), display: "⇧ ← / →" },
+      { id: "nav.tilt", label: t("common.tilt"), display: "⇧ ↑ / ↓" },
+    ];
+    for (const row of mapNavigationRows) {
+      pushRow(t("common.mapNavigation"), row);
     }
     return ordered;
-  }, [commands]);
+  }, [commands, t]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Keyboard shortcuts</DialogTitle>
+          <DialogTitle>{t("common.keyboardShortcuts")}</DialogTitle>
           <DialogDescription>
-            Press {formatShortcut(PALETTE_SHORTCUT, isMac)} to search every
-            action in the command palette.
+            {t("common.keyboardShortcutsDescription", {
+              shortcut: formatShortcut(PALETTE_SHORTCUT, isMac),
+            })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

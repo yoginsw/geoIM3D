@@ -42,8 +42,10 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { installDiagnosticsCapture } from "./lib/diagnostics";
 import { isTauri } from "./lib/is-tauri";
+import { initializeGeoIm3dStartupProject } from "./lib/product-defaults";
 import { installStaleChunkReload } from "./lib/stale-chunk-reload";
 
+initializeGeoIm3dStartupProject(i18n.t("common.untitledProject"));
 installDiagnosticsCapture();
 // In the desktop build, route geocoding (place search / reverse geocode)
 // through Tauri's native HTTP client so it bypasses WebView CORS: public

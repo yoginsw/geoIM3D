@@ -21,9 +21,8 @@ import { useTranslation } from "react-i18next";
  * The current Cesium Ion token, re-resolved whenever the runtime environment
  * changes. It can come from the build (the `CESIUM_TOKEN` env var) or from
  * Settings → Environment variables (`VITE_CESIUM_TOKEN`), so the 3D-globe view
- * can be enabled at runtime in the web build with no rebuild. Cesium World
- * Imagery + Terrain require a token, so without one the globe is not offered
- * (the per-pane toggle is hidden).
+ * can use premium Cesium World Imagery + Terrain with no rebuild. Without a
+ * token, the globe remains available through Cesium's OpenStreetMap fallback.
  */
 function useCesiumIonToken(): string | undefined {
   const [token, setToken] = useState<string | undefined>(() =>
@@ -133,13 +132,12 @@ interface SecondaryMapPaneProps {
   viewId: string;
   /** Zero-based index among secondary panes, shown in the pane label. */
   index: number;
-  /** Current Cesium Ion token; when absent the 3D-globe view is not offered. */
+  /** Optional Cesium Ion token; tokenless views use Cesium's OSM fallback. */
   cesiumToken?: string;
 }
 
 function SecondaryMapPane({ viewId, index, cesiumToken }: SecondaryMapPaneProps) {
   const { t } = useTranslation();
-  const cesiumAvailable = Boolean(cesiumToken);
   const removeSecondaryMapView = useAppStore((s) => s.removeSecondaryMapView);
   const setSecondaryMapLabel = useAppStore((s) => s.setSecondaryMapLabel);
   const setSecondaryViewKind = useAppStore((s) => s.setSecondaryViewKind);
@@ -147,12 +145,10 @@ function SecondaryMapPane({ viewId, index, cesiumToken }: SecondaryMapPaneProps)
     (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.label ?? "",
   );
   // Absent viewKind means the default 2D map (back-compat with older panes).
-  // Only honor a 3D pane when Cesium is actually available (a token is present);
-  // otherwise a project saved with a globe pane silently opens as the 2D map.
   const wantsCesium = useAppStore(
     (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.viewKind === "cesium",
   );
-  const is3d = cesiumAvailable && wantsCesium;
+  const is3d = wantsCesium;
 
   return (
     <div className="relative isolate min-h-0 min-w-0 overflow-hidden bg-background">
@@ -174,29 +170,25 @@ function SecondaryMapPane({ viewId, index, cesiumToken }: SecondaryMapPaneProps)
         {/* Both the 2D map and the 3D globe render the shared layers, so the
             per-pane layer-visibility toggle applies to either. */}
         <PaneLayerToggle viewId={viewId} index={index} is3d={is3d} />
-        {/* The 2D/3D toggle only appears when Cesium is available (a token is
-            configured); otherwise the globe is not offered. */}
-        {cesiumAvailable ? (
-          <button
-            type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
-            aria-label={
-              is3d
-                ? t("mapGrid.show2d", { number: index + 2 })
-                : t("mapGrid.show3d", { number: index + 2 })
-            }
-            aria-pressed={is3d}
-            onClick={() =>
-              setSecondaryViewKind(viewId, is3d ? "maplibre" : "cesium")
-            }
-          >
-            {is3d ? (
-              <MapIcon className="h-4 w-4" />
-            ) : (
-              <Globe className="h-4 w-4" />
-            )}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+          aria-label={
+            is3d
+              ? t("mapGrid.show2d", { number: index + 2 })
+              : t("mapGrid.show3d", { number: index + 2 })
+          }
+          aria-pressed={is3d}
+          onClick={() =>
+            setSecondaryViewKind(viewId, is3d ? "maplibre" : "cesium")
+          }
+        >
+          {is3d ? (
+            <MapIcon className="h-4 w-4" />
+          ) : (
+            <Globe className="h-4 w-4" />
+          )}
+        </button>
         <button
           type="button"
           className="flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"

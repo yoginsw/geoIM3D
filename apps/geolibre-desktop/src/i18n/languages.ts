@@ -1,3 +1,5 @@
+import { PRODUCT_PROFILE } from "../config/product-profile";
+
 /**
  * Language registry for the app's internationalization layer.
  *
@@ -7,7 +9,7 @@
  * selector shows a friendly label. See `docs/i18n.md`.
  */
 
-export const DEFAULT_LANGUAGE = "en";
+export const DEFAULT_LANGUAGE = PRODUCT_PROFILE.language;
 
 /**
  * Friendly names for known language codes. The selector falls back to the raw

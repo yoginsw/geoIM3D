@@ -90,6 +90,7 @@ import type { ThemeMode } from "../../hooks/useThemeMode";
 import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
 import {
   MENU_MANAGED_PLUGIN_IDS,
+  isMenuItemVisible,
   isMenuVisible,
   isPluginVisible,
 } from "../../lib/ui-profile";
@@ -1082,8 +1083,21 @@ export function TopToolbar({
     },
   ];
 
+  const commandMenuItemIds: Partial<Record<string, string>> = {
+    "project.collaborate": "project.collaborate",
+    "proc.python": "processing.pythonConsole",
+  };
+  const visibleCommands = commands.filter((command) => {
+    const menuItemId = commandMenuItemIds[command.id];
+    return !menuItemId || isMenuItemVisible(uiProfile, menuItemId);
+  });
+  const fieldCollectionAllowed = isMenuItemVisible(
+    uiProfile,
+    "controls.fieldCollection",
+  );
+
   useGlobalShortcuts({
-    commands,
+    commands: visibleCommands,
     onOpenPalette: () => setCommandPaletteOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
   });
@@ -1239,7 +1253,9 @@ export function TopToolbar({
           onToggleGraticule={() => toggle(GRATICULE_PLUGIN_ID, appApi)}
           onToggleClouds={() => toggle(CLOUDS_PLUGIN_ID, appApi)}
           onTogglePrecipitation={() => toggle(PRECIPITATION_PLUGIN_ID, appApi)}
-          onOpenFieldCollection={() => setFieldCollectionOpen(true)}
+          onOpenFieldCollection={() => {
+            if (fieldCollectionAllowed) setFieldCollectionOpen(true);
+          }}
           onOpenRecordTour={() => setRecordTourOpen(true)}
           onOpenRecordVideo={() => setRecordVideoOpen(true)}
         />
@@ -1282,7 +1298,7 @@ export function TopToolbar({
         mapControllerRef={mapControllerRef}
       />
       <FieldCollectionDialog
-        open={fieldCollectionOpen}
+        open={fieldCollectionAllowed && fieldCollectionOpen}
         onOpenChange={setFieldCollectionOpen}
         mapControllerRef={mapControllerRef}
       />
@@ -1386,12 +1402,12 @@ export function TopToolbar({
       />
       <CommandPalette
         open={commandPaletteOpen}
-        commands={commands}
+        commands={visibleCommands}
         onOpenChange={setCommandPaletteOpen}
       />
       <KeyboardShortcutsDialog
         open={shortcutsOpen}
-        commands={commands}
+        commands={visibleCommands}
         onOpenChange={setShortcutsOpen}
       />
       <div className="ms-auto flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

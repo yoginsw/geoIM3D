@@ -33,7 +33,10 @@ export default defineConfig({
           localStorage: [
             {
               name: DESKTOP_SETTINGS_STORAGE_KEY,
-              value: JSON.stringify({ uiProfile: { onboarded: true } }),
+              value: JSON.stringify({
+                language: "en",
+                uiProfile: { onboarded: true },
+              }),
             },
           ],
         },
@@ -58,6 +61,9 @@ export default defineConfig({
   ],
   webServer: {
     command: `npm run build && npm run preview -w geolibre-desktop -- --port ${PORT} --strictPort`,
+    env: {
+      VITE_E2E_EXPOSE_ALL_LOCALES: "true",
+    },
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     // The build (tsc -b + vite build) runs as part of this command, so allow

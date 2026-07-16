@@ -52,7 +52,6 @@ import {
   EyeOff,
   FolderCog,
   FolderTree,
-  Languages,
   Locate,
   MapPinned,
   LayoutPanelTop,
@@ -86,7 +85,6 @@ import {
   type UiProfileSettings,
   type UpdateSettings,
 } from "../../hooks/useDesktopSettings";
-import { useLanguage } from "../../hooks/useLanguage";
 import { BROWSER_PANEL_ID } from "../../hooks/useRegisterBrowserPanel";
 import { useRightPanelState } from "../../hooks/useRightPanels";
 import type { ThemeMode } from "../../hooks/useThemeMode";
@@ -383,20 +381,13 @@ export function SettingsDialog({
   onToggleThemeMode,
 }: SettingsDialogProps) {
   const { t } = useTranslation();
-  const {
-    language,
-    options: languageOptions,
-    setLanguage,
-  } = useLanguage();
   const preferences = useAppStore((s) => s.preferences);
   const setPreferences = useAppStore((s) => s.setPreferences);
   const desktopSettings = useDesktopSettingsStore((s) => s.desktopSettings);
   const setDesktopSettings = useDesktopSettingsStore(
     (s) => s.setDesktopSettings,
   );
-  // Visibility of the Settings dropdown items under the active UI profile. The
-  // Language/Layout/Interface entries are always shown so the profile UI stays
-  // reachable.
+  // Visibility of Settings dropdown items under the active product profile.
   const showSettingsItem = (id: string) =>
     isMenuItemVisible(desktopSettings.uiProfile, id);
   const [open, setOpen] = useState(false);
@@ -440,6 +431,7 @@ export function SettingsDialog({
   // (its initial value is "map"), so render the first visible section instead to
   // never expose gated content to a restricted profile.
   const isSectionVisible = (id: SettingsSection) => {
+    if (id === "interface" && desktopSettings.uiProfile.locked) return false;
     // Automated update checks run in the desktop build only, so the section is
     // hidden on the web where its controls would be inert.
     if (id === "updates" && !isTauri()) return false;
@@ -451,8 +443,7 @@ export function SettingsDialog({
   };
   const effectiveSection: SettingsSection = isSectionVisible(section)
     ? section
-    : // "interface" has no gate, so it is always a valid, visible fallback.
-      (SECTION_ITEMS.find((item) => isSectionVisible(item.id))?.id ?? "interface");
+    : (SECTION_ITEMS.find((item) => isSectionVisible(item.id))?.id ?? "map");
   const [draftPreferences, setDraftPreferences] = useState<DraftPreferences>(
     () => clonePreferences(preferences),
   );
@@ -1193,30 +1184,7 @@ export function SettingsDialog({
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel>{t("settings.title")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Languages className="h-3.5 w-3.5" />
-              {t("language.label")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-44">
-              <DropdownMenuRadioGroup
-                value={language}
-                onValueChange={setLanguage}
-              >
-                {languageOptions.map((option) => (
-                  <DropdownMenuRadioItem
-                    key={option.code}
-                    value={option.code}
-                  >
-                    {option.nativeName === option.englishName
-                      ? option.nativeName
-                      : `${option.nativeName} (${option.englishName})`}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
+
           {showSettingsItem("settings.mapPreferences") && (
             <DropdownMenuItem
               onSelect={() => {
@@ -1358,55 +1326,6 @@ export function SettingsDialog({
                 }}
               >
                 {t("settings.menu.appearanceSettings")}
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              {t("settings.section.interface")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
-              <DropdownMenuLabel className="px-2 py-1 text-xs font-normal text-muted-foreground">
-                {t("settings.interface.presets")}
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={activeInterfaceProfile(desktopSettings.uiProfile)}
-                onValueChange={(value: string) => {
-                  // The three presets recompute hidden lists; "custom" opts into
-                  // custom mode while keeping the current lists. EXPERIENCE_LEVELS
-                  // excludes "custom", so this guard keeps any stray value from
-                  // reaching presetHiddenSets. Keep EXPERIENCE_LEVELS in sync with
-                  // the selectable preset entries of INTERFACE_PROFILES.
-                  if ((EXPERIENCE_LEVELS as readonly string[]).includes(value)) {
-                    applySavedExperiencePreset(value as ExperienceLevel);
-                  } else if (value === "custom") {
-                    applySavedCustomProfile();
-                  }
-                }}
-              >
-                {INTERFACE_PROFILES.map((option) => (
-                  <DropdownMenuRadioItem
-                    key={option}
-                    value={option}
-                    // "custom" lights up automatically when the user hand-edits
-                    // an item, and is also directly selectable to keep the current
-                    // configuration while switching into custom mode.
-                    disabled={desktopSettings.uiProfile.locked}
-                    onSelect={(event: Event) => event.preventDefault()}
-                  >
-                    {t(`settings.interface.level.${option}`)}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => {
-                  setSection("interface");
-                  setOpen(true);
-                }}
-              >
-                {t("settings.menu.interfaceSettings")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>

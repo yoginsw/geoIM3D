@@ -1,6 +1,7 @@
 import { isAllowedPluginManifestUrl } from "@geolibre/core";
 import { useEffect } from "react";
 import { create } from "zustand";
+import { PRODUCT_PROFILE } from "../config/product-profile";
 import { normalizeStringList } from "../lib/string-lists";
 import { DESKTOP_SETTINGS_STORAGE_KEY } from "../lib/storage-keys";
 import {
@@ -11,6 +12,9 @@ import {
   type ThemeScheme,
 } from "../lib/theme-schemes";
 import type { UpdateNotificationLevel } from "../lib/updates";
+
+const E2E_EXPOSES_ALL_LOCALES =
+  import.meta.env?.VITE_E2E_EXPOSE_ALL_LOCALES === "true";
 
 /** Notification-granularity options, in order. Single source of truth. */
 export const UPDATE_NOTIFICATION_LEVELS: readonly UpdateNotificationLevel[] = [
@@ -150,18 +154,16 @@ export const DEFAULT_DESKTOP_LAYOUT_SETTINGS: DesktopLayoutSettings = {
 };
 
 export const DEFAULT_UI_PROFILE_SETTINGS: UiProfileSettings = {
-  // Ship the Advanced interface by default (`enabled: false` shows every item,
-  // which `activeInterfaceProfile` reports as "advanced") and skip the
-  // first-launch welcome dialog (`onboarded: true`). Users can still switch to a
-  // curated preset from the Settings dialog.
-  enabled: false,
+  // geoIM3D ships one locked product profile. Feature code remains available
+  // for future product variants, but users cannot reveal hidden capabilities.
+  enabled: true,
   level: null,
   onboarded: true,
-  locked: false,
+  locked: true,
   hiddenDataSources: [],
   hiddenPlugins: [],
   hiddenMenus: [],
-  hiddenMenuItems: [],
+  hiddenMenuItems: [...PRODUCT_PROFILE.hiddenMenuItems],
 };
 
 export const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
@@ -176,7 +178,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
 
 const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   additionalPluginDirectories: [],
-  language: "",
+  language: E2E_EXPOSES_ALL_LOCALES ? "" : PRODUCT_PROFILE.language,
   layout: DEFAULT_DESKTOP_LAYOUT_SETTINGS,
   pluginManifestUrls: [],
   shareToken: "",
@@ -205,7 +207,9 @@ export function normalizeDesktopSettings(settings: unknown): DesktopSettings {
       candidate.additionalPluginDirectories,
     ),
     language:
-      typeof candidate.language === "string" ? candidate.language.trim() : "",
+      E2E_EXPOSES_ALL_LOCALES && typeof candidate.language === "string"
+        ? candidate.language.trim()
+        : PRODUCT_PROFILE.language,
     layout: normalizeDesktopLayoutSettings(candidate.layout),
     // Apply the same scheme rule as project-file loading so stale or edited
     // localStorage values cannot smuggle in disallowed URL schemes.
@@ -286,36 +290,15 @@ function normalizeUpdateSettings(updates: unknown): UpdateSettings {
   };
 }
 
-function normalizeUiProfileSettings(profile: unknown): UiProfileSettings {
-  if (!profile || typeof profile !== "object") {
-    return DEFAULT_UI_PROFILE_SETTINGS;
-  }
-
-  // Require strict booleans and a known level so tampered localStorage values
-  // cannot smuggle non-boolean / unknown values into the profile.
-  const candidate = profile as Partial<UiProfileSettings>;
+function normalizeUiProfileSettings(_profile: unknown): UiProfileSettings {
+  // Ignore legacy/custom lists so an old Beginner preset cannot hide
+  // capabilities required by the geoIM3D product profile.
   return {
-    enabled:
-      typeof candidate.enabled === "boolean"
-        ? candidate.enabled
-        : DEFAULT_UI_PROFILE_SETTINGS.enabled,
-    level:
-      typeof candidate.level === "string" &&
-      EXPERIENCE_LEVELS.includes(candidate.level as ExperienceLevel)
-        ? (candidate.level as ExperienceLevel)
-        : null,
-    onboarded:
-      typeof candidate.onboarded === "boolean"
-        ? candidate.onboarded
-        : DEFAULT_UI_PROFILE_SETTINGS.onboarded,
-    locked:
-      typeof candidate.locked === "boolean"
-        ? candidate.locked
-        : DEFAULT_UI_PROFILE_SETTINGS.locked,
-    hiddenDataSources: normalizeStringList(candidate.hiddenDataSources),
-    hiddenPlugins: normalizeStringList(candidate.hiddenPlugins),
-    hiddenMenus: normalizeStringList(candidate.hiddenMenus),
-    hiddenMenuItems: normalizeStringList(candidate.hiddenMenuItems),
+    ...DEFAULT_UI_PROFILE_SETTINGS,
+    hiddenDataSources: [],
+    hiddenPlugins: [],
+    hiddenMenus: [],
+    hiddenMenuItems: [...PRODUCT_PROFILE.hiddenMenuItems],
   };
 }
 

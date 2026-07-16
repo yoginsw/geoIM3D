@@ -36,6 +36,7 @@ export default function App() {
   useRuntimeEnvironmentVariables();
   useUndoRedoShortcuts();
   useBeforeUnloadGuard();
+
   return (
     <DirectionProvider dir={languageDirection(i18n.language)}>
       <DesktopShell

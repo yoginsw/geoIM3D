@@ -20,6 +20,8 @@ import {
   sessionWsUrl,
 } from "../lib/collab-client";
 import type { ServerMessage } from "../lib/collab-protocol";
+import { isMenuItemVisible } from "../lib/ui-profile";
+import { useDesktopSettingsStore } from "./useDesktopSettings";
 
 // Coalesce the burst of store writes one user action produces into a single
 // outbound snapshot — same window the embed bridge uses.
@@ -73,8 +75,12 @@ export interface CollaborationApi {
 export function useCollaboration(
   mapControllerRef: RefObject<MapController | null>,
 ): CollaborationApi {
+  const uiProfile = useDesktopSettingsStore(
+    (state) => state.desktopSettings.uiProfile,
+  );
   const baseUrl = useMemo(() => resolveCollabBaseUrl(), []);
-  const enabled = baseUrl !== null;
+  const enabled =
+    baseUrl !== null && isMenuItemVisible(uiProfile, "project.collaborate");
 
   // All mutable session machinery lives in refs so the effects/actions are
   // stable and don't re-subscribe on every render.

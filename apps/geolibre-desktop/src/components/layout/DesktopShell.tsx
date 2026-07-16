@@ -52,6 +52,7 @@ import {
   useRegisterBrowserPanel,
 } from "../../hooks/useRegisterBrowserPanel";
 import { getIsMobileViewport } from "../../hooks/useIsMobileViewport";
+import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
 import { useProjectFileActions } from "../../hooks/useProjectFileActions";
 import {
   isRasterFileName,
@@ -96,6 +97,7 @@ import {
 } from "../../hooks/usePlugins";
 import { registerMbtilesProtocol } from "../../lib/mbtiles";
 import { hasReverseGeocodeConsent } from "../../lib/reverse-geocode-consent";
+import { isMenuItemVisible } from "../../lib/ui-profile";
 import {
   hasKnowledgeCardConsent,
   recordKnowledgeCardConsent,
@@ -611,6 +613,18 @@ export function DesktopShell({
   // instances would race). Lifted here for the same reason as `collaboration`.
   const projectFiles = useProjectFileActions(mapControllerRef);
   const notebookOpen = useAppStore((s) => s.ui.notebookOpen);
+  const uiProfile = useDesktopSettingsStore(
+    (state) => state.desktopSettings.uiProfile,
+  );
+  const notebookAllowed = isMenuItemVisible(
+    uiProfile,
+    "processing.notebook",
+  );
+  const pythonConsoleAllowed = isMenuItemVisible(
+    uiProfile,
+    "processing.pythonConsole",
+  );
+  const visibleNotebookOpen = notebookAllowed && notebookOpen;
   const storymapPresenting = useAppStore((s) => s.ui.storymapPresenting);
   // A plugin panel docks at one of four positions beside the Layers/Style
   // panels and the user steps it between them; the built-in panel on the docked
@@ -735,11 +749,11 @@ export function DesktopShell({
   // Style panel's collapsed rail, when shown), while the Style panel collapses
   // to that rail (see `autoCollapse` below). Fire only on the closed→open
   // transition so a later manual resize is preserved.
-  const notebookWasOpenRef = useRef(notebookOpen);
+  const notebookWasOpenRef = useRef(visibleNotebookOpen);
   useEffect(() => {
     const wasOpen = notebookWasOpenRef.current;
-    notebookWasOpenRef.current = notebookOpen;
-    if (!notebookOpen || wasOpen) return;
+    notebookWasOpenRef.current = visibleNotebookOpen;
+    if (!visibleNotebookOpen || wasOpen) return;
     const shellWidth = shellRef.current?.getBoundingClientRect().width ?? 0;
     if (shellWidth <= 0) return;
     const layerWidth = layoutOptions.layerPanelVisible ? layerPanelWidth : 0;
@@ -754,7 +768,7 @@ export function DesktopShell({
       clamp(half, MIN_NOTEBOOK_PANEL_WIDTH, MAX_NOTEBOOK_PANEL_WIDTH),
     );
   }, [
-    notebookOpen,
+    visibleNotebookOpen,
     layoutOptions.layerPanelVisible,
     layoutOptions.stylePanelVisible,
     layerPanelWidth,
@@ -2137,7 +2151,7 @@ export function DesktopShell({
               // notebook / story-map presentation collapses Style here too.
               // `autoCollapsedPanel` is omitted because it is always null in a
               // shared-rail mode (the panel is the sole active one).
-              forceBuiltinCollapsed={notebookOpen || storymapPresenting}
+              forceBuiltinCollapsed={visibleNotebookOpen || storymapPresenting}
               renderBuiltin={({ collapsed, onCollapsedChange }) => (
                 <StylePanel
                   mapControllerRef={mapControllerRef}
@@ -2169,7 +2183,7 @@ export function DesktopShell({
                   mapControllerRef={mapControllerRef}
                   onResizeStart={startStylePanelResize}
                   autoCollapse={
-                    notebookOpen ||
+                    visibleNotebookOpen ||
                     storymapPresenting ||
                     autoCollapsedPanel === "style"
                   }
@@ -2186,7 +2200,7 @@ export function DesktopShell({
             </SectionErrorBoundary>
           </>
         )}
-        {notebookOpen ? (
+        {visibleNotebookOpen ? (
           <SectionErrorBoundary label="Notebook">
             <Suspense fallback={null}>
               <NotebookPanel
@@ -2210,7 +2224,7 @@ export function DesktopShell({
           </Suspense>
         </SectionErrorBoundary>
       ) : null}
-      {pythonConsoleOpen ? (
+      {pythonConsoleAllowed && pythonConsoleOpen ? (
         <SectionErrorBoundary
           label="Python console"
           onClose={() => setPythonConsoleOpen(false)}

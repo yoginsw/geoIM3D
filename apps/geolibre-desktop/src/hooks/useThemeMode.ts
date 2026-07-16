@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from "react";
+import { PRODUCT_PROFILE } from "../config/product-profile";
 
 export type ThemeMode = "light" | "dark";
 
@@ -7,7 +8,7 @@ export function getInitialThemeMode(): ThemeMode {
     return "light";
   }
 
-  // An explicit `?theme=dark` / `?theme=light` overrides the OS preference on
+  // An explicit `?theme=dark` / `?theme=light` overrides the product default on
   // load (handy for embeds); the in-app toggle still works afterwards.
   const themeParam = new URLSearchParams(window.location.search)
     .get("theme")
@@ -17,9 +18,7 @@ export function getInitialThemeMode(): ThemeMode {
     return themeParam;
   }
 
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return PRODUCT_PROFILE.theme;
 }
 
 export function useThemeMode() {
