@@ -173,7 +173,7 @@ export function RasterToolsDialog({
       // paths in a browser, so a pure web build cannot run them.
       setRuntimeAvailable(false);
       setRuntimeMessage(
-        "Raster tools need the GeoLibre desktop app with a running sidecar.",
+        "Raster tools need the geoIM3D desktop app with a running sidecar.",
       );
       return;
     }
@@ -307,7 +307,7 @@ export function RasterToolsDialog({
       await checkRuntime();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not start GeoLibre sidecar.",
+        err instanceof Error ? err.message : "Could not start geoIM3D sidecar.",
       );
     } finally {
       setStartingServer(false);

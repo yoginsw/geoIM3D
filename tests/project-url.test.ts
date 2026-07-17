@@ -171,7 +171,7 @@ describe("fetchProjectFromUrl", () => {
           fetchImpl: okFetch("{ this is not json"),
         }),
       (error: Error) => {
-        assert.match(error.message, /is not a valid GeoLibre project/);
+        assert.match(error.message, /is not a valid geoIM3D project/);
         assert.ok(error.message.includes(PROJECT_URL));
         return true;
       },
@@ -185,7 +185,7 @@ describe("fetchProjectFromUrl", () => {
           fetchImpl: okFetch(JSON.stringify({ not: "a project" })),
         }),
       (error: Error) => {
-        assert.match(error.message, /is not a valid GeoLibre project/);
+        assert.match(error.message, /is not a valid geoIM3D project/);
         // Loosely assert the underlying reason carries through, without
         // hard-coding parseProject's exact wording.
         assert.match(error.message, /missing.*fields/i);

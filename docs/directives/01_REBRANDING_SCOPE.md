@@ -39,6 +39,8 @@
 4. `geoIM3D initial import` Commit 생성
 5. 원본 Source URL과 기준 Version/Commit을 내부 문서에 기록
 
+실행 절차와 승인 Gate는 [`docs/rebranding/PRIVATE_REPOSITORY_SNAPSHOT.md`](../rebranding/PRIVATE_REPOSITORY_SNAPSHOT.md)를 따른다.
+
 현재 저장소 History Rewriting이나 `.git` 삭제로 대체하지 않는다.
 
 ## Copyright

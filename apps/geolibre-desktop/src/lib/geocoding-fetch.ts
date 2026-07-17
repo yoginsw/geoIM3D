@@ -6,7 +6,7 @@ import { GEOCODING_PROVIDERS, setGeocodingFetch } from "@geolibre/core";
  * cannot set that header, but Tauri's native HTTP client can.
  */
 const GEOCODER_USER_AGENT =
-  "GeoLibre-Desktop (+https://github.com/opengeos/GeoLibre)";
+  "geoIM3D-Desktop (+https://www.ejbt.co.kr/)";
 
 /**
  * Hosts of the built-in geocoding providers' default endpoints. Only these are

@@ -107,7 +107,7 @@ export function martinTileJsonUrl(
 
 function assertTauri(): void {
   if (!isTauri()) {
-    throw new Error("PostgreSQL layers require GeoLibre Desktop.");
+    throw new Error("PostgreSQL layers require geoIM3D Desktop.");
   }
 }
 

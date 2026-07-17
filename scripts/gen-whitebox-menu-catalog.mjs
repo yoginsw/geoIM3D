@@ -21,7 +21,7 @@ const SNAPSHOT_URL =
 // categories (e.g. "Raster") and are not in the Whitebox snapshot, so we group
 // them under their own heading within each top-level category instead of mixing
 // them into the long "General" list.
-const GEOLIBRE_SUBCATEGORY = "GeoLibre";
+const GEOLIBRE_SUBCATEGORY = "geoIM3D";
 
 const OUT = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -160,13 +160,13 @@ async function main() {
       bySub.get(label).push({ id: t.id, name: t.display_name || t.id });
     }
     // GeoLibre-authored tools whose bare category falls in this group go under
-    // the dedicated GeoLibre heading.
+    // the dedicated geoIM3D product heading.
     const glHere = geolibre.filter((t) => pred(t.category));
     for (const t of glHere) {
       if (!bySub.has(GEOLIBRE_SUBCATEGORY)) bySub.set(GEOLIBRE_SUBCATEGORY, []);
       bySub.get(GEOLIBRE_SUBCATEGORY).push({ id: t.id, name: t.name });
     }
-    // GeoLibre first, then "General" (bare category), then named subcategories
+    // geoIM3D first, then "General" (bare category), then named subcategories
     // alphabetically.
     const rank = (s) =>
       s === GEOLIBRE_SUBCATEGORY ? 0 : s === "General" ? 1 : 2;
@@ -196,7 +196,7 @@ async function main() {
   L.push("// Whitebox tools come from the Whitebox Next Gen catalog snapshot");
   L.push("// (opengeos/Whitebox-Next-Gen-ArcGIS WNG/data/catalog_snapshot.json);");
   L.push("// GeoLibre-authored WASM tools come from the geolibre-wasm manifests and");
-  L.push("// are grouped under a \"GeoLibre\" subheading. Tool ids match the");
+  L.push("// are grouped under a \"geoIM3D\" product subheading. Tool ids match the");
   L.push("// runtime/sidecar/WASM catalog used by ProcessingDialog.");
   L.push("// Regenerate with scripts/gen-whitebox-menu-catalog.mjs; do not hand-edit.");
   L.push("// Tool/subcategory names are catalog data and are intentionally not");

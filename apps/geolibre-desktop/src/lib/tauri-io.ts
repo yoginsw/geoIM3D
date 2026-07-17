@@ -120,7 +120,7 @@ interface BrowserFilePickerWindow extends Window {
 
 const GEOLIBRE_PROJECT_FILE_TYPES: BrowserFilePickerType[] = [
   {
-    description: "GeoLibre Project",
+    description: "geoIM3D Project",
     accept: {
       "application/json": [".geolibre", ".json"],
     },
@@ -475,7 +475,7 @@ export async function readLocalFileBytes(
     // even though the command's "Could not read local file" error is what
     // ultimately surfaces.
     console.debug(
-      `[GeoLibre] fs read of "${path}" failed; retrying via read_local_file.`,
+      `[geoIM3D] fs read of "${path}" failed; retrying via read_local_file.`,
       error,
     );
     const buffer = await invoke<ArrayBuffer>("read_local_file", { path });
@@ -498,7 +498,7 @@ async function readLocalFileText(path: string): Promise<string> {
   } catch (error) {
     if (!isTauri()) throw error;
     console.debug(
-      `[GeoLibre] fs read of "${path}" failed; retrying via read_local_file.`,
+      `[geoIM3D] fs read of "${path}" failed; retrying via read_local_file.`,
       error,
     );
     const buffer = await invoke<ArrayBuffer>("read_local_file", { path });
@@ -1434,7 +1434,7 @@ async function tryLoadNativeDuckDbVectorPath(
   } catch (error) {
     if (isVectorLoadCancelled(error)) throw error;
     console.warn(
-      "[GeoLibre] Native DuckDB vector load failed; falling back to DuckDB-WASM.",
+      "[geoIM3D] Native DuckDB vector load failed; falling back to DuckDB-WASM.",
       error,
     );
     return { data: null, featureCountChecked };
@@ -1718,7 +1718,7 @@ export async function readVectorFileWithSidecars(
       nativeData: await tryLoadPickedNativeVectorPath(path, {
         onLargeDataset: ({ name, featureCount }) => {
           console.warn(
-            `[GeoLibre] Skipping native vector restore for "${name}" because it contains ${featureCount.toLocaleString()} features; re-add the file to confirm loading it as GeoJSON.`,
+            `[geoIM3D] Skipping native vector restore for "${name}" because it contains ${featureCount.toLocaleString()} features; re-add the file to confirm loading it as GeoJSON.`,
           );
           return false;
         },
@@ -1917,7 +1917,7 @@ async function openProjectFileBrowser(): Promise<{
   }
 
   const result = await openLocalDataFileWithFallback({
-    filters: [{ name: "GeoLibre Project", extensions: ["geolibre", "json"] }],
+    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
     accept: ".geolibre,.json,.geolibre.json",
     readText: true,
   });
@@ -2203,7 +2203,7 @@ export async function openProjectFile(): Promise<{
 
   const selected = await open({
     multiple: false,
-    filters: [{ name: "GeoLibre Project", extensions: ["geolibre", "json"] }],
+    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
   });
   if (!selected || typeof selected !== "string") return null;
   const text = await readTextFile(selected);
@@ -2279,7 +2279,7 @@ export async function openRecentProjectFile(
 
   if (!isTauri()) {
     throw new Error(
-      "Recent local projects can only be reopened in GeoLibre Desktop.",
+      "Recent local projects can only be reopened in geoIM3D Desktop.",
     );
   }
 
@@ -2307,7 +2307,7 @@ export async function saveProjectFile(
   }
 
   const path = await save({
-    filters: [{ name: "GeoLibre Project", extensions: ["geolibre", "json"] }],
+    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
     defaultPath: defaultName ?? "project.geolibre.json",
   });
   if (!path) return null;

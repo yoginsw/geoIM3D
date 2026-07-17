@@ -47,7 +47,7 @@ export async function loadCereusDb(): Promise<CereusInstance> {
   } catch (err) {
     // No network, jsDelivr unreachable, or a strict CSP blocking the fetch.
     throw new Error(
-      "Could not load the Apache Sedona SQL engine from the CDN. GeoLibre " +
+      "Could not load the Apache Sedona SQL engine from the CDN. geoIM3D " +
         "fetches the CereusDB WebAssembly module from jsDelivr on first use, " +
         "so this engine needs network access and a Content-Security-Policy " +
         "that allows connecting to cdn.jsdelivr.net.",

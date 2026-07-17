@@ -730,7 +730,7 @@ function renderTemplate(
         if (maplibregl.getRTLTextPluginStatus?.() === 'unavailable') {
             // MapLibre GL v4+ signature is (url, lazy?) returning a Promise; the
             // lazy flag is the SECOND arg, and the Promise must be caught.
-            maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.4.0/dist/mapbox-gl-rtl-text.js', true).catch(function (e) { console.error('[GeoLibre] RTL plugin failed', e); });
+            maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.4.0/dist/mapbox-gl-rtl-text.js', true).catch(function (e) { console.error('[geoIM3D] RTL plugin failed', e); });
         }
 
         // For a global start slide, open the map (and inset/markers) at the
@@ -781,7 +781,7 @@ function renderTemplate(
             try {
                 map.setProjection({ type: config.projection || 'globe' });
             } catch (e) {
-                console.error('[GeoLibre] projection failed', e);
+                console.error('[geoIM3D] projection failed', e);
             }
 ${inlineLayerScript}
 

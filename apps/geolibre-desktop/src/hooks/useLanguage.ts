@@ -51,7 +51,7 @@ export function useLanguage(): UseLanguageResult {
           // Today's eager catalogs never reject; if a future async/remote
           // catalog fails, surface it instead of silently leaving the setting
           // unpersisted while the UI has already switched.
-          console.error("[GeoLibre] Failed to change language", error);
+          console.error("[geoIM3D] Failed to change language", error);
         });
     },
     [i18n, setDesktopSettings],

@@ -232,7 +232,7 @@ async function createRuntime(deps: ScriptingDeps): Promise<PyodideAPI> {
   }
   const pyodide = await window.loadPyodide({ indexURL });
 
-  emitProgress("Setting up GeoLibre");
+  emitProgress("Setting up geoIM3D");
   // Expose the shared scripting handlers (plus on-demand package loading) to
   // Python as the `_geolibre_js` module; console_api.py wraps them as `geolibre`.
   const facade = {

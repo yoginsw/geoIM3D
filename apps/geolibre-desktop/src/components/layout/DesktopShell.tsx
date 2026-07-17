@@ -960,7 +960,7 @@ export function DesktopShell({
         try {
           bytes = await readBytes();
         } catch (error) {
-          console.error("[GeoLibre] Failed to read raster for conversion", error);
+          console.error("[geoIM3D] Failed to read raster for conversion", error);
           window.alert(
             bytesAreRemote
               ? t("raster.rasterDownloadFailed", { name })
@@ -1003,7 +1003,7 @@ export function DesktopShell({
         // layer (and its message) in place.
         dismiss();
       } catch (error) {
-        console.error("[GeoLibre] Failed to convert GeoTIFF to COG", error);
+        console.error("[geoIM3D] Failed to convert GeoTIFF to COG", error);
         window.alert(t("raster.cogConvertFailed", { name }));
       }
     });

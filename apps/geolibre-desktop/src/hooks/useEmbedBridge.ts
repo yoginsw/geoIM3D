@@ -98,7 +98,7 @@ export function useEmbedBridge(
           targetOrigin(),
         );
       } catch (error) {
-        console.error("[GeoLibre] Failed to post embed state", error);
+        console.error("[geoIM3D] Failed to post embed state", error);
       }
     };
 

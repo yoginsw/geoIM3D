@@ -4,6 +4,8 @@
 
 ## Phase 0 — Baseline과 Inventory
 
+상태: **완료** — 실행 결과와 Windows Runtime 증거는 [`docs/rebranding/00_PHASE0_CLOSURE.md`](../rebranding/00_PHASE0_CLOSURE.md)를 따른다.
+
 목표:
 
 - Source/Build/Package의 GeoLibre Brand 문자열 전수 분류
@@ -12,10 +14,10 @@
 
 산출물:
 
-- Brand Inventory
-- 금지 문자열 검사 Script
-- Baseline Test Report
-- Private Repository Snapshot 절차
+- [x] Brand Inventory
+- [x] 금지 문자열 검사 Script
+- [x] Baseline Test Report
+- [x] Private Repository Snapshot 절차
 
 DoD:
 

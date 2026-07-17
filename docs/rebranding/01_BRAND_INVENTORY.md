@@ -6,6 +6,8 @@
 - 기준 Branch: `feat/geoim3d-brand-foundation`
 - 전체 `GeoLibre|geolibre` 검색 결과: 1,879건
 - 전역 Search/Replace 금지
+- Phase 0 완료 결과: [`00_PHASE0_CLOSURE.md`](00_PHASE0_CLOSURE.md)
+- 자동 회귀 Gate: `npm run check:brand`
 
 ## A. Phase 1 — 즉시 변경할 사용자 노출 표면
 
