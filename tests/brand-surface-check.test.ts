@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, it } from "node:test";
@@ -63,8 +69,21 @@ describe("geoIM3D forbidden brand surface check", () => {
           githubRepository: "원본 GeoLibre 프로젝트",
           upstreamNotice: "{{name}} 기반 · {{license}} 라이선스",
         },
-        printLayout: { attribution: "GeoLibre 저작권 표시 포함" },
+        printLayout: {
+          element: { attribution: "GeoLibre 저작권 표시 포함" },
+        },
       }),
+    });
+
+    const result = run(root);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it("allows only the exact public plugin compatibility message", () => {
+    const root = fixture({
+      "src/lib/plugin-loader.ts":
+        'throw new Error("Entry must export a GeoLibrePlugin as default or plugin.");\n',
     });
 
     const result = run(root);
@@ -76,7 +95,7 @@ describe("geoIM3D forbidden brand surface check", () => {
     const root = fixture({
       "src/components/Unsafe.tsx": [
         'export const url = "https://github.com/opengeos/GeoLibre — restart GeoLibre";',
-        'export const plugin = "GeoLibrePlugin runs inside GeoLibre";',
+        'export const plugin = "GeoLibrePlugin is our product";',
         "",
       ].join("\n"),
     });
@@ -86,6 +105,23 @@ describe("geoIM3D forbidden brand surface check", () => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Unsafe\.tsx:1/);
     assert.match(result.stderr, /Unsafe\.tsx:2/);
+  });
+
+  it("rejects product prose in attribution-only locale paths", () => {
+    const root = fixture({
+      "src/i18n/locales/ko.json": JSON.stringify({
+        about: { githubRepository: "GeoLibre is our product" },
+        printLayout: {
+          element: { attribution: "GeoLibre 제품으로 제작" },
+        },
+      }),
+    });
+
+    const result = run(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /GeoLibre is our product/);
+    assert.match(result.stderr, /GeoLibre 제품으로 제작/);
   });
 
   it("passes a clean product surface", () => {
@@ -105,5 +141,20 @@ describe("geoIM3D forbidden brand surface check", () => {
     const result = run(repoRoot);
 
     assert.equal(result.status, 0, result.stderr);
+  });
+
+  it("preserves internal package, project schema, and plugin API identifiers", () => {
+    const contracts: Array<[string, RegExp]> = [
+      ["packages/core/package.json", /"name": "@geolibre\/core"/],
+      ["packages/plugins/package.json", /"name": "@geolibre\/plugins"/],
+      ["packages/core/src/types.ts", /export const PROJECT_VERSION = "0\.2\.0"/],
+      ["packages/core/src/types.ts", /export interface GeoLibreProject/],
+      ["packages/plugins/src/types.ts", /export interface GeoLibreAppAPI/],
+      ["packages/plugins/src/types.ts", /export interface GeoLibrePlugin/],
+    ];
+
+    for (const [relativePath, pattern] of contracts) {
+      assert.match(readFileSync(resolve(repoRoot, relativePath), "utf8"), pattern);
+    }
   });
 });

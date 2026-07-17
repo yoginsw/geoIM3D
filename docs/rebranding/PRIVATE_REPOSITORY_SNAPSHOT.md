@@ -35,11 +35,25 @@ Branch 이름만으로 Snapshot을 만들지 않는다. Branch Head가 바뀌어
 Repository Root에서 실행한다.
 
 ```bash
+set -euo pipefail
 cd /home/nurig/projects/GeoLibre
 
 SOURCE_REF="<approved-40-character-commit-sha>"
-git rev-parse --verify "${SOURCE_REF}^{commit}"
-git status --short --branch
+SOURCE_VERSION="2.1.0"
+if ! [[ "$SOURCE_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "STOP: SOURCE_REF must be a full 40-character commit SHA" >&2
+  exit 1
+fi
+SOURCE_COMMIT="$(git rev-parse --verify "${SOURCE_REF}^{commit}")"
+if [ "${SOURCE_COMMIT,,}" != "${SOURCE_REF,,}" ]; then
+  echo "STOP: SOURCE_REF did not resolve to the approved commit" >&2
+  exit 1
+fi
+WORKTREE_STATUS="$(git status --porcelain=v1 --untracked-files=all)"
+if [ -n "$WORKTREE_STATUS" ]; then
+  printf 'STOP: working tree is not clean:\n%s\n' "$WORKTREE_STATUS" >&2
+  exit 1
+fi
 git show --no-patch --format='commit=%H%ncommit_date=%cI%nsubject=%s' "$SOURCE_REF"
 ```
 
@@ -52,10 +66,10 @@ git show --no-patch --format='commit=%H%ncommit_date=%cI%nsubject=%s' "$SOURCE_R
 - Git LFS Pointer가 존재하면 실제 Object 포함 방법을 별도로 승인받는다.
 
 ```bash
-test ! -f .gitmodules || {
+if git cat-file -e "${SOURCE_REF}:.gitmodules" 2>/dev/null; then
   echo "STOP: submodule snapshot policy is required" >&2
   exit 1
-}
+fi
 
 LFS_FILTERS="$(git grep -n 'filter=lfs' "$SOURCE_REF" -- .gitattributes 2>/dev/null || true)"
 if [ -n "$LFS_FILTERS" ]; then
@@ -130,25 +144,30 @@ fi
 
 ## 6. Provenance 기록
 
-Snapshot 안에 `docs/rebranding/UPSTREAM_SOURCE.md`를 생성한다.
+Snapshot 안에 실제 승인 값으로 `docs/rebranding/UPSTREAM_SOURCE.md`를 생성한다.
 
-```markdown
+```bash
+SNAPSHOT_DATE_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+cat > "$SNAPSHOT_DIR/docs/rebranding/UPSTREAM_SOURCE.md" <<EOF
 # Upstream Source Provenance
 
 - Product: geoIM3D 1.0.0
 - Upstream: https://github.com/opengeos/GeoLibre
-- Upstream version: 2.1.0
-- Source commit: <approved-40-character-commit-sha>
-- Snapshot date (UTC): <ISO-8601>
-- License: MIT (`LICENSE` 유지)
+- Upstream version: $SOURCE_VERSION
+- Source commit: $SOURCE_COMMIT
+- Snapshot date (UTC): $SNAPSHOT_DATE_UTC
+- License: MIT (LICENSE 유지)
 - Modifications: geoIM3D rebranding and product customization
-```
+EOF
 
-기준 Commit은 다음 명령의 실제 출력으로 기록한다.
-
-```bash
-git rev-parse "$SOURCE_REF"
-date -u +'%Y-%m-%dT%H:%M:%SZ'
+grep -F -- "- Source commit: $SOURCE_COMMIT" \
+  "$SNAPSHOT_DIR/docs/rebranding/UPSTREAM_SOURCE.md"
+grep -F -- "- Snapshot date (UTC): $SNAPSHOT_DATE_UTC" \
+  "$SNAPSHOT_DIR/docs/rebranding/UPSTREAM_SOURCE.md"
+if grep -Eq '<approved-|<ISO-' "$SNAPSHOT_DIR/docs/rebranding/UPSTREAM_SOURCE.md"; then
+  echo "STOP: unresolved provenance placeholder" >&2
+  exit 1
+fi
 ```
 
 ## 7. Secret 및 License 검증
@@ -185,8 +204,12 @@ rg -n 'GeoLibre|MIT|opengeos/GeoLibre' \
 
 FINAL_ARCHIVE_PATH="$SNAPSHOT_ROOT/geoIM3D-private-import.tar"
 tar -cf "$FINAL_ARCHIVE_PATH" -C "$SNAPSHOT_ROOT" geoIM3D
-sha256sum "$FINAL_ARCHIVE_PATH" > "$FINAL_ARCHIVE_PATH.sha256"
-sha256sum -c "$FINAL_ARCHIVE_PATH.sha256"
+(
+  cd "$SNAPSHOT_ROOT"
+  sha256sum "$(basename "$FINAL_ARCHIVE_PATH")" \
+    > "$(basename "$FINAL_ARCHIVE_PATH").sha256"
+  sha256sum -c "$(basename "$FINAL_ARCHIVE_PATH").sha256"
+)
 ```
 
 `SOURCE_MANIFEST.sha256`는 최초 Import Commit에 포함한다. 최종 Archive에는 Provenance와 Manifest가 모두 포함되며, Archive Checksum은 승인 기록 또는 Artifact 저장소에 보관한다. `SOURCE_ARCHIVE_PATH`는 승인된 Commit 추출용 중간 Artifact이므로 Private Import Artifact로 배포하지 않는다.
@@ -202,7 +225,22 @@ sha256sum -c "$FINAL_ARCHIVE_PATH.sha256"
 - Snapshot Manifest 검증 통과
 
 ```bash
+set -euo pipefail
+APPROVED_ARCHIVE_PATH="<approved-absolute-path>/geoIM3D-private-import.tar"
+APPROVED_ARCHIVE_CHECKSUM_PATH="$APPROVED_ARCHIVE_PATH.sha256"
+test -f "$APPROVED_ARCHIVE_PATH"
+test -f "$APPROVED_ARCHIVE_CHECKSUM_PATH"
+(
+  cd "$(dirname "$APPROVED_ARCHIVE_PATH")"
+  sha256sum -c "$(basename "$APPROVED_ARCHIVE_CHECKSUM_PATH")"
+)
+
+IMPORT_ROOT="$(mktemp -d)"
+tar -xf "$APPROVED_ARCHIVE_PATH" -C "$IMPORT_ROOT"
+SNAPSHOT_DIR="$IMPORT_ROOT/geoIM3D"
 cd "$SNAPSHOT_DIR"
+sha256sum -c SOURCE_MANIFEST.sha256
+gitleaks dir . --redact
 git init -b main
 git add -A
 git diff --cached --check

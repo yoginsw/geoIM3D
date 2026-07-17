@@ -16,16 +16,17 @@ const SKIPPED_DIRECTORIES = new Set([
   "target",
   "test-results",
 ]);
-const KO_ATTRIBUTION_PATHS = new Set([
-  "about.githubRepository",
-  "about.upstreamNotice",
-  "printLayout.attribution",
-  "printLayout.element.attribution",
+const KO_ATTRIBUTION_VALUES = new Map([
+  ["about.githubRepository", "원본 GeoLibre 프로젝트"],
+  ["printLayout.element.attribution", "GeoLibre 저작권 표시 포함"],
 ]);
 const UPSTREAM_URLS = new Set([
   "https://github.com/opengeos/GeoLibre",
   "https://github.com/opengeos/GeoLibre/issues",
   "https://api.github.com/repos/opengeos/GeoLibre/releases/latest",
+]);
+const PUBLIC_COMPATIBILITY_LITERALS = new Set([
+  "Entry must export a GeoLibrePlugin as default or plugin.",
 ]);
 
 function parseArgs(argv) {
@@ -93,11 +94,8 @@ function isAllowedLiteral(relativePath, value) {
   ) {
     return value === "GeoLibre" || UPSTREAM_URLS.has(value);
   }
-  // External plugins must continue to name the public compatibility contract.
-  return (
-    value.includes("GeoLibrePlugin") &&
-    !value.replaceAll("GeoLibrePlugin", "").includes(FORBIDDEN)
-  );
+  // External plugins must continue to name this exact public compatibility contract.
+  return PUBLIC_COMPATIBILITY_LITERALS.has(value);
 }
 
 function lineOf(sourceFile, position) {
@@ -150,7 +148,7 @@ function scanJson(relativePath, text) {
       if (!current.includes(FORBIDDEN)) return;
       const jsonPath = keys.join(".");
       const koLocale = relativePath.endsWith("src/i18n/locales/ko.json");
-      if (koLocale && KO_ATTRIBUTION_PATHS.has(jsonPath)) return;
+      if (koLocale && KO_ATTRIBUTION_VALUES.get(jsonPath) === current) return;
       const serialized = JSON.stringify(current);
       const lineIndex = lines.findIndex((line) => line.includes(serialized));
       violations.push({

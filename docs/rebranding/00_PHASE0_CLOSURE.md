@@ -25,10 +25,12 @@
 
 - About의 원본 GeoLibre Repository Attribution
 - MIT/저작권 Attribution
-- 공개 External Plugin API의 `GeoLibrePlugin` Compatibility Identifier
+- 공개 External Plugin Loader의 정확한 `GeoLibrePlugin` Compatibility 오류 문구
 - 원본 `https://github.com/opengeos/GeoLibre` URL
 
-내부 `@geolibre/*`, Type 이름, Project Schema, Storage/API Identifier는 변경하지 않았다.
+내부 `@geolibre/*`, Type 이름, Project Schema, Storage/API Identifier는 변경하지 않았으며 자동 Contract Test로 고정했다.
+
+Scanner는 Production Product Profile에서 실제 선택 가능한 한국어 Locale(`ko.json`), App TypeScript/TSX, HTML, Vite/Tauri 사용자 노출 Metadata를 검사한다. 기존 다국어 JSON은 E2E 호환 Build용이며 Production에서는 언어 선택이 차단되어 검사 대상에서 제외한다. `public/`의 Worker 주석·Plugin 개발 README처럼 Runtime UI가 아닌 Source 문서는 제품 표면으로 간주하지 않는다.
 
 ### 사용자 노출 Brand 정리
 
@@ -60,11 +62,11 @@ Runbook은 승인된 Commit에서 `git archive`로 Snapshot을 만들고 기존 
 | Gate | 결과 |
 |---|---:|
 | Brand CLI | PASS |
-| Brand Contract | 5 passed |
-| 관련 Target Regression | 41 passed |
+| Brand Contract | 8 passed |
+| 관련 Target Regression | 44 passed |
 | ESLint | Error 0, 기존 Warning 23 |
 | Production Build | 통과 |
-| Frontend Coverage | Lines 82.12%, Branches 83.65%, Functions 68.56% |
+| Frontend Coverage | Lines 82.30%, Branches 83.66%, Functions 68.58% |
 | Backend Coverage | 246 passed, 16 skipped, 62.43% |
 | Worker TypeScript | 3개 통과 |
 | Playwright Full Suite | 24 passed |
@@ -75,6 +77,8 @@ Runbook은 승인된 Commit에서 `git archive`로 Snapshot을 만들고 기존 
 | Windows Production Build | 통과 |
 | Windows MSVC Cargo Check | 통과 |
 | Windows Tauri Runtime | 통과 |
+
+`npm run check:brand`는 Root `npm run ci`의 첫 단계다. Playwright E2E는 Browser 설치와 Report Artifact가 필요한 기존 `.github/workflows/ci.yml`의 별도 `E2E smoke (Playwright)` Job에서 자동 실행된다.
 
 ## Windows Native Runtime Smoke
 
