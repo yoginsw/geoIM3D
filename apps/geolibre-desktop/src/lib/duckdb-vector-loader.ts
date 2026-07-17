@@ -229,7 +229,7 @@ export async function ensureSpatialExtension(
           // loading. Warn (not debug, which DevTools hides by default) so a
           // genuinely corrupt/mislabelled file surfaces its real cause here
           // instead of only as a later "stoi: no conversion" on DESCRIBE.
-          console.warn("[GeoLibre] spatial warm-up failed (ignored)", error);
+          console.warn("[geoIM3D] spatial warm-up failed (ignored)", error);
         }
       }
 
@@ -449,7 +449,7 @@ async function readSourceCrs(
       // (issue #1148).
       if (prjCrs) return prjCrs;
       console.warn(
-        "[GeoLibre] Could not read CRS metadata; reprojection skipped.",
+        "[geoIM3D] Could not read CRS metadata; reprojection skipped.",
         retryErr,
       );
       return null;

@@ -78,11 +78,13 @@ export {
   type ReverseGeocodeDisplay,
 } from "./geocoding";
 export {
+  CREDENTIAL_ENV_NAMES,
   getCesiumIonToken,
   getGoogleMapsApiKey,
   getProtomapsApiKey,
   getProtomapsStyleUrl,
   getRuntimeEnvironment,
+  isCredentialEnvironmentName,
   getSpatialExtensionPath,
 } from "./runtime-env";
 export {

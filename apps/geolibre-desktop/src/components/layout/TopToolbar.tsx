@@ -75,6 +75,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BRAND } from "../../config/brand";
 import {
   createAppAPI,
   getPluginManager,
@@ -85,10 +86,12 @@ import { useOsmPbfLoader } from "../../hooks/useOsmPbfLoader";
 import type { ProjectFileActions } from "../../hooks/useProjectFileActions";
 import { useToolbarPanels } from "../../hooks/useToolbarPanels";
 import type { ThemeMode } from "../../hooks/useThemeMode";
-import { isTauri } from "../../lib/tauri-io";
+
 import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
+import { ensureProjectFileName } from "../../lib/file-names";
 import {
   MENU_MANAGED_PLUGIN_IDS,
+  isMenuItemVisible,
   isMenuVisible,
   isPluginVisible,
 } from "../../lib/ui-profile";
@@ -1081,8 +1084,21 @@ export function TopToolbar({
     },
   ];
 
+  const commandMenuItemIds: Partial<Record<string, string>> = {
+    "project.collaborate": "project.collaborate",
+    "proc.python": "processing.pythonConsole",
+  };
+  const visibleCommands = commands.filter((command) => {
+    const menuItemId = commandMenuItemIds[command.id];
+    return !menuItemId || isMenuItemVisible(uiProfile, menuItemId);
+  });
+  const fieldCollectionAllowed = isMenuItemVisible(
+    uiProfile,
+    "controls.fieldCollection",
+  );
+
   useGlobalShortcuts({
-    commands,
+    commands: visibleCommands,
     onOpenPalette: () => setCommandPaletteOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
   });
@@ -1098,7 +1114,7 @@ export function TopToolbar({
     "hidden md:inline-flex",
   );
   const toolbarIconClassName = cn("h-3.5 w-3.5", showLabels && "sm:me-1");
-  const appTitle = isTauri() ? "GeoLibre Desktop" : "GeoLibre";
+  const appTitle = BRAND.productName;
   const renderToolbarLabel = (label: string) =>
     showLabels ? <span className="hidden sm:inline">{label}</span> : null;
   const chrome: ToolbarChrome = {
@@ -1238,7 +1254,9 @@ export function TopToolbar({
           onToggleGraticule={() => toggle(GRATICULE_PLUGIN_ID, appApi)}
           onToggleClouds={() => toggle(CLOUDS_PLUGIN_ID, appApi)}
           onTogglePrecipitation={() => toggle(PRECIPITATION_PLUGIN_ID, appApi)}
-          onOpenFieldCollection={() => setFieldCollectionOpen(true)}
+          onOpenFieldCollection={() => {
+            if (fieldCollectionAllowed) setFieldCollectionOpen(true);
+          }}
           onOpenRecordTour={() => setRecordTourOpen(true)}
           onOpenRecordVideo={() => setRecordVideoOpen(true)}
         />
@@ -1281,7 +1299,7 @@ export function TopToolbar({
         mapControllerRef={mapControllerRef}
       />
       <FieldCollectionDialog
-        open={fieldCollectionOpen}
+        open={fieldCollectionAllowed && fieldCollectionOpen}
         onOpenChange={setFieldCollectionOpen}
         mapControllerRef={mapControllerRef}
       />
@@ -1329,7 +1347,7 @@ export function TopToolbar({
             /[\u0000-\u001f\u007f/\\:*?"<>|]/g,
             "_",
           );
-          return { content, filename: `${safeName}.geolibre.json` };
+          return { content, filename: ensureProjectFileName(safeName) };
         }}
       />
       <ProjectGalleryDialog
@@ -1385,12 +1403,12 @@ export function TopToolbar({
       />
       <CommandPalette
         open={commandPaletteOpen}
-        commands={commands}
+        commands={visibleCommands}
         onOpenChange={setCommandPaletteOpen}
       />
       <KeyboardShortcutsDialog
         open={shortcutsOpen}
-        commands={commands}
+        commands={visibleCommands}
         onOpenChange={setShortcutsOpen}
       />
       <div className="ms-auto flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

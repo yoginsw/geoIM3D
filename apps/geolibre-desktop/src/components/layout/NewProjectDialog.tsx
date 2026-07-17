@@ -44,6 +44,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { createGeoIm3dNewProject } from "../../lib/product-defaults";
 
 const DEFAULT_BASEMAP_ID = "liberty";
 const CUSTOM_BASEMAP_ID = "custom";
@@ -107,10 +108,11 @@ export function NewProjectDialog({
   onProjectCreated,
 }: NewProjectDialogProps) {
   const { t } = useTranslation();
-  const newProject = useAppStore((s) => s.newProject);
   const [selectedBasemapId, setSelectedBasemapId] =
     useState<BasemapChoice>(DEFAULT_BASEMAP_ID);
-  const [projectName, setProjectName] = useState(DEFAULT_PROJECT_NAME);
+  const [projectName, setProjectName] = useState(() =>
+    t("common.untitledProject"),
+  );
   const [customUrl, setCustomUrl] = useState("");
   const [customFlavor, setCustomFlavor] = useState<ProtomapsFlavor>("light");
   const [showSavePrompt, setShowSavePrompt] = useState(false);
@@ -183,7 +185,7 @@ export function NewProjectDialog({
 
   const resetForm = () => {
     setSelectedBasemapId(DEFAULT_BASEMAP_ID);
-    setProjectName(DEFAULT_PROJECT_NAME);
+    setProjectName(t("common.untitledProject"));
     setCustomUrl("");
     setCustomFlavor("light");
     setShowSavePrompt(false);
@@ -207,8 +209,8 @@ export function NewProjectDialog({
         : (selectedPreset ?? selectedPlanetary)?.styleUrl;
     if (basemapStyleUrl == null) return;
 
-    newProject({
-      name: projectName.trim() || DEFAULT_PROJECT_NAME,
+    createGeoIm3dNewProject({
+      name: projectName.trim() || t("common.untitledProject"),
       basemapStyleUrl,
       // A planetary basemap seeds the matching celestial body; other basemaps
       // leave the project on the default Earth ellipsoid.

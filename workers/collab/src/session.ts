@@ -10,6 +10,7 @@ import type {
   PresenceEntry,
   ServerMessage,
 } from "./protocol";
+import { sanitizePortableProjectSnapshot } from "./project-snapshot";
 
 function finite(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
@@ -386,7 +387,9 @@ export class CollabSession extends DurableObject<Env> {
       // A corrupt stored snapshot (partial write/storage error) must not throw
       // here — that would close the socket 1011 and every reconnect would hit
       // the same poison value, locking the whole session out. Fall back to null.
-      snapshot: parseStoredSnapshot(snapshot),
+      // Sanitize after parsing so snapshots stored by pre-redaction clients cannot
+      // expose environment credentials to a newly joined participant.
+      snapshot: sanitizePortableProjectSnapshot(parseStoredSnapshot(snapshot)),
       // Bootstrap the joiner with existing participants' live cursors/viewports.
       presence: Object.fromEntries(this.presence),
       // Bootstrap the joiner with the recent chat history.
@@ -431,10 +434,9 @@ export class CollabSession extends DurableObject<Env> {
       return;
     }
 
-    // The project was parsed in webSocketMessage; re-serialize it only to
-    // persist a string for storage and forward the object verbatim. The relay
-    // never reads any field inside the project.
-    const project = message.project ?? null;
+    // Strip portable environment values before persistence/broadcast so an old
+    // or hostile client cannot make the relay retain or forward credentials.
+    const project = sanitizePortableProjectSnapshot(message.project ?? null);
     // `rev` is written during /init before any socket can join, so the stored
     // value is always present; the `?? 0` is a defensive floor, never the
     // client's counter (a server-owned monotonic value must not trust input).

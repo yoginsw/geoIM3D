@@ -7,6 +7,7 @@ import {
 import { type RefObject, useEffect } from "react";
 import type { MapController } from "@geolibre/map";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
+import { preparePortableProject } from "../lib/project-file-contract";
 import { getEmbedHost, isEmbedded } from "./embedHost";
 
 // How long to wait after the last store change before posting a fresh project
@@ -71,7 +72,7 @@ export function useEmbedBridge(
     let lastPostedContent: string | null = null;
 
     const buildProject = (): GeoLibreProject =>
-      buildProjectSnapshot(mapControllerRef);
+      preparePortableProject(buildProjectSnapshot(mapControllerRef));
 
     const postState = () => {
       if (disposed) return;
@@ -98,7 +99,7 @@ export function useEmbedBridge(
           targetOrigin(),
         );
       } catch (error) {
-        console.error("[GeoLibre] Failed to post embed state", error);
+        console.error("[geoIM3D] Failed to post embed state", error);
       }
     };
 
@@ -119,10 +120,11 @@ export function useEmbedBridge(
         // parseProject takes a JSON string and runs the schema validation and
         // normalisation the app relies on, so an object payload is re-stringified
         // to feed it through the same path.
-        const project =
+        const parsedProject =
           typeof message.project === "string"
             ? parseProject(message.project)
             : parseProject(JSON.stringify(message.project));
+        const project = preparePortableProject(parsedProject);
         useAppStore
           .getState()
           .loadProject(project, null, { rememberRecent: false });

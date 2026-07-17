@@ -258,16 +258,47 @@ export function AssistantPanel({ mapControllerRef }: AssistantPanelProps) {
   // On unmount mid-drag, tear down the drag's window listeners.
   useEffect(() => () => resizeCleanupRef.current?.(), []);
 
-  // Track which provider keys are configured; rebuild the agent on change so a
-  // newly-added key takes effect without reopening the panel.
+  // Credential replacement/deletion must invalidate the materialized model,
+  // not only refresh the provider picker: provider SDK instances retain the
+  // key they were created with. Disposal events fire before the credential
+  // store publishes its new runtime environment, so they tear down immediately
+  // while the subsequent runtime event refreshes availability from new state.
   useEffect(() => {
+    const invalidateSession = () => {
+      cancelledGenerationRef.current = sendGenerationRef.current;
+      session.reset();
+      for (const item of codeQueueRef.current) item.resolve(false);
+      commitQueue([]);
+      runningRef.current = false;
+      setRunning(false);
+    };
     const onEnvChange = () => {
+      invalidateSession();
       setHasKey(hasProviderKey());
       setProviders(availableProviders());
     };
+    const onCredentialDisposed = () => invalidateSession();
     window.addEventListener(RUNTIME_ENV_EVENT, onEnvChange);
-    return () => window.removeEventListener(RUNTIME_ENV_EVENT, onEnvChange);
-  }, []);
+    window.addEventListener(
+      "geoim3d:credential-deleted",
+      onCredentialDisposed,
+    );
+    window.addEventListener(
+      "geoim3d:credentials-cleared",
+      onCredentialDisposed,
+    );
+    return () => {
+      window.removeEventListener(RUNTIME_ENV_EVENT, onEnvChange);
+      window.removeEventListener(
+        "geoim3d:credential-deleted",
+        onCredentialDisposed,
+      );
+      window.removeEventListener(
+        "geoim3d:credentials-cleared",
+        onCredentialDisposed,
+      );
+    };
+  }, [commitQueue, session]);
 
   // Keep the selected provider valid: fall back to the first available one when
   // the stored choice has no key (e.g. its key was removed).

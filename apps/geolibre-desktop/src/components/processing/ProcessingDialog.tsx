@@ -887,13 +887,13 @@ export function ProcessingDialog({
         wasmResult.status === "rejected" ? wasmResult.reason : null;
       if (wasmError) {
         console.warn(
-          "[GeoLibre] Could not enumerate WASM tool manifests:",
+          "[geoIM3D] Could not enumerate WASM tool manifests:",
           wasmError,
         );
       }
       if (catalogError) {
         console.warn(
-          "[GeoLibre] Could not load Whitebox catalog snapshot:",
+          "[geoIM3D] Could not load Whitebox catalog snapshot:",
           catalogError,
         );
       }
@@ -1488,7 +1488,7 @@ export function ProcessingDialog({
       await loadWhitebox();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not start GeoLibre sidecar.",
+        err instanceof Error ? err.message : "Could not start geoIM3D sidecar.",
       );
     } finally {
       setStartingServer(false);
@@ -1501,11 +1501,11 @@ export function ProcessingDialog({
     try {
       await stopGeoLibreSidecar();
       setRuntimeAvailable(false);
-      setRuntimeMessage("GeoLibre sidecar is stopped. Showing GitHub catalog only.");
+      setRuntimeMessage("geoIM3D sidecar is stopped. Showing GitHub catalog only.");
       setJob(null);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not stop GeoLibre sidecar.",
+        err instanceof Error ? err.message : "Could not stop geoIM3D sidecar.",
       );
     } finally {
       setStoppingServer(false);

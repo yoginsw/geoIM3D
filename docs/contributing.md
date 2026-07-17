@@ -117,6 +117,7 @@ npm run ci
 
 | Step | Command | Covers |
 | --- | --- | --- |
+| Brand contract | `npm run check:brand` | geoIM3D Production product surfaces and compatibility allowlist |
 | Build | `npm run build` | TypeScript compile and Vite build |
 | Frontend tests | `npm run test:frontend` | Fast unit tests under `tests/` |
 | Worker typecheck | `npm run test:worker` | The viewer worker package |

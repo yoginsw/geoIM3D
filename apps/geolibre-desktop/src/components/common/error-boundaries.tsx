@@ -57,7 +57,7 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
           <div className="space-y-1">
             <h1 className="text-lg font-semibold">Something went wrong</h1>
             <p className="max-w-md text-sm text-muted-foreground">
-              GeoLibre hit an unexpected error and could not continue. Your work
+              geoIM3D hit an unexpected error and could not continue. Your work
               may be unsaved — try recovering before reloading.
             </p>
             <p className="max-w-md break-words font-mono text-xs text-muted-foreground/80">
@@ -170,7 +170,7 @@ function SectionErrorFallback({
     >
       <AlertTriangle className="h-6 w-6 text-destructive" />
       <p className="text-sm text-muted-foreground">
-        {label} failed to render. The rest of GeoLibre is still available.
+        {label} failed to render. The rest of geoIM3D is still available.
       </p>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={reset}>

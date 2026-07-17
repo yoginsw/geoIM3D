@@ -4,6 +4,10 @@ import { DesktopShell } from "./components/layout/DesktopShell";
 import { OnboardingDialog } from "./components/layout/OnboardingDialog";
 import { UpdateNotificationModal } from "./components/layout/UpdateNotificationModal";
 import { useDesktopSettingsPersistence } from "./hooks/useDesktopSettings";
+import {
+  useCredentialBootstrap,
+  useCredentialStore,
+} from "./hooks/useCredentials";
 import { useLayoutOptions } from "./hooks/useLayoutOptions";
 import { useProjectUrlLoader } from "./hooks/useProjectUrlLoader";
 import { useBeforeUnloadGuard } from "./hooks/useBeforeUnloadGuard";
@@ -21,6 +25,7 @@ export default function App() {
   // pick up the right-to-left direction together with the document `dir`.
   const { i18n } = useTranslation();
   const layoutOptions = useLayoutOptions();
+  const credentialsLoaded = useCredentialStore((state) => state.loaded);
   const { themeMode, toggleThemeMode } = useThemeMode();
   const projectUrlLoadState = useProjectUrlLoader();
   const { showOnboarding, dismissOnboarding } = useUiProfileBootstrap();
@@ -31,11 +36,23 @@ export default function App() {
   } = useStartupUpdateCheck();
 
   useDesktopSettingsPersistence();
+  useCredentialBootstrap();
   useThemeScheme();
   useRecentProjectsPersistence();
   useRuntimeEnvironmentVariables();
   useUndoRedoShortcuts();
   useBeforeUnloadGuard();
+
+  if (!credentialsLoaded) {
+    return (
+      <DirectionProvider dir={languageDirection(i18n.language)}>
+        <div className="flex h-screen items-center justify-center" role="status">
+          geoIM3D credential store loading…
+        </div>
+      </DirectionProvider>
+    );
+  }
+
   return (
     <DirectionProvider dir={languageDirection(i18n.language)}>
       <DesktopShell

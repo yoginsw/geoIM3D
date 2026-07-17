@@ -1,4 +1,6 @@
 import type { Model } from "@strands-agents/sdk";
+import { getRuntimeEnvironment } from "@geolibre/core";
+import { readPrivateCredentialEnvironment } from "../private-credential-runtime";
 
 /**
  * Supported LLM providers for the natural-language assistant. The boundary is
@@ -74,7 +76,7 @@ const PROVIDER_KEY_NAMES: Partial<
  * importantly `AWS_*` (which would otherwise auto-activate Amazon Bedrock and
  * bill the user's AWS account for LLM calls they never intended) and the ambient
  * `OLLAMA_HOST`. Those providers remain available by entering credentials in
- * Settings → Environment Variables. The Rust `read_env_vars` command enforces
+ * Settings → AI Providers. The Rust `read_env_vars` command enforces
  * the same allowlist server-side (the `assistant-os-env` test asserts the two
  * lists match); that test also guards the inclusions and the exclusions.
  */
@@ -129,7 +131,7 @@ export const OS_ENV_ALIAS_GROUPS: readonly (readonly string[])[] = [
  */
 export function scopeOsEnvToProject(
   osEnv: RuntimeEnv,
-  projectKeys: ReadonlySet<string>,
+  projectKeys: ReadonlySet<string>
 ): RuntimeEnv {
   const scoped: RuntimeEnv = {};
   for (const [key, value] of Object.entries(osEnv)) {
@@ -177,7 +179,7 @@ export function mergeRuntimeEnv({
   return {
     ...scopeOsEnvToProject(
       osEnv,
-      new Set([...Object.keys(projectEnv), ...Object.keys(aiEnv)]),
+      new Set([...Object.keys(projectEnv), ...Object.keys(aiEnv)])
     ),
     ...aiEnv,
     ...geocoderEnv,
@@ -242,10 +244,13 @@ export type RuntimeEnv = Record<string, string>;
 
 /** Read the live runtime environment map, or `{}` outside the browser. */
 export function readRuntimeEnv(): RuntimeEnv {
-  if (typeof window === "undefined") return {};
-  return (
-    (window as unknown as { __GEOLIBRE_RUNTIME_ENV__?: RuntimeEnv })
-      .__GEOLIBRE_RUNTIME_ENV__ ?? {}
+  return Object.fromEntries(
+    Object.entries({
+      ...getRuntimeEnvironment(),
+      ...readPrivateCredentialEnvironment(),
+    }).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string"
+    )
   );
 }
 
@@ -271,7 +276,7 @@ function ollamaBaseUrl(env: RuntimeEnv): string | null {
 /** The configured API key for a key-based provider, or null. */
 export function getApiKey(
   provider: AssistantProviderId,
-  env: RuntimeEnv = readRuntimeEnv(),
+  env: RuntimeEnv = readRuntimeEnv()
 ): string | null {
   const names = PROVIDER_KEY_NAMES[provider];
   return names ? firstValue(env, ...names) : null;
@@ -286,7 +291,7 @@ export function defaultModelFor(provider: AssistantProviderId): string {
 function resolveModelId(
   provider: AssistantProviderId,
   model: string | undefined,
-  env: RuntimeEnv,
+  env: RuntimeEnv
 ): string {
   const perProvider =
     provider === "ollama"
@@ -319,7 +324,7 @@ function resolveModelId(
 export function configForProvider(
   provider: AssistantProviderId,
   model?: string,
-  env: RuntimeEnv = readRuntimeEnv(),
+  env: RuntimeEnv = readRuntimeEnv()
 ): AssistantProviderConfig | null {
   const modelId = resolveModelId(provider, model, env);
 
@@ -374,11 +379,12 @@ export function configForProvider(
  * @returns A resolved config, or null when no provider is configured.
  */
 export function resolveProviderConfig(
-  env: RuntimeEnv = readRuntimeEnv(),
+  env: RuntimeEnv = readRuntimeEnv()
 ): AssistantProviderConfig | null {
   const requested = env.GEOLIBRE_ASSISTANT_PROVIDER?.trim().toLowerCase();
   const order =
-    requested && ASSISTANT_PROVIDER_IDS.includes(requested as AssistantProviderId)
+    requested &&
+    ASSISTANT_PROVIDER_IDS.includes(requested as AssistantProviderId)
       ? [requested as AssistantProviderId]
       : ASSISTANT_PROVIDER_IDS;
 
@@ -396,10 +402,10 @@ export function hasProviderKey(env: RuntimeEnv = readRuntimeEnv()): boolean {
 
 /** Providers that are currently configured, in preference order. */
 export function availableProviders(
-  env: RuntimeEnv = readRuntimeEnv(),
+  env: RuntimeEnv = readRuntimeEnv()
 ): AssistantProviderId[] {
   return ASSISTANT_PROVIDER_IDS.filter(
-    (provider) => configForProvider(provider, undefined, env) !== null,
+    (provider) => configForProvider(provider, undefined, env) !== null
   );
 }
 
@@ -415,7 +421,7 @@ export function availableProviders(
  * @returns A ready-to-use Strands model instance.
  */
 export async function createModel(
-  config: AssistantProviderConfig,
+  config: AssistantProviderConfig
 ): Promise<Model> {
   switch (config.provider) {
     case "google": {

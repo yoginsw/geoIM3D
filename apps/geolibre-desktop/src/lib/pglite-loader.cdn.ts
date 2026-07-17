@@ -44,7 +44,7 @@ export async function loadPgliteModules(): Promise<PgliteModules> {
     // failure is diagnosable.
     throw new Error(
       "Could not load the PostGIS SQL engine from the CDN. The embedded " +
-        "GeoLibre app fetches PGlite from jsDelivr on first use, so this " +
+        "geoIM3D fetches PGlite from jsDelivr on first use, so this " +
         "feature needs network access and a Content-Security-Policy that " +
         "allows loading scripts from cdn.jsdelivr.net.",
       { cause: err },

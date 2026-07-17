@@ -111,7 +111,7 @@ export async function createSession(
     resolvedMode = payload.mode;
   } else if (payload.mode !== undefined) {
     console.warn(
-      `[GeoLibre] Unexpected collaboration mode "${payload.mode}"; defaulting to "co-edit".`,
+      `[geoIM3D] Unexpected collaboration mode "${payload.mode}"; defaulting to "co-edit".`,
     );
   }
   return {

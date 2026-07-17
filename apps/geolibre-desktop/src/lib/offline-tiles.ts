@@ -446,7 +446,7 @@ export async function collectOfflineUrls(
       // (urls.length) stays correct; only the dialog's `tiles + assets` size
       // preview would over-count this URL by one asset.
       console.warn(
-        `[GeoLibre] offline asset URL collides with a tile URL; the size preview over-counts it by one asset (the download itself is unaffected): ${url}`,
+        `[geoIM3D] offline asset URL collides with a tile URL; the size preview over-counts it by one asset (the download itself is unaffected): ${url}`,
       );
     }
     urls.add(url);

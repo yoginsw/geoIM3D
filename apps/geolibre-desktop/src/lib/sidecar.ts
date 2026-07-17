@@ -26,6 +26,6 @@ export async function stopGeoLibreSidecar(): Promise<void> {
 
 function assertTauri(): void {
   if (!isTauri()) {
-    throw new Error("Starting the processing server requires GeoLibre Desktop.");
+    throw new Error("Starting the processing server requires geoIM3D Desktop.");
   }
 }

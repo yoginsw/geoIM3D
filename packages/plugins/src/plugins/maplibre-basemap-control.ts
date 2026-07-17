@@ -1,4 +1,4 @@
-import { getGoogleMapsApiKey, useAppStore } from "@geolibre/core";
+import { getRuntimeEnvironment, useAppStore } from "@geolibre/core";
 import {
   BasemapControl,
   type BasemapChangeEvent,
@@ -12,22 +12,7 @@ import type {
   GeoLibreMapControlPosition,
   GeoLibrePlugin,
 } from "../types";
-
-const basemapEnv = (
-  import.meta as ImportMeta & {
-    env?: Record<string, string | undefined>;
-  }
-).env;
-
-/** Merge build-time and runtime environment variables (runtime wins). */
-function getRuntimeEnvironment(): Record<string, string | undefined> {
-  if (typeof window === "undefined") return basemapEnv ?? {};
-  // __GEOLIBRE_RUNTIME_ENV__ is declared globally in @geolibre/core.
-  return {
-    ...(basemapEnv ?? {}),
-    ...(window.__GEOLIBRE_RUNTIME_ENV__ ?? {}),
-  };
-}
+import { readBasemapCredentials } from "../built-in-credential-runtime";
 
 /**
  * Traffic-overlay provider credentials (added in maplibre-gl-basemap-control
@@ -42,9 +27,9 @@ function getTrafficOverlayCredentials(): {
   tomtomApiKey: string;
   hereApiKey: string;
 } {
-  const env = getRuntimeEnvironment();
+  const env = readBasemapCredentials();
   return {
-    googleMapsApiKey: getGoogleMapsApiKey(env) || "",
+    googleMapsApiKey: env.VITE_GOOGLE_MAPS_API_KEY?.trim() || "",
     tomtomApiKey: env.VITE_TOMTOM_API_KEY?.trim() || "",
     hereApiKey: env.VITE_HERE_API_KEY?.trim() || "",
   };
@@ -58,11 +43,16 @@ function getTrafficOverlayCredentials(): {
  * must not clobber a key typed there; and the region is omitted when unset so
  * the control keeps its own default region rather than GeoLibre hardcoding one.
  */
-function getAmazonCredentials(): { amazonApiKey: string; awsRegion?: string } | null {
-  const env = getRuntimeEnvironment();
-  const amazonApiKey = env.VITE_AMAZON_LOCATION_API_KEY?.trim() || "";
+function getAmazonCredentials(): {
+  amazonApiKey: string;
+  awsRegion?: string;
+} | null {
+  const credentials = readBasemapCredentials();
+  const amazonApiKey = credentials.VITE_AMAZON_LOCATION_API_KEY?.trim() || "";
   if (!amazonApiKey) return null;
-  const awsRegion = env.VITE_AMAZON_LOCATION_AWS_REGION?.trim() || undefined;
+  const awsRegion =
+    getRuntimeEnvironment().VITE_AMAZON_LOCATION_AWS_REGION?.trim() ||
+    undefined;
   return awsRegion ? { amazonApiKey, awsRegion } : { amazonApiKey };
 }
 
@@ -93,7 +83,7 @@ let labels: BasemapControlLabels = {
 
 /** Override the panel strings (called from the app layer with translated text). */
 export function setBasemapControlLabels(
-  next: Partial<BasemapControlLabels>,
+  next: Partial<BasemapControlLabels>
 ): void {
   labels = { ...labels, ...next };
 }
@@ -142,10 +132,7 @@ export const maplibreBasemapControlPlugin: GeoLibrePlugin = {
       addRuntimeEnvListener();
     }
 
-    const added = app.addMapControl(
-      basemapControl,
-      basemapControlPosition,
-    );
+    const added = app.addMapControl(basemapControl, basemapControlPosition);
     if (!added) {
       // Tear the listener down too, or it outlives the nulled control: deactivate
       // bails on `!basemapControl`, so it would never be cleaned up otherwise.
@@ -169,8 +156,8 @@ export const maplibreBasemapControlPlugin: GeoLibrePlugin = {
     const activeBasemapIds = [
       ...new Set(
         [activeStyleId, ...stackedRasterIds].filter(
-          (id): id is string => typeof id === "string",
-        ),
+          (id): id is string => typeof id === "string"
+        )
       ),
     ];
     basemapControl.setState({
@@ -198,7 +185,7 @@ export const maplibreBasemapControlPlugin: GeoLibrePlugin = {
   getMapControlPosition: () => basemapControlPosition,
   setMapControlPosition: (
     app: GeoLibreAppAPI,
-    position: GeoLibreMapControlPosition,
+    position: GeoLibreMapControlPosition
   ) => {
     basemapControlPosition = position;
     if (!basemapControl) return;
@@ -212,9 +199,7 @@ export const maplibreBasemapControlPlugin: GeoLibrePlugin = {
   },
 };
 
-function getBasemapControlOptions(
-  app: GeoLibreAppAPI,
-): BasemapControlOptions {
+function getBasemapControlOptions(app: GeoLibreAppAPI): BasemapControlOptions {
   return {
     collapsed: false,
     position: basemapControlPosition,
@@ -255,7 +240,8 @@ function addRuntimeEnvListener(): void {
 
   const handleRuntimeEnvChange = () => {
     if (!basemapControl) return;
-    const { googleMapsApiKey, tomtomApiKey, hereApiKey } = getTrafficOverlayCredentials();
+    const { googleMapsApiKey, tomtomApiKey, hereApiKey } =
+      getTrafficOverlayCredentials();
     basemapControl.setGoogleMapsApiKey(googleMapsApiKey);
     basemapControl.setTomTomApiKey(tomtomApiKey);
     basemapControl.setHereApiKey(hereApiKey);
@@ -264,15 +250,50 @@ function addRuntimeEnvListener(): void {
     // is left undefined when unset, keeping the control's own default.
     const amazon = getAmazonCredentials();
     if (amazon) {
-      basemapControl.setAmazonCredentials(amazon.amazonApiKey, amazon.awsRegion);
+      basemapControl.setAmazonCredentials(
+        amazon.amazonApiKey,
+        amazon.awsRegion
+      );
     }
   };
 
-  window.addEventListener("geolibre:runtime-env-change", handleRuntimeEnvChange);
+  const handleCredentialClear = () => {
+    if (!basemapControl) return;
+    basemapControl.setGoogleMapsApiKey("");
+    basemapControl.setTomTomApiKey("");
+    basemapControl.setHereApiKey("");
+    basemapControl.setAmazonCredentials("");
+  };
+
+  const handleCredentialDelete = (event: Event) => {
+    if (!basemapControl) return;
+    const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+    if (id === "map:google-maps-api-key")
+      basemapControl.setGoogleMapsApiKey("");
+    if (id === "map:tomtom-api-key") basemapControl.setTomTomApiKey("");
+    if (id === "map:here-api-key") basemapControl.setHereApiKey("");
+    if (id === "map:amazon-location-api-key")
+      basemapControl.setAmazonCredentials("");
+  };
+
+  window.addEventListener(
+    "geolibre:runtime-env-change",
+    handleRuntimeEnvChange
+  );
+  window.addEventListener("geoim3d:credentials-cleared", handleCredentialClear);
+  window.addEventListener("geoim3d:credential-deleted", handleCredentialDelete);
   removeRuntimeEnvListener = () => {
     window.removeEventListener(
       "geolibre:runtime-env-change",
-      handleRuntimeEnvChange,
+      handleRuntimeEnvChange
+    );
+    window.removeEventListener(
+      "geoim3d:credentials-cleared",
+      handleCredentialClear
+    );
+    window.removeEventListener(
+      "geoim3d:credential-deleted",
+      handleCredentialDelete
     );
   };
 }
@@ -284,7 +305,7 @@ function cleanupRuntimeEnvListener(): void {
 
 function handleBasemapChange(
   app: GeoLibreAppAPI,
-  event: BasemapControlEventPayload,
+  event: BasemapControlEventPayload
 ): void {
   // Narrows the BasemapControlEventPayload union so event.basemap is accessible.
   if (event.type !== "basemapchange") return;
@@ -332,7 +353,7 @@ function handleBasemapChange(
 // successful change. See opengeos/GeoLibre#913.
 function handleBasemapError(
   app: GeoLibreAppAPI,
-  event: BasemapControlEventPayload,
+  event: BasemapControlEventPayload
 ): void {
   if (event.type !== "error") return;
   const fallback = styleChangeFallback;
@@ -346,7 +367,7 @@ function handleBasemapError(
 
 function handleBasemapRemove(
   app: GeoLibreAppAPI,
-  event: BasemapControlEventPayload,
+  event: BasemapControlEventPayload
 ): void {
   // Narrows the BasemapControlEventPayload union so event.basemap is accessible.
   if (event.type !== "basemapremove") return;
@@ -359,7 +380,7 @@ function handleBasemapRemove(
 function registerRasterBasemap(
   app: GeoLibreAppAPI,
   basemap: BasemapDefinition,
-  event: BasemapChangeEvent,
+  event: BasemapChangeEvent
 ): void {
   if (basemap.source.type !== "raster") return;
   const managedRaster = getManagedRaster(event, basemap);
@@ -420,7 +441,7 @@ function unregisterAllRasterBasemaps(app: GeoLibreAppAPI): void {
 
 function unregisterRasterBasemapsExcept(
   app: GeoLibreAppAPI,
-  keepBasemapId: string,
+  keepBasemapId: string
 ): void {
   // Snapshot the entries so deleting from the Map mid-loop is safe.
   for (const [basemapId, layerId] of [...registeredRasterLayers.entries()]) {
@@ -435,7 +456,7 @@ function relinkRestoredRasterBasemaps(): void {
   const restored = useAppStore
     .getState()
     .layers.filter(
-      (layer) => layer.metadata?.sourceKind === "maplibre-basemap-control",
+      (layer) => layer.metadata?.sourceKind === "maplibre-basemap-control"
     );
   for (const layer of restored) {
     const basemapId = layer.metadata?.basemapId;
@@ -452,7 +473,7 @@ function relinkRestoredRasterBasemaps(): void {
 
 function getManagedRaster(
   event: BasemapChangeEvent,
-  basemap: BasemapDefinition,
+  basemap: BasemapDefinition
 ): ManagedRasterBasemap | null {
   if (event.managedRaster) {
     return event.managedRaster;
@@ -471,7 +492,7 @@ function getManagedRaster(
 }
 
 function normalizeBeforeId(
-  value: string | undefined | null,
+  value: string | undefined | null
 ): string | undefined {
   if (value == null) return undefined;
   const trimmed = value.trim();

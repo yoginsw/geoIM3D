@@ -4,6 +4,15 @@
    config-agnostic; the consuming app provides the Tailwind config here. */
 @config "../tailwind.config.js";
 
+:root {
+  --brand-primary: #0b365f;
+  --brand-accent: #33cc27;
+  --brand-surface: #ffffff;
+  --brand-secondary: #1039bd;
+  --primary: 209.3 79.2% 20.8%;
+  --ring: 209.3 79.2% 20.8%;
+}
+
 html,
 body,
 #root {

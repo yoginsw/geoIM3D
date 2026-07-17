@@ -1739,7 +1739,7 @@ export function LayerPanel({
           if (cancelled) return;
           watchUnsubsRef.current.delete(layer.id);
           console.warn(
-            `[GeoLibre] Could not watch "${path}" for changes.`,
+            `[geoIM3D] Could not watch "${path}" for changes.`,
             error,
           );
           setRefreshStatuses((current) => ({

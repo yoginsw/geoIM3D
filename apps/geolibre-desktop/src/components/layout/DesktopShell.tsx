@@ -52,6 +52,7 @@ import {
   useRegisterBrowserPanel,
 } from "../../hooks/useRegisterBrowserPanel";
 import { getIsMobileViewport } from "../../hooks/useIsMobileViewport";
+import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
 import { useProjectFileActions } from "../../hooks/useProjectFileActions";
 import {
   isRasterFileName,
@@ -67,6 +68,7 @@ import {
   type DroppedRaster,
 } from "../../lib/tauri-io";
 import { buildKmlModelLayer } from "../../lib/kml-model-layer";
+import { classifyProjectDrop } from "../../lib/project-file-contract";
 import {
   isPhotoDropFileName,
   type GeotaggedPhotoResult,
@@ -96,6 +98,7 @@ import {
 } from "../../hooks/usePlugins";
 import { registerMbtilesProtocol } from "../../lib/mbtiles";
 import { hasReverseGeocodeConsent } from "../../lib/reverse-geocode-consent";
+import { isMenuItemVisible } from "../../lib/ui-profile";
 import {
   hasKnowledgeCardConsent,
   recordKnowledgeCardConsent,
@@ -610,7 +613,21 @@ export function DesktopShell({
   // Browser panel, so their "open recent" calls coordinate their aborts (two
   // instances would race). Lifted here for the same reason as `collaboration`.
   const projectFiles = useProjectFileActions(mapControllerRef);
+  const projectFilesRef = useRef(projectFiles);
+  projectFilesRef.current = projectFiles;
   const notebookOpen = useAppStore((s) => s.ui.notebookOpen);
+  const uiProfile = useDesktopSettingsStore(
+    (state) => state.desktopSettings.uiProfile,
+  );
+  const notebookAllowed = isMenuItemVisible(
+    uiProfile,
+    "processing.notebook",
+  );
+  const pythonConsoleAllowed = isMenuItemVisible(
+    uiProfile,
+    "processing.pythonConsole",
+  );
+  const visibleNotebookOpen = notebookAllowed && notebookOpen;
   const storymapPresenting = useAppStore((s) => s.ui.storymapPresenting);
   // A plugin panel docks at one of four positions beside the Layers/Style
   // panels and the user steps it between them; the built-in panel on the docked
@@ -735,11 +752,11 @@ export function DesktopShell({
   // Style panel's collapsed rail, when shown), while the Style panel collapses
   // to that rail (see `autoCollapse` below). Fire only on the closed→open
   // transition so a later manual resize is preserved.
-  const notebookWasOpenRef = useRef(notebookOpen);
+  const notebookWasOpenRef = useRef(visibleNotebookOpen);
   useEffect(() => {
     const wasOpen = notebookWasOpenRef.current;
-    notebookWasOpenRef.current = notebookOpen;
-    if (!notebookOpen || wasOpen) return;
+    notebookWasOpenRef.current = visibleNotebookOpen;
+    if (!visibleNotebookOpen || wasOpen) return;
     const shellWidth = shellRef.current?.getBoundingClientRect().width ?? 0;
     if (shellWidth <= 0) return;
     const layerWidth = layoutOptions.layerPanelVisible ? layerPanelWidth : 0;
@@ -754,7 +771,7 @@ export function DesktopShell({
       clamp(half, MIN_NOTEBOOK_PANEL_WIDTH, MAX_NOTEBOOK_PANEL_WIDTH),
     );
   }, [
-    notebookOpen,
+    visibleNotebookOpen,
     layoutOptions.layerPanelVisible,
     layoutOptions.stylePanelVisible,
     layerPanelWidth,
@@ -946,7 +963,7 @@ export function DesktopShell({
         try {
           bytes = await readBytes();
         } catch (error) {
-          console.error("[GeoLibre] Failed to read raster for conversion", error);
+          console.error("[geoIM3D] Failed to read raster for conversion", error);
           window.alert(
             bytesAreRemote
               ? t("raster.rasterDownloadFailed", { name })
@@ -989,7 +1006,7 @@ export function DesktopShell({
         // layer (and its message) in place.
         dismiss();
       } catch (error) {
-        console.error("[GeoLibre] Failed to convert GeoTIFF to COG", error);
+        console.error("[geoIM3D] Failed to convert GeoTIFF to COG", error);
         window.alert(t("raster.cogConvertFailed", { name }));
       }
     });
@@ -1377,6 +1394,24 @@ export function DesktopShell({
 
           try {
             const paths = event.payload.paths;
+            const projectDrop = classifyProjectDrop(paths);
+            if (projectDrop.kind === "invalid-project") {
+              throw new Error(
+                t(
+                  projectDrop.reason === "legacy"
+                    ? "toolbar.fileDrop.legacyProject"
+                    : "toolbar.fileDrop.oneProjectOnly",
+                ),
+              );
+            }
+            if (projectDrop.kind === "project") {
+              const error = await projectFilesRef.current.handleOpenRecent(
+                projectDrop.reference,
+              );
+              if (error) throw new Error(error);
+              setDropMessage(t("toolbar.fileDrop.openedProject"));
+              return;
+            }
             // OSM PBF files split into three layers, so they bypass the normal
             // single-FeatureCollection pipeline (which would otherwise route a
             // .pbf to DuckDB ST_Read and merge it).
@@ -1508,11 +1543,14 @@ export function DesktopShell({
       disposed = true;
       unlisten?.();
     };
-  }, [clearDropMessageLater,
+  }, [
+    clearDropMessageLater,
     finishDrop,
     addDroppedRasters,
     addDroppedPhotos,
-    addGeoJsonLayer]);
+    addGeoJsonLayer,
+    t,
+  ]);
 
   const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
     if (!hasDroppedFiles(event)) return;
@@ -1545,6 +1583,29 @@ export function DesktopShell({
 
       try {
         const allFiles = Array.from(event.dataTransfer.files);
+        const projectDrop = classifyProjectDrop(
+          allFiles.map((file) => file.name),
+        );
+        if (projectDrop.kind === "invalid-project") {
+          throw new Error(
+            t(
+              projectDrop.reason === "legacy"
+                ? "toolbar.fileDrop.legacyProject"
+                : "toolbar.fileDrop.oneProjectOnly",
+            ),
+          );
+        }
+        if (projectDrop.kind === "project") {
+          const file = allFiles.find(
+            (candidate) => candidate.name === projectDrop.reference,
+          );
+          if (!file) throw new Error(t("toolbar.error.couldNotOpenProject"));
+          const error =
+            await projectFilesRef.current.handleOpenDroppedProjectFile(file);
+          if (error) throw new Error(error);
+          setDropMessage(t("toolbar.fileDrop.openedProject"));
+          return;
+        }
         // OSM PBF files produce three separate layers (points/lines/polygons),
         // so they bypass the single-FeatureCollection vector drop pipeline.
         // Handle them first, then run the rest through the normal pipeline —
@@ -1648,11 +1709,14 @@ export function DesktopShell({
         clearDropMessageLater();
       }
     },
-    [clearDropMessageLater,
-    finishDrop,
-    addDroppedRasters,
-    addDroppedPhotos,
-    addGeoJsonLayer],
+    [
+      clearDropMessageLater,
+      finishDrop,
+      addDroppedRasters,
+      addDroppedPhotos,
+      addGeoJsonLayer,
+      t,
+    ],
   );
 
   const startLayerPanelResize = useCallback(
@@ -2033,7 +2097,7 @@ export function DesktopShell({
               `page-has-heading-one` check) expect, without altering the
               chrome-free visual layout. Placed inside the main landmark so it
               is not flagged as content outside a landmark. */}
-          <h1 className="sr-only">GeoLibre map workspace</h1>
+          <h1 className="sr-only">geoIM3D map workspace</h1>
           <SectionErrorBoundary label="Map" fallbackClassName="h-full w-full">
             <MapGrid>
               <MapCanvas
@@ -2137,7 +2201,7 @@ export function DesktopShell({
               // notebook / story-map presentation collapses Style here too.
               // `autoCollapsedPanel` is omitted because it is always null in a
               // shared-rail mode (the panel is the sole active one).
-              forceBuiltinCollapsed={notebookOpen || storymapPresenting}
+              forceBuiltinCollapsed={visibleNotebookOpen || storymapPresenting}
               renderBuiltin={({ collapsed, onCollapsedChange }) => (
                 <StylePanel
                   mapControllerRef={mapControllerRef}
@@ -2169,7 +2233,7 @@ export function DesktopShell({
                   mapControllerRef={mapControllerRef}
                   onResizeStart={startStylePanelResize}
                   autoCollapse={
-                    notebookOpen ||
+                    visibleNotebookOpen ||
                     storymapPresenting ||
                     autoCollapsedPanel === "style"
                   }
@@ -2186,7 +2250,7 @@ export function DesktopShell({
             </SectionErrorBoundary>
           </>
         )}
-        {notebookOpen ? (
+        {visibleNotebookOpen ? (
           <SectionErrorBoundary label="Notebook">
             <Suspense fallback={null}>
               <NotebookPanel
@@ -2210,7 +2274,7 @@ export function DesktopShell({
           </Suspense>
         </SectionErrorBoundary>
       ) : null}
-      {pythonConsoleOpen ? (
+      {pythonConsoleAllowed && pythonConsoleOpen ? (
         <SectionErrorBoundary
           label="Python console"
           onClose={() => setPythonConsoleOpen(false)}

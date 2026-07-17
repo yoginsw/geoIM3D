@@ -532,13 +532,12 @@ export function createAssistantTools(
           answer: response.answer ?? null,
           results: response.results.slice(0, 8),
         });
-      } catch (error) {
-        // Don't surface a raw fetch/CORS error as a tool crash — tell the model
-        // search is unavailable so it can fall back gracefully.
+      } catch {
+        // Treat provider/network detail as sensitive; return a stable code only.
         return json({
           error:
-            "Web search is unavailable from the browser. Configure TAVILY_API_KEY in Settings → Environment Variables for reliable search.",
-          detail: error instanceof Error ? error.message : String(error),
+            "Web search is unavailable. Configure Tavily API Key in Settings → Environment credentials for reliable search.",
+          detail: "web_search_failed",
           results: [],
         });
       }

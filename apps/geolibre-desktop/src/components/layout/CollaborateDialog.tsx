@@ -130,7 +130,7 @@ export function CollaborateDialog({
     } catch (err) {
       // Show a localized message; keep the raw error in the console for
       // diagnostics (collab-client throws human-readable English strings).
-      console.error("[GeoLibre] Collaboration error", err);
+      console.error("[geoIM3D] Collaboration error", err);
       setError(t("collaborate.connectFailed"));
     } finally {
       setBusy(false);
@@ -153,7 +153,7 @@ export function CollaborateDialog({
     } catch (err) {
       // Show a localized message; keep the raw error in the console for
       // diagnostics (collab-client throws human-readable English strings).
-      console.error("[GeoLibre] Collaboration error", err);
+      console.error("[geoIM3D] Collaboration error", err);
       setError(t("collaborate.connectFailed"));
       // The invite link could not connect (e.g. an expired or invalid code), so
       // reveal the full layout and let the user fix the code or host instead.

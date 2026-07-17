@@ -610,7 +610,7 @@ function ensureExternalPluginsLoadedWithSettings(
       const unloaded = unloadRemovedUrlPlugins(manager, pluginManifestUrls, app);
       if (unloaded.length) {
         console.info(
-          `Unloaded external GeoLibre plugins: ${unloaded.join(", ")}`,
+          `Unloaded external geoIM3D plugins: ${unloaded.join(", ")}`,
         );
       }
       return loadExternalPlugins(
@@ -632,7 +632,7 @@ function ensureExternalPluginsLoadedWithSettings(
       notifyExternalPluginsListeners();
       if (result.loadedPluginIds.length) {
         console.info(
-          `Loaded external GeoLibre plugins from ${result.pluginSources.join(
+          `Loaded external geoIM3D plugins from ${result.pluginSources.join(
             ", ",
           )}: ${result.loadedPluginIds.join(", ")}`,
         );
@@ -644,7 +644,7 @@ function ensureExternalPluginsLoadedWithSettings(
       }
     })
     .catch((error) => {
-      console.warn("Could not load external GeoLibre plugins.", error);
+      console.warn("Could not load external geoIM3D plugins.", error);
     })
     .finally(() => {
       // A settings change can start a new load while this one is in flight.
@@ -741,7 +741,7 @@ export function createAppAPI(
         (typeof version !== "string" || !/^1\.\d/.test(version.trim()))
       ) {
         console.warn(
-          `[GeoLibre] addWmsLayer: unsupported WMS version "${String(version)}"; using "${resolvedVersion}".`,
+          `[geoIM3D] addWmsLayer: unsupported WMS version "${String(version)}"; using "${resolvedVersion}".`,
         );
       }
       const tileUrl = createWmsTileUrl({
@@ -964,7 +964,7 @@ export function createAppAPI(
       // forever.
       if (projection !== "globe" && projection !== "mercator") {
         console.warn(
-          `[GeoLibre] setMapProjection: ignoring unknown projection "${String(projection)}" (expected "globe" or "mercator").`,
+          `[geoIM3D] setMapProjection: ignoring unknown projection "${String(projection)}" (expected "globe" or "mercator").`,
         );
         return;
       }

@@ -13,6 +13,7 @@ import type { MapController } from "@geolibre/map";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import i18n from "../i18n";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
+import { preparePortableProject } from "../lib/project-file-contract";
 import {
   CollabConnection,
   createSession,
@@ -20,6 +21,8 @@ import {
   sessionWsUrl,
 } from "../lib/collab-client";
 import type { ServerMessage } from "../lib/collab-protocol";
+import { isMenuItemVisible } from "../lib/ui-profile";
+import { useDesktopSettingsStore } from "./useDesktopSettings";
 
 // Coalesce the burst of store writes one user action produces into a single
 // outbound snapshot — same window the embed bridge uses.
@@ -73,8 +76,12 @@ export interface CollaborationApi {
 export function useCollaboration(
   mapControllerRef: RefObject<MapController | null>,
 ): CollaborationApi {
+  const uiProfile = useDesktopSettingsStore(
+    (state) => state.desktopSettings.uiProfile,
+  );
   const baseUrl = useMemo(() => resolveCollabBaseUrl(), []);
-  const enabled = baseUrl !== null;
+  const enabled =
+    baseUrl !== null && isMenuItemVisible(uiProfile, "project.collaborate");
 
   // All mutable session machinery lives in refs so the effects/actions are
   // stable and don't re-subscribe on every render.
@@ -132,7 +139,7 @@ export function useCollaboration(
   const sendSnapshot = (): void => {
     const conn = connRef.current;
     if (!conn || !canEdit() || syncPausedRef.current) return;
-    const project = buildProjectSnapshot(mapControllerRef);
+    const project = preparePortableProject(buildProjectSnapshot(mapControllerRef));
     const content = serializeProject(project);
     // Skip identical snapshots (selection/presence writes don't change content).
     if (content === lastContentRef.current) return;
@@ -165,7 +172,7 @@ export function useCollaboration(
     // Where others are looking is conveyed by presence viewport rectangles.
     const localView =
       mapControllerRef.current?.readView() ?? useAppStore.getState().mapView;
-    const merged: GeoLibreProject = { ...project, mapView: localView };
+    const merged = preparePortableProject({ ...project, mapView: localView });
     if (initial) {
       // First bootstrap (the welcome snapshot): a one-time full loadProject is
       // fine and runs the plugin/native-layer restoration so the joiner sees
@@ -196,7 +203,7 @@ export function useCollaboration(
     // applyProjectToStore's normalized output (deduped styles, defaults,
     // reordering) and create a broadcast feedback loop.
     lastContentRef.current = serializeProject(
-      buildProjectSnapshot(mapControllerRef),
+      preparePortableProject(buildProjectSnapshot(mapControllerRef)),
     );
   };
 

@@ -194,10 +194,10 @@ jobs:
             --progress-spinner off \
             --requirement /tmp/backend-freeze.txt
 
-      # Drive the documented `npm run ci` gate directly (lint -> build ->
+      # Drive the documented `npm run ci` gate directly (brand -> lint -> build ->
       # frontend+worker+backend coverage -> rust) so this workflow cannot drift
       # from the script in package.json.
-      - name: Run CI gate (lint, build, frontend/worker/backend tests, rust)
+      - name: Run CI gate (brand, lint, build, frontend/worker/backend tests, rust)
         run: npm run ci
         env:
           VITE_GEE_OAUTH_CLIENT_ID: ${{ secrets.VITE_GEE_OAUTH_CLIENT_ID }}

@@ -152,7 +152,7 @@ export function wkbRowsToFeatureCollection(
         geometry = decodeWkb(bytes);
       } catch (error) {
         // One malformed/unrepresentable geometry must not fail the whole layer.
-        console.warn("[GeoLibre] Skipped an undecodable WKB geometry.", error);
+        console.warn("[geoIM3D] Skipped an undecodable WKB geometry.", error);
       }
     }
     const properties: Record<string, unknown> = {};

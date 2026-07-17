@@ -47,7 +47,7 @@ async function dropGeoJson(
  * Verifies issue #311: a layer can be placed in a folder, the group's
  * collapse/visibility controls work, and the group structure survives a
  * save -> reload -> reopen round trip (group + each child's `groupId` are
- * serialized into the `.geolibre.json` project).
+ * serialized into the `.geoim3d.json` project).
  */
 test("groups a layer and persists the folder across save and reopen", async ({
   page,
@@ -100,9 +100,9 @@ test("groups a layer and persists the folder across save and reopen", async ({
   expect(groupId).toBeTruthy();
   expect(saved.layers?.[0]?.groupId).toBe(groupId);
 
-  const dir = await mkdtemp(join(tmpdir(), "geolibre-groups-"));
+  const dir = await mkdtemp(join(tmpdir(), "geoim3d-groups-"));
   try {
-    const savedPath = join(dir, "groups.geolibre.json");
+    const savedPath = join(dir, "groups.geoim3d.json");
     await writeFile(savedPath, Buffer.concat(chunks));
 
     // 4. Reload to a fresh store, reopen the project, and confirm the folder is

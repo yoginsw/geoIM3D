@@ -49,7 +49,7 @@ export function ProjectFileDialogs({ projectFiles }: ProjectFileDialogsProps) {
               <Label htmlFor="project-url">{t("toolbar.item.projectUrl")}</Label>
               <Input
                 id="project-url"
-                placeholder="https://example.com/project.geolibre.json"
+                placeholder="https://example.com/project.geoim3d.json"
                 value={projectFiles.projectUrl}
                 onChange={(event) => {
                   projectFiles.setProjectUrl(event.target.value);
@@ -142,40 +142,7 @@ export function ProjectFileDialogs({ projectFiles }: ProjectFileDialogsProps) {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={projectFiles.envStripPrompt !== null}
-        onOpenChange={(open: boolean) => {
-          if (!open) projectFiles.resolveEnvStripPrompt("cancel");
-        }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("settings.env.stripPromptTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("settings.env.stripPromptDesc", {
-                count: projectFiles.envStripPrompt?.count ?? 0,
-              })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => projectFiles.resolveEnvStripPrompt("cancel")}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => projectFiles.resolveEnvStripPrompt("keep")}
-            >
-              {t("settings.env.keepButton")}
-            </Button>
-            <Button onClick={() => projectFiles.resolveEnvStripPrompt("strip")}>
-              {t("settings.env.stripButton")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
       <Dialog
         open={projectFiles.embedVectorDataPrompt !== null}
         onOpenChange={(open: boolean) => {

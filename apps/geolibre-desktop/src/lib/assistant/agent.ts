@@ -13,7 +13,7 @@ import {
 } from "./tools";
 
 /** System prompt establishing the assistant's role, tools, and guardrails. */
-const SYSTEM_PROMPT = `You are GeoLibre's geospatial assistant. You help the user explore and analyze the data already loaded in their map by calling the provided tools.
+const SYSTEM_PROMPT = `You are geoIM3D's geospatial assistant. You help the user explore and analyze the data already loaded in their map by calling the provided tools.
 
 Guidelines:
 - Always act through the tools. Never claim to have changed the map unless a tool call succeeded.
@@ -87,8 +87,8 @@ export class AssistantSession {
       const pinned = this.selection?.provider;
       throw new Error(
         pinned
-          ? `No API key for the selected provider "${pinned}". Add its key in Settings → Environment Variables, or pick another provider.`
-          : "No LLM API key is configured. Add GEMINI_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in Settings → Environment Variables.",
+          ? `No API key for the selected provider "${pinned}". Add its key in Settings → AI Providers, or pick another provider.`
+          : "No LLM API key is configured. Add a provider credential in Settings → AI Providers.",
       );
     }
     const model = await createModel(config);

@@ -1296,7 +1296,7 @@ export function ConversionDialog() {
       await checkRuntime();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not start GeoLibre sidecar.",
+        err instanceof Error ? err.message : "Could not start geoIM3D sidecar.",
       );
     } finally {
       setStartingServer(false);

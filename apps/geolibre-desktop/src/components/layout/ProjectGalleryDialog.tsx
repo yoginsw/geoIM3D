@@ -29,7 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
+import { useCredentialStore } from "../../hooks/useCredentials";
 import { openExternalLink } from "../../lib/open-external";
 import {
   fetchMyProjects,
@@ -102,8 +102,8 @@ export function ProjectGalleryDialog({
   onOpenProject,
 }: ProjectGalleryDialogProps) {
   const { t } = useTranslation();
-  const trimmedToken = (
-    useDesktopSettingsStore((s) => s.desktopSettings.shareToken) ?? ""
+  const trimmedToken = useCredentialStore(
+    (state) => state.values["share:token"] ?? "",
   ).trim();
   const hasToken = trimmedToken.length > 0;
   const [scope, setScope] = useState<GalleryScope>("featured");

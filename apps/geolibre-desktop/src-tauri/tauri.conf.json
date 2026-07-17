@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "GeoLibre Desktop",
+  "productName": "geoIM3D",
   "version": "2.1.0",
   "identifier": "org.geolibre.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "create": false,
-        "title": "GeoLibre Desktop",
+        "title": "geoIM3D",
         "width": 1280,
         "height": 800,
         "resizable": true,

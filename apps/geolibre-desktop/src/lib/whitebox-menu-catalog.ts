@@ -2,7 +2,7 @@
 // Whitebox tools come from the Whitebox Next Gen catalog snapshot
 // (opengeos/Whitebox-Next-Gen-ArcGIS WNG/data/catalog_snapshot.json);
 // GeoLibre-authored WASM tools come from the geolibre-wasm manifests and
-// are grouped under a "GeoLibre" subheading. Tool ids match the
+// are grouped under a "geoIM3D" product subheading. Tool ids match the
 // runtime/sidecar/WASM catalog used by ProcessingDialog.
 // Regenerate with scripts/gen-whitebox-menu-catalog.mjs; do not hand-edit.
 // Tool/subcategory names are catalog data and are intentionally not
@@ -38,7 +38,7 @@ export const WHITEBOX_MENU_CATALOG: WhiteboxMenuCategory[] = [
     labelKey: "toolbar.item.conversion",
     subcategories: [
       {
-        label: "GeoLibre",
+        label: "geoIM3D",
         tools: [
           { id: "h3_to_vector", name: "H3 Cells to Polygons" },
           { id: "h3_polyfill", name: "H3 Polyfill" },
@@ -105,7 +105,7 @@ export const WHITEBOX_MENU_CATALOG: WhiteboxMenuCategory[] = [
     labelKey: "toolbar.item.hydrology",
     subcategories: [
       {
-        label: "GeoLibre",
+        label: "geoIM3D",
         tools: [
           { id: "delineate_depressions", name: "Delineate Depressions" },
           { id: "delineate_mounts", name: "Delineate Mounts" },
@@ -393,7 +393,7 @@ export const WHITEBOX_MENU_CATALOG: WhiteboxMenuCategory[] = [
     labelKey: "toolbar.item.raster",
     subcategories: [
       {
-        label: "GeoLibre",
+        label: "geoIM3D",
         tools: [
           { id: "dem_filter", name: "DEM Filter" },
           { id: "extract_cog_subset", name: "Extract COG Subset" },
@@ -948,7 +948,7 @@ export const WHITEBOX_MENU_CATALOG: WhiteboxMenuCategory[] = [
     labelKey: "toolbar.item.vector",
     subcategories: [
       {
-        label: "GeoLibre",
+        label: "geoIM3D",
         tools: [
           { id: "render_vector_png", name: "Render Vector to PNG" },
         ],

@@ -243,11 +243,11 @@ describe("normalizeUiProfileSettings (via the store)", () => {
     return useDesktopSettingsStore.getState().desktopSettings.uiProfile;
   }
 
-  it("defaults to everything visible for legacy settings", () => {
+  it("defaults legacy settings to the locked geoIM3D product profile", () => {
     assert.deepEqual(normalized(undefined), DEFAULT_UI_PROFILE_SETTINGS);
   });
 
-  it("rejects tampered non-boolean and unknown-level values", () => {
+  it("clamps tampered values to the product profile", () => {
     const result = normalized({
       enabled: "yes",
       level: "expert",
@@ -256,17 +256,21 @@ describe("normalizeUiProfileSettings (via the store)", () => {
       hiddenDataSources: ["postgres", 42, "postgres", ""],
       hiddenPlugins: "nope",
     });
-    assert.equal(result.enabled, false);
+    assert.equal(result.enabled, true);
     assert.equal(result.level, null);
-    // Non-boolean falls back to the default (welcome dialog off by default).
     assert.equal(result.onboarded, true);
-    assert.equal(result.locked, false);
-    // Non-strings dropped, duplicates/blank removed.
-    assert.deepEqual(result.hiddenDataSources, ["postgres"]);
+    assert.equal(result.locked, true);
+    assert.deepEqual(result.hiddenDataSources, []);
     assert.deepEqual(result.hiddenPlugins, []);
+    assert.deepEqual(result.hiddenMenuItems, [
+      "project.collaborate",
+      "processing.pythonConsole",
+      "processing.notebook",
+      "controls.fieldCollection",
+    ]);
   });
 
-  it("preserves valid values", () => {
+  it("does not let a valid legacy Beginner profile hide required features", () => {
     const result = normalized({
       enabled: true,
       level: "beginner",
@@ -276,8 +280,9 @@ describe("normalizeUiProfileSettings (via the store)", () => {
       hiddenPlugins: ["maplibre-gl-geoagent"],
     });
     assert.equal(result.enabled, true);
-    assert.equal(result.level, "beginner");
+    assert.equal(result.level, null);
     assert.equal(result.locked, true);
-    assert.deepEqual(result.hiddenPlugins, ["maplibre-gl-geoagent"]);
+    assert.deepEqual(result.hiddenDataSources, []);
+    assert.deepEqual(result.hiddenPlugins, []);
   });
 });

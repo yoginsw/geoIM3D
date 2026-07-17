@@ -12,7 +12,7 @@ import {
 import { Check, Copy, ExternalLink, KeyRound, Loader2, Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
+import { useCredentialStore } from "../../hooks/useCredentials";
 import { openExternalLink } from "../../lib/open-external";
 import {
   isShareableTitle,
@@ -51,7 +51,9 @@ export function ShareProjectDialog({
   getProject,
 }: ShareProjectDialogProps) {
   const { t } = useTranslation();
-  const shareToken = useDesktopSettingsStore((s) => s.desktopSettings.shareToken);
+  const shareToken = useCredentialStore(
+    (state) => state.values["share:token"] ?? "",
+  );
   const [title, setTitle] = useState("");
   const [visibility, setVisibility] = useState<ShareVisibility>("unlisted");
   const [status, setStatus] = useState<"idle" | "uploading">("idle");

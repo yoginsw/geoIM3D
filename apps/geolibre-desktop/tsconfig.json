@@ -6,6 +6,10 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "../../packages/map/src/private-credential-runtime.ts",
+    "../../packages/plugins/src/built-in-credential-runtime.ts"
+  ],
   "references": []
 }

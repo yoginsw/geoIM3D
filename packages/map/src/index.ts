@@ -82,19 +82,11 @@ export {
   type SldExportOptions,
   type SldExportResult,
 } from "./sld-export";
-export {
-  applySldImport,
-  parseSld,
-  type SldImportResult,
-} from "./sld-import";
+export { applySldImport, parseSld, type SldImportResult } from "./sld-import";
 export {
   buildQml,
   type QmlExportableLayer,
   type QmlExportOptions,
   type QmlExportResult,
 } from "./qml-export";
-export {
-  applyQmlImport,
-  parseQml,
-  type QmlImportResult,
-} from "./qml-import";
+export { applyQmlImport, parseQml, type QmlImportResult } from "./qml-import";

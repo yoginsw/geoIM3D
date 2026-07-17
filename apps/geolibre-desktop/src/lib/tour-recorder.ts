@@ -499,7 +499,7 @@ export function parseTourConfig(text: string): ParsedTourConfig {
   }
   const obj = raw as Record<string, unknown>;
   if (obj.type !== TOUR_CONFIG_TYPE) {
-    throw new Error("File is not a GeoLibre tour configuration.");
+    throw new Error("File is not a geoIM3D tour configuration.");
   }
   // Reject a file written by a newer, incompatible format so its data isn't
   // silently misread. A missing version is accepted (the format is then inferred

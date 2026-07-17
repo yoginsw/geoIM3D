@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import { DESKTOP_SETTINGS_STORAGE_KEY } from "../lib/storage-keys";
+import { PRODUCT_PROFILE } from "../config/product-profile";
 import {
   DEFAULT_LANGUAGE,
   languageDirection,
@@ -24,8 +25,13 @@ for (const [path, mod] of Object.entries(catalogModules)) {
   resources[code] = { translation: mod.default };
 }
 
-/** Catalog codes we actually ship, e.g. `["en", "zh"]`. */
-export const AVAILABLE_LANGUAGES: string[] = Object.keys(resources).sort();
+/** Catalog codes exposed by geoIM3D. Other bundled catalogs remain available
+ * to upstream-compatible E2E tests but are not selectable in production. */
+const exposesAllCatalogsForE2E =
+  import.meta.env.VITE_E2E_EXPOSE_ALL_LOCALES === "true";
+export const AVAILABLE_LANGUAGES: string[] = exposesAllCatalogsForE2E
+  ? Object.keys(resources).sort()
+  : [PRODUCT_PROFILE.language];
 
 const QUERY_PARAM_KEYS = ["locale", "lang"];
 
@@ -51,7 +57,7 @@ function persistedLanguage(): string | null {
  *   1. `?locale=` / `?lang=` query param (for embeds, consistent with `theme`)
  *   2. the language persisted in desktop settings
  *   3. the browser's preferred languages (`navigator.languages`)
- *   4. the default (`en`)
+ *   4. the product default (`ko`)
  * Only languages we ship a catalog for are honored; anything else falls through.
  */
 export function getInitialLanguage(): string {
@@ -112,7 +118,7 @@ i18n.use(initReactI18next).init({
   // Eager catalogs make init resolve synchronously today, but surface any error
   // (e.g. if loading ever becomes async) instead of silently swallowing it.
 }).catch((error: unknown) => {
-  console.error("[GeoLibre] i18n initialization failed", error);
+  console.error("[geoIM3D] i18n initialization failed", error);
 });
 
 export default i18n;

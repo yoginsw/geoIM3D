@@ -52,7 +52,6 @@ import {
   EyeOff,
   FolderCog,
   FolderTree,
-  Languages,
   Locate,
   MapPinned,
   LayoutPanelTop,
@@ -86,7 +85,7 @@ import {
   type UiProfileSettings,
   type UpdateSettings,
 } from "../../hooks/useDesktopSettings";
-import { useLanguage } from "../../hooks/useLanguage";
+import { useCredentialStore } from "../../hooks/useCredentials";
 import { BROWSER_PANEL_ID } from "../../hooks/useRegisterBrowserPanel";
 import { useRightPanelState } from "../../hooks/useRightPanels";
 import type { ThemeMode } from "../../hooks/useThemeMode";
@@ -124,6 +123,13 @@ import {
   PROVIDER_FIELDS,
   type ProviderField,
 } from "../../lib/assistant/provider-fields";
+import {
+  credentialIdForAiEnv,
+  credentialIdForGeocoder,
+  credentialRuntimeValues,
+  removeManagedCredentialsFromEnvironment,
+  type CredentialId,
+} from "../../lib/credentials";
 
 export type SettingsSection =
   | "map"
@@ -137,6 +143,19 @@ export type SettingsSection =
 
 /** A field a deep-link can ask Settings to focus once the section renders. */
 export type SettingsFocusTarget = "shareToken" | "accentColor";
+
+const SERVICE_CREDENTIAL_FIELDS: ReadonlyArray<{
+  id: CredentialId;
+  label: string;
+}> = [
+  { id: "map:google-maps-api-key", label: "Google Maps API Key" },
+  { id: "map:mapillary-access-token", label: "Mapillary Access Token" },
+  { id: "map:protomaps-api-key", label: "Protomaps API Key" },
+  { id: "map:tomtom-api-key", label: "TomTom API Key" },
+  { id: "map:here-api-key", label: "HERE API Key" },
+  { id: "map:amazon-location-api-key", label: "Amazon Location API Key" },
+  { id: "ai:TAVILY_API_KEY", label: "Tavily API Key" },
+];
 
 /** Window event letting any panel open Settings at a given section (no prop-drilling). */
 export const OPEN_SETTINGS_EVENT = "geolibre:open-settings";
@@ -236,9 +255,6 @@ interface DraftPreferences {
 
 interface DraftDesktopSettings {
   layout: DesktopLayoutSettings;
-  shareToken: string;
-  cesiumIonToken: string;
-  aiProviderEnv: Record<string, string>;
   uiProfile: UiProfileSettings;
   updates: UpdateSettings;
 }
@@ -252,13 +268,12 @@ function createDraftId(): string {
 function clonePreferences(preferences: ProjectPreferences): DraftPreferences {
   return {
     map: { ...preferences.map },
-    environmentVariables: preferences.environmentVariables.map((variable) => ({
-      ...variable,
-      id: createDraftId(),
-    })),
+    environmentVariables: removeManagedCredentialsFromEnvironment(
+      preferences.environmentVariables,
+    ).map((variable) => ({ ...variable, id: createDraftId() })),
     geocoding: {
       ...preferences.geocoding,
-      apiKeys: { ...preferences.geocoding.apiKeys },
+      apiKeys: {},
     },
   };
 }
@@ -266,9 +281,6 @@ function clonePreferences(preferences: ProjectPreferences): DraftPreferences {
 function cloneDesktopSettings(settings: DesktopSettings): DraftDesktopSettings {
   return {
     layout: { ...settings.layout },
-    shareToken: settings.shareToken,
-    cesiumIonToken: settings.cesiumIonToken,
-    aiProviderEnv: { ...settings.aiProviderEnv },
     uiProfile: {
       ...settings.uiProfile,
       hiddenDataSources: [...settings.uiProfile.hiddenDataSources],
@@ -316,7 +328,9 @@ function normalizePreferences(
       maxZoom,
       maxPitch: clamp(preferences.map.maxPitch, 0, 85),
     },
-    environmentVariables: preferences.environmentVariables
+    environmentVariables: removeManagedCredentialsFromEnvironment(
+      preferences.environmentVariables,
+    )
       .map((variable) => ({
         key: variable.key.trim(),
         value: variable.value,
@@ -331,14 +345,9 @@ function normalizeGeocodingPreferences(
   geocoding: ProjectPreferences["geocoding"],
 ): ProjectPreferences["geocoding"] {
   const providerId = normalizeGeocodingProviderId(geocoding.providerId);
-  // Keep only non-empty keys so the saved project does not carry blank entries.
-  const apiKeys: Record<string, string> = {};
-  for (const [id, key] of Object.entries(geocoding.apiKeys)) {
-    if (key.trim()) apiKeys[id] = key.trim();
-  }
   return {
     providerId,
-    apiKeys,
+    apiKeys: {},
     forwardEndpoint: geocoding.forwardEndpoint?.trim() || undefined,
     reverseEndpoint: geocoding.reverseEndpoint?.trim() || undefined,
     email: geocoding.email?.trim() || undefined,
@@ -383,20 +392,19 @@ export function SettingsDialog({
   onToggleThemeMode,
 }: SettingsDialogProps) {
   const { t } = useTranslation();
-  const {
-    language,
-    options: languageOptions,
-    setLanguage,
-  } = useLanguage();
   const preferences = useAppStore((s) => s.preferences);
   const setPreferences = useAppStore((s) => s.setPreferences);
   const desktopSettings = useDesktopSettingsStore((s) => s.desktopSettings);
   const setDesktopSettings = useDesktopSettingsStore(
     (s) => s.setDesktopSettings,
   );
-  // Visibility of the Settings dropdown items under the active UI profile. The
-  // Language/Layout/Interface entries are always shown so the profile UI stays
-  // reachable.
+  const credentialValues = useCredentialStore((state) => state.values);
+  const credentialBackend = useCredentialStore((state) => state.backend);
+  const credentialErrorCode = useCredentialStore((state) => state.errorCode);
+  const setCredential = useCredentialStore((state) => state.setCredential);
+  const deleteCredential = useCredentialStore((state) => state.deleteCredential);
+  const clearCredentials = useCredentialStore((state) => state.clearCredentials);
+  // Visibility of Settings dropdown items under the active product profile.
   const showSettingsItem = (id: string) =>
     isMenuItemVisible(desktopSettings.uiProfile, id);
   const [open, setOpen] = useState(false);
@@ -440,6 +448,7 @@ export function SettingsDialog({
   // (its initial value is "map"), so render the first visible section instead to
   // never expose gated content to a restricted profile.
   const isSectionVisible = (id: SettingsSection) => {
+    if (id === "interface" && desktopSettings.uiProfile.locked) return false;
     // Automated update checks run in the desktop build only, so the section is
     // hidden on the web where its controls would be inert.
     if (id === "updates" && !isTauri()) return false;
@@ -451,13 +460,15 @@ export function SettingsDialog({
   };
   const effectiveSection: SettingsSection = isSectionVisible(section)
     ? section
-    : // "interface" has no gate, so it is always a valid, visible fallback.
-      (SECTION_ITEMS.find((item) => isSectionVisible(item.id))?.id ?? "interface");
+    : (SECTION_ITEMS.find((item) => isSectionVisible(item.id))?.id ?? "map");
   const [draftPreferences, setDraftPreferences] = useState<DraftPreferences>(
     () => clonePreferences(preferences),
   );
   const [draftDesktopSettings, setDraftDesktopSettings] =
     useState<DraftDesktopSettings>(() => cloneDesktopSettings(desktopSettings));
+  const [credentialDrafts, setCredentialDrafts] = useState<
+    Partial<Record<CredentialId, string>>
+  >({});
   const [error, setError] = useState<string | null>(null);
   // Live map projection, captured when the dialog opens. The Globe projection
   // lets the map drift slightly past restricted bounds, so we warn users to
@@ -492,20 +503,22 @@ export function SettingsDialog({
     }
     return env;
   }, [draftPreferences.environmentVariables]);
-  // Device-local AI provider credentials (Settings → AI Providers). The AI
-  // section reads and writes these instead of the project's Environment
-  // variables so a key persists across restarts without entering the shared
-  // project file. Non-empty entries only, matching the live runtime projection.
+  // Device-local AI credential status plus unsaved replacement drafts. Values are
+  // used only for runtime readiness; inputs never receive stored values.
   const draftAiEnv = useMemo(() => {
-    const env: Record<string, string> = {};
-    for (const [key, value] of Object.entries(
-      draftDesktopSettings.aiProviderEnv,
-    )) {
-      const name = key.trim();
-      if (name && value) env[name] = value;
+    const env = {
+      ...credentialRuntimeValues(credentialValues).aiProviderEnv,
+    };
+    for (const fields of Object.values(PROVIDER_FIELDS)) {
+      for (const field of fields) {
+        const id = credentialIdForAiEnv(field.envKey);
+        if (!id) continue;
+        const draft = credentialDrafts[id]?.trim();
+        if (draft) env[field.envKey] = draft;
+      }
     }
     return env;
-  }, [draftDesktopSettings.aiProviderEnv]);
+  }, [credentialDrafts, credentialValues]);
   // AI keys read from the user's OS environment (desktop only). This dialog is
   // mounted eagerly at startup — before the App-root loader populates the cache
   // and before the async Tauri read resolves — so a mount-only read would freeze
@@ -564,6 +577,7 @@ export function SettingsDialog({
       // first edit of the next session.
       skipCustomColorCommitRef.current = false;
       setCustomColorDraft(null);
+      setCredentialDrafts({});
       return;
     }
     const seededPreferences = clonePreferences(
@@ -580,13 +594,9 @@ export function SettingsDialog({
       const key = variable.key.trim();
       if (variable.enabled && key) seededProjectEnv[key] = variable.value;
     }
-    const seededAiEnv: Record<string, string> = {};
-    for (const [key, value] of Object.entries(
-      useDesktopSettingsStore.getState().desktopSettings.aiProviderEnv,
-    )) {
-      const name = key.trim();
-      if (name && value) seededAiEnv[name] = value;
-    }
+    const seededAiEnv = credentialRuntimeValues(
+      useCredentialStore.getState().values,
+    ).aiProviderEnv;
     const seededEnv = {
       ...scopeOsEnvToProject(
         readOsEnv(),
@@ -599,6 +609,7 @@ export function SettingsDialog({
       ...seededProjectEnv,
     };
     setAiProvider(availableProviders(seededEnv)[0] ?? "google");
+    setCredentialDrafts({});
     setRevealedValueIds(new Set());
     setError(null);
     setLiveProjection(mapControllerRef.current?.readProjection() ?? null);
@@ -719,25 +730,50 @@ export function SettingsDialog({
     ...(field.aliases ?? []),
   ];
 
-  // The value of an env-var-backed AI provider field, or "" when unset. Reads
-  // the device-local AI credential store first (where the AI section now saves
-  // keys so they persist across restarts), then falls back to a matching value
-  // still held in the project's Environment variables — e.g. one loaded from a
-  // `.geolibre.json` or set by hand under the Environment section — so an
-  // existing credential stays visible and editable here. An aliased value (e.g.
-  // an existing GOOGLE_API_KEY) is surfaced rather than hidden.
+  // Stored values are never copied into input state. A field is blank on every
+  // open and accepts only a replacement value for the current save operation.
   const getProviderField = (field: ProviderField): string => {
-    for (const key of fieldEnvKeys(field)) {
-      const value = draftDesktopSettings.aiProviderEnv[key];
-      if (value) return value;
+    const id = credentialIdForAiEnv(field.envKey);
+    return id ? (credentialDrafts[id] ?? "") : "";
+  };
+
+  const isCredentialConfigured = (id: CredentialId): boolean =>
+    Boolean(credentialValues[id] || credentialDrafts[id]?.trim());
+
+  const setCredentialDraft = (id: CredentialId, value: string) => {
+    setCredentialDrafts((current) => ({ ...current, [id]: value }));
+    setError(null);
+  };
+
+  const handleDeleteCredential = async (id: CredentialId) => {
+    try {
+      await deleteCredential(id);
+      setCredentialDrafts((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      setError(null);
+    } catch {
+      setError(useCredentialStore.getState().errorCode ?? "credential_delete_failed");
     }
-    for (const key of fieldEnvKeys(field)) {
-      const row = draftPreferences.environmentVariables.find(
-        (variable) => variable.key === key && variable.enabled,
-      );
-      if (row) return row.value;
+  };
+
+  const handleClearCredentials = async () => {
+    if (
+      !window.confirm(
+        "Remove all geoIM3D credentials from this Windows user or web session?",
+      )
+    ) {
+      return;
     }
-    return "";
+    try {
+      await clearCredentials();
+      setCredentialDrafts({});
+      setError(null);
+    } catch {
+      setError(useCredentialStore.getState().errorCode ?? "credential_delete_failed");
+    }
   };
 
   // The OS-environment variable name backing a field, when the system provides
@@ -750,34 +786,19 @@ export function SettingsDialog({
     return null;
   };
 
-  // Write an AI provider field through to the device-local credential store,
-  // keyed by the field's canonical env var name. Any alias entry is dropped so
-  // re-entering a credential never leaves a stale duplicate under an alias, and
-  // clearing removes the entry so the store never accrues empty values. The
-  // matching rows are also removed from the project's Environment variables:
-  // these keys now live device-local, so a leftover project row must not shadow
-  // the device value at runtime (project env has higher precedence) nor get
-  // serialized into a shared project file.
+  // Draft an AI provider replacement under its canonical allowlisted id and
+  // remove legacy aliases from the project environment.
   const setProviderField = (field: ProviderField, value: string) => {
+    const id = credentialIdForAiEnv(field.envKey);
+    if (!id) return;
+    setCredentialDraft(id, value);
     const keys = fieldEnvKeys(field);
-    setDraftDesktopSettings((current) => {
-      const next = { ...current.aiProviderEnv };
-      for (const key of keys) delete next[key];
-      if (value !== "") next[field.envKey] = value;
-      return { ...current, aiProviderEnv: next };
-    });
-    setDraftPreferences((current) => {
-      if (!current.environmentVariables.some((v) => keys.includes(v.key))) {
-        return current;
-      }
-      return {
-        ...current,
-        environmentVariables: current.environmentVariables.filter(
-          (v) => !keys.includes(v.key),
-        ),
-      };
-    });
-    setError(null);
+    setDraftPreferences((current) => ({
+      ...current,
+      environmentVariables: current.environmentVariables.filter(
+        (variable) => !keys.includes(variable.key),
+      ),
+    }));
   };
 
   const updateMapPreferences = (patch: Partial<MapPreferences>) => {
@@ -870,14 +891,8 @@ export function SettingsDialog({
   };
 
   const updateGeocodingApiKey = (providerId: string, value: string) => {
-    setDraftPreferences((current) => ({
-      ...current,
-      geocoding: {
-        ...current.geocoding,
-        apiKeys: { ...current.geocoding.apiKeys, [providerId]: value },
-      },
-    }));
-    setError(null);
+    const id = credentialIdForGeocoder(providerId);
+    if (id) setCredentialDraft(id, value);
   };
 
   const updateDraftLayoutSettings = (patch: Partial<DesktopLayoutSettings>) => {
@@ -981,16 +996,11 @@ export function SettingsDialog({
   };
 
   const updateShareToken = (value: string) => {
-    // Kept in the draft and only committed on Save, so editing the token and
-    // then closing the dialog without saving discards the change (a secret
-    // field should not persist on every keystroke).
-    setDraftDesktopSettings((current) => ({ ...current, shareToken: value }));
+    setCredentialDraft("share:token", value);
   };
 
   const updateCesiumIonToken = (value: string) => {
-    // Draft-only until Save, like the share token above (a secret field should
-    // not persist on every keystroke).
-    setDraftDesktopSettings((current) => ({ ...current, cesiumIonToken: value }));
+    setCredentialDraft("cesium:ion-token", value);
   };
 
   const updateUiProfile = (patch: Partial<UiProfileSettings>) => {
@@ -1107,8 +1117,14 @@ export function SettingsDialog({
     });
   };
 
-  const saveSettings = () => {
-    const normalized = normalizePreferences(draftPreferences);
+  const saveSettings = async () => {
+    const normalizedDraft = normalizePreferences(draftPreferences);
+    const normalized = {
+      ...normalizedDraft,
+      environmentVariables: removeManagedCredentialsFromEnvironment(
+        normalizedDraft.environmentVariables,
+      ),
+    };
     const validationError = validateEnvironmentVariables(
       normalized.environmentVariables,
     );
@@ -1119,6 +1135,15 @@ export function SettingsDialog({
           : t("settings.env.errorNamePattern"),
       );
       setSection("environment");
+      return;
+    }
+
+    try {
+      for (const [id, value] of Object.entries(credentialDrafts)) {
+        if (value?.trim()) await setCredential(id as CredentialId, value);
+      }
+    } catch {
+      setError(useCredentialStore.getState().errorCode ?? "credential_write_failed");
       return;
     }
 
@@ -1144,12 +1169,10 @@ export function SettingsDialog({
     setDesktopSettings({
       ...useDesktopSettingsStore.getState().desktopSettings,
       layout: draftDesktopSettings.layout,
-      shareToken: draftDesktopSettings.shareToken,
-      cesiumIonToken: draftDesktopSettings.cesiumIonToken,
-      aiProviderEnv: draftDesktopSettings.aiProviderEnv,
       uiProfile: committedUiProfile,
       updates: draftDesktopSettings.updates,
     });
+    setCredentialDrafts({});
     setOpen(false);
   };
 
@@ -1193,30 +1216,7 @@ export function SettingsDialog({
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel>{t("settings.title")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Languages className="h-3.5 w-3.5" />
-              {t("language.label")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-44">
-              <DropdownMenuRadioGroup
-                value={language}
-                onValueChange={setLanguage}
-              >
-                {languageOptions.map((option) => (
-                  <DropdownMenuRadioItem
-                    key={option.code}
-                    value={option.code}
-                  >
-                    {option.nativeName === option.englishName
-                      ? option.nativeName
-                      : `${option.nativeName} (${option.englishName})`}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
+
           {showSettingsItem("settings.mapPreferences") && (
             <DropdownMenuItem
               onSelect={() => {
@@ -1358,55 +1358,6 @@ export function SettingsDialog({
                 }}
               >
                 {t("settings.menu.appearanceSettings")}
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              {t("settings.section.interface")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
-              <DropdownMenuLabel className="px-2 py-1 text-xs font-normal text-muted-foreground">
-                {t("settings.interface.presets")}
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={activeInterfaceProfile(desktopSettings.uiProfile)}
-                onValueChange={(value: string) => {
-                  // The three presets recompute hidden lists; "custom" opts into
-                  // custom mode while keeping the current lists. EXPERIENCE_LEVELS
-                  // excludes "custom", so this guard keeps any stray value from
-                  // reaching presetHiddenSets. Keep EXPERIENCE_LEVELS in sync with
-                  // the selectable preset entries of INTERFACE_PROFILES.
-                  if ((EXPERIENCE_LEVELS as readonly string[]).includes(value)) {
-                    applySavedExperiencePreset(value as ExperienceLevel);
-                  } else if (value === "custom") {
-                    applySavedCustomProfile();
-                  }
-                }}
-              >
-                {INTERFACE_PROFILES.map((option) => (
-                  <DropdownMenuRadioItem
-                    key={option}
-                    value={option}
-                    // "custom" lights up automatically when the user hand-edits
-                    // an item, and is also directly selectable to keep the current
-                    // configuration while switching into custom mode.
-                    disabled={desktopSettings.uiProfile.locked}
-                    onSelect={(event: Event) => event.preventDefault()}
-                  >
-                    {t(`settings.interface.level.${option}`)}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => {
-                  setSection("interface");
-                  setOpen(true);
-                }}
-              >
-                {t("settings.menu.interfaceSettings")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -2195,8 +2146,7 @@ export function SettingsDialog({
                     const provider = getGeocodingProvider(
                       draftPreferences.geocoding.providerId,
                     );
-                    const apiKeyId = `geocoding-api-key-${provider.id}`;
-                    const apiKeyRevealed = revealedValueIds.has(apiKeyId);
+                    const apiKeyCredentialId = credentialIdForGeocoder(provider.id);
                     return (
                       <div className="space-y-4">
                         <div className="space-y-1.5">
@@ -2239,13 +2189,13 @@ export function SettingsDialog({
                             <div className="flex items-center gap-2">
                               <Input
                                 id="geocoding-key"
-                                type={apiKeyRevealed ? "text" : "password"}
+                                type="password"
                                 autoComplete="off"
                                 spellCheck={false}
                                 value={
-                                  draftPreferences.geocoding.apiKeys[
-                                    provider.id
-                                  ] ?? ""
+                                  apiKeyCredentialId
+                                    ? (credentialDrafts[apiKeyCredentialId] ?? "")
+                                    : ""
                                 }
                                 onChange={(event) =>
                                   updateGeocodingApiKey(
@@ -2253,27 +2203,29 @@ export function SettingsDialog({
                                     event.target.value,
                                   )
                                 }
-                                placeholder={t(
-                                  "settings.geocoding.apiKeyPlaceholder",
-                                )}
+                                placeholder={
+                                  apiKeyCredentialId &&
+                                  isCredentialConfigured(apiKeyCredentialId)
+                                    ? t("settings.ai.configuredMark")
+                                    : t("settings.geocoding.apiKeyPlaceholder")
+                                }
                               />
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => toggleValueVisibility(apiKeyId)}
-                                aria-label={t("settings.geocoding.toggleApiKey")}
-                              >
-                                {apiKeyRevealed ? (
-                                  <EyeOff className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Eye className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
+                              {apiKeyCredentialId &&
+                              isCredentialConfigured(apiKeyCredentialId) ? (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    void handleDeleteCredential(apiKeyCredentialId)
+                                  }
+                                  aria-label={t("common.remove")}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : null}
                             </div>
-                            <p className="text-xs text-amber-600 dark:text-amber-500">
-                              {t("settings.geocoding.secretsWarning")}
-                            </p>
+
                           </div>
                         ) : null}
 
@@ -2394,10 +2346,7 @@ export function SettingsDialog({
                       })}
                     </div>
                   )}
-                  <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{t("settings.ai.secretsNote")}</span>
-                  </div>
+
                   {PROVIDER_FIELDS[aiProvider].some(
                     (field) => osFieldEnvName(field) !== null,
                   ) ? (
@@ -2408,7 +2357,10 @@ export function SettingsDialog({
                   ) : null}
                   <div className="space-y-4">
                     {PROVIDER_FIELDS[aiProvider].map((field) => {
-                      const revealed = revealedValueIds.has(field.envKey);
+                      const credentialId = credentialIdForAiEnv(field.envKey);
+                      const configured = credentialId
+                        ? isCredentialConfigured(credentialId)
+                        : false;
                       const osEnvName = osFieldEnvName(field);
                       const fromOsEnv =
                         getProviderField(field) === "" && osEnvName !== null;
@@ -2433,9 +2385,7 @@ export function SettingsDialog({
                           <div className="flex items-center gap-2">
                             <Input
                               id={`settings-ai-${field.envKey}`}
-                              type={
-                                field.secret && !revealed ? "password" : "text"
-                              }
+                              type={field.secret ? "password" : "text"}
                               autoComplete="off"
                               spellCheck={false}
                               value={getProviderField(field)}
@@ -2443,34 +2393,24 @@ export function SettingsDialog({
                                 setProviderField(field, event.target.value)
                               }
                               placeholder={
-                                fromOsEnv
+                                configured
+                                  ? t("settings.ai.configuredMark")
+                                  : fromOsEnv
                                   ? t("settings.ai.osEnvPlaceholder")
                                   : t(field.placeholderKey)
                               }
                             />
-                            {field.secret ? (
+                            {credentialId && configured ? (
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="ghost"
                                 onClick={() =>
-                                  toggleValueVisibility(field.envKey)
+                                  void handleDeleteCredential(credentialId)
                                 }
-                                aria-label={
-                                  revealed
-                                    ? t("settings.ai.hideValue", {
-                                        name: t(field.labelKey),
-                                      })
-                                    : t("settings.ai.showValue", {
-                                        name: t(field.labelKey),
-                                      })
-                                }
+                                aria-label={t("common.remove")}
                               >
-                                {revealed ? (
-                                  <EyeOff className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Eye className="h-3.5 w-3.5" />
-                                )}
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             ) : null}
                           </div>
@@ -2524,51 +2464,160 @@ export function SettingsDialog({
                         }}
                       />
                     </p>
-                    <Input
-                      ref={shareTokenInputRef}
-                      aria-label={t("settings.env.tokenTitle")}
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder={t("settings.env.tokenPlaceholder")}
-                      value={draftDesktopSettings.shareToken}
-                      onChange={(event) => updateShareToken(event.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.env.tokenStorageNote")}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        ref={shareTokenInputRef}
+                        aria-label={t("settings.env.tokenTitle")}
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={
+                          isCredentialConfigured("share:token")
+                            ? t("settings.ai.configuredMark")
+                            : t("settings.env.tokenPlaceholder")
+                        }
+                        value={credentialDrafts["share:token"] ?? ""}
+                        onChange={(event) => updateShareToken(event.target.value)}
+                      />
+                      {isCredentialConfigured("share:token") ? (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={t("common.remove")}
+                          onClick={() => void handleDeleteCredential("share:token")}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                    </div>
+
                   </div>
                   <div className="space-y-2 border-t pt-5">
                     <h3 className="text-sm font-semibold">
                       {t("settings.env.cesiumTokenTitle")}
                     </h3>
-                    <p className="text-xs text-muted-foreground">
-                      <Trans
-                        i18nKey="settings.env.cesiumTokenDescription"
-                        components={{
-                          tokenLink: (
-                            <a
-                              className="underline"
-                              href="https://ion.cesium.com/tokens"
-                              target="_blank"
-                              rel="noreferrer noopener"
-                            />
-                          ),
-                        }}
+                    <a
+                      className="inline-flex items-center gap-1 text-xs text-primary underline"
+                      href="https://ion.cesium.com/tokens"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {t("settings.ai.getCredentials", {
+                        provider: "Cesium Ion",
+                      })}
+                    </a>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        aria-label={t("settings.env.cesiumTokenTitle")}
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={
+                          isCredentialConfigured("cesium:ion-token")
+                            ? t("settings.ai.configuredMark")
+                            : t("settings.env.cesiumTokenPlaceholder")
+                        }
+                        value={credentialDrafts["cesium:ion-token"] ?? ""}
+                        onChange={(event) =>
+                          updateCesiumIonToken(event.target.value)
+                        }
                       />
-                    </p>
-                    <Input
-                      aria-label={t("settings.env.cesiumTokenTitle")}
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder={t("settings.env.cesiumTokenPlaceholder")}
-                      value={draftDesktopSettings.cesiumIonToken}
-                      onChange={(event) =>
-                        updateCesiumIonToken(event.target.value)
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.env.cesiumTokenStorageNote")}
-                    </p>
+                      {isCredentialConfigured("cesium:ion-token") ? (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={t("common.remove")}
+                          onClick={() =>
+                            void handleDeleteCredential("cesium:ion-token")
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                    </div>
+
+                  </div>
+                  <div className="space-y-2 border-t pt-5">
+                    <h3 className="text-sm font-semibold">VWorld API Key</h3>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        aria-label="VWorld API Key"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={
+                          isCredentialConfigured("vworld:api-key")
+                            ? t("settings.ai.configuredMark")
+                            : "VWorld API Key"
+                        }
+                        value={credentialDrafts["vworld:api-key"] ?? ""}
+                        onChange={(event) =>
+                          setCredentialDraft("vworld:api-key", event.target.value)
+                        }
+                      />
+                      {isCredentialConfigured("vworld:api-key") ? (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={t("common.remove")}
+                          onClick={() =>
+                            void handleDeleteCredential("vworld:api-key")
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {SERVICE_CREDENTIAL_FIELDS.map(({ id, label }) => (
+                    <div key={id} className="space-y-2 border-t pt-5">
+                      <h3 className="text-sm font-semibold">{label}</h3>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          aria-label={label}
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={
+                            isCredentialConfigured(id)
+                              ? t("settings.ai.configuredMark")
+                              : label
+                          }
+                          value={credentialDrafts[id] ?? ""}
+                          onChange={(event) =>
+                            setCredentialDraft(id, event.target.value)
+                          }
+                        />
+                        {isCredentialConfigured(id) ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={t("common.remove")}
+                            onClick={() => void handleDeleteCredential(id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3 text-xs">
+                    <span className="text-muted-foreground">
+                      {credentialBackend === "windows"
+                        ? "Windows Credential Manager"
+                        : "Web memory-only"}
+                      {credentialErrorCode ? ` · ${credentialErrorCode}` : ""}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleClearCredentials()}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Clear all credentials
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between gap-3 border-t pt-5">
                     <div>
@@ -2591,10 +2640,7 @@ export function SettingsDialog({
                       {t("common.add")}
                     </Button>
                   </div>
-                  <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{t("settings.env.secretsWarning")}</span>
-                  </div>
+
                   {draftPreferences.environmentVariables.length === 0 ? (
                     <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                       {t("settings.env.empty")}

@@ -336,7 +336,7 @@ export function ManagePluginsDialog({
         // Desktop: pick a path and let the backend validate and copy the zip
         // into the app-data plugins directory (persisted via the startup scan).
         const path = await pickLocalPathWithFallback({
-          filters: [{ name: "GeoLibre plugin", extensions: ["zip"] }],
+          filters: [{ name: "geoIM3D plugin", extensions: ["zip"] }],
         });
         if (!path) return;
         setInstalling(true);
@@ -347,7 +347,7 @@ export function ManagePluginsDialog({
         // persist the bundle in IndexedDB so it reloads on the next visit.
         const picked = await openLocalDataFileWithFallback({
           accept: ".zip",
-          filters: [{ name: "GeoLibre plugin", extensions: ["zip"] }],
+          filters: [{ name: "geoIM3D plugin", extensions: ["zip"] }],
           readBinary: true,
         });
         if (!picked?.data) return;
@@ -461,7 +461,7 @@ export function ManagePluginsDialog({
         <DialogHeader className="border-b px-6 pb-4 pt-6">
           <DialogTitle>Manage Plugins</DialogTitle>
           <DialogDescription>
-            Browse, install, update, and remove external GeoLibre plugins.{" "}
+            Browse, install, update, and remove external geoIM3D plugins.{" "}
             Plugins are listed in the{" "}
             <a
               href="https://plugins.geolibre.app"
@@ -473,7 +473,7 @@ export function ManagePluginsDialog({
                 void openExternalLink("https://plugins.geolibre.app");
               }}
             >
-              GeoLibre plugin registry
+              Upstream plugin registry
               <ExternalLink className="h-3 w-3" />
             </a>
             .
@@ -647,7 +647,7 @@ export function ManagePluginsDialog({
                             ) : null}
                             {!compatible ? (
                               <span className="text-destructive">
-                                requires GeoLibre {entry.minGeoLibreVersion}+
+                                requires core version {entry.minGeoLibreVersion}+
                               </span>
                             ) : null}
                           </div>
@@ -817,7 +817,7 @@ function SettingsTab({
   return (
     <div className="space-y-5">
       <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-        GeoLibre always scans its app data plugins directory. Install a packaged
+        geoIM3D always scans its app data plugins directory. Install a packaged
         plugin (.zip) from a file, or add additional local directories
         (desktop-only). Manifest URLs (including marketplace installs) are loaded
         over the network; changes here apply immediately.
@@ -845,7 +845,7 @@ function SettingsTab({
           </Button>
           <p className="text-xs text-muted-foreground">
             {isTauri()
-              ? "Copy a packaged plugin archive into GeoLibre's plugins directory."
+              ? "Copy a packaged plugin archive into geoIM3D's plugins directory."
               : "Load a packaged plugin archive; it is stored in your browser and reloads on your next visit."}
           </p>
         </div>

@@ -1,10 +1,11 @@
-import { geocodeReverse } from "@geolibre/core";
-import type {
-  Map as MapLibreMap,
-  MapMouseEvent,
-  Popup,
-} from "maplibre-gl";
+import {
+  geocodeReverse,
+  getGeocoderConfig,
+  getRuntimeEnvironment,
+} from "@geolibre/core";
+import type { Map as MapLibreMap, MapMouseEvent, Popup } from "maplibre-gl";
 import type { GeoLibreAppAPI, GeoLibrePlugin } from "../types";
+import { readGeocoderApiKey } from "../built-in-credential-runtime";
 
 /**
  * Reverse geocoding: click the map to resolve a place/address, shown in a
@@ -56,7 +57,7 @@ let labels: ReverseGeocodeLabels = {
 
 /** Override the popup strings (called from the app layer with translated text). */
 export function setReverseGeocodeLabels(
-  next: Partial<ReverseGeocodeLabels>,
+  next: Partial<ReverseGeocodeLabels>
 ): void {
   labels = { ...labels, ...next };
 }
@@ -64,7 +65,7 @@ export function setReverseGeocodeLabels(
 function buildPopupContent(
   title: string,
   body: string,
-  copyLabel: string,
+  copyLabel: string
 ): HTMLElement {
   // Build a DOM node rather than an HTML string so the geocoder's returned text
   // is set via textContent (never parsed as HTML) and the copy button's handler
@@ -91,7 +92,7 @@ function buildPopupContent(
         },
         () => {
           /* Clipboard denied (e.g. insecure context); leave the label as is. */
-        },
+        }
       );
     });
     container.appendChild(button);
@@ -112,7 +113,7 @@ async function showReverseGeocodePopup(
   lng: number,
   lat: number,
   requestToken: number,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<void> {
   const { Popup } = await import("maplibre-gl");
   // A teardown or a newer click during the import supersedes this lookup.
@@ -124,15 +125,17 @@ async function showReverseGeocodePopup(
     .addTo(map);
 
   try {
-    const resolved = await geocodeReverse(lng, lat, { signal });
+    const resolved = await geocodeReverse(lng, lat, {
+      signal,
+      config: getGeocoderConfig({
+        ...getRuntimeEnvironment(),
+        VITE_GEOCODER_API_KEY: readGeocoderApiKey(),
+      }),
+    });
     if (requestToken !== lookupToken || !popup) return;
     const label = resolved?.displayName ?? labels.noAddress;
     popup.setDOMContent(
-      buildPopupContent(
-        resolved?.displayName ?? "",
-        label,
-        labels.copyAddress,
-      ),
+      buildPopupContent(resolved?.displayName ?? "", label, labels.copyAddress)
     );
   } catch {
     // A superseded/aborted request fails the token check and is ignored; only a
@@ -160,7 +163,7 @@ function attach(app: GeoLibreAppAPI): void {
       event.lngLat.lng,
       event.lngLat.lat,
       requestToken,
-      currentAbortController.signal,
+      currentAbortController.signal
     );
   };
 
@@ -192,7 +195,7 @@ function teardown(app: GeoLibreAppAPI): void {
  */
 export function restoreReverseGeocode(
   app: GeoLibreAppAPI,
-  active: boolean,
+  active: boolean
 ): void {
   if (!active) {
     teardown(app);

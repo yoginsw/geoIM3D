@@ -2,12 +2,8 @@ import {
   resolveThreeDTilesRequestHeaders,
   type GeoLibreLayer,
 } from "@geolibre/core";
-import type {
-  Cesium3DTileset,
-  DataSource,
-  ImageryLayer,
-  Viewer,
-} from "cesium";
+import type { Cesium3DTileset, DataSource, ImageryLayer, Viewer } from "cesium";
+import { readMapGoogleMapsApiKey } from "./private-credential-runtime";
 
 // Reconciles the store's `GeoLibreLayer[]` onto a Cesium globe, mirroring what
 // MapController.syncLayers does for MapLibre. M3 covers the layer kinds where
@@ -146,7 +142,7 @@ export class CesiumLayerSync {
 
   constructor(
     private readonly Cesium: CesiumNs,
-    private readonly viewer: Viewer,
+    private readonly viewer: Viewer
   ) {}
 
   /** Reconcile the globe to `layers` (order preserved for imagery stacking). */
@@ -277,7 +273,7 @@ export class CesiumLayerSync {
     const style = layer.style ?? {};
     const fill = Cesium.Color.fromCssColorString(style.fillColor ?? "#3b82f6");
     const stroke = Cesium.Color.fromCssColorString(
-      style.strokeColor ?? "#1e40af",
+      style.strokeColor ?? "#1e40af"
     );
     // Fold the layer + fill opacity into the fill colour (a GeoJsonDataSource has
     // no global alpha). A later opacity change re-applies this alpha in place
@@ -289,7 +285,7 @@ export class CesiumLayerSync {
         strokeWidth: style.strokeWidth ?? 2,
         fill: fill.withAlpha(fillAlpha),
         markerColor: Cesium.Color.fromCssColorString(
-          style.markerColor ?? "#3b82f6",
+          style.markerColor ?? "#3b82f6"
         ),
         clampToGround: true,
       });
@@ -320,6 +316,7 @@ export class CesiumLayerSync {
     const headers = resolveThreeDTilesRequestHeaders(
       url,
       layer.source.requestHeaders as Record<string, string> | undefined,
+      readMapGoogleMapsApiKey()
     );
     const resource =
       headers && Object.keys(headers).length
@@ -345,22 +342,22 @@ export class CesiumLayerSync {
     if (!Number.isFinite(offset) || offset === 0) return;
     const { Cesium } = this;
     const carto = Cesium.Cartographic.fromCartesian(
-      tileset.boundingSphere.center,
+      tileset.boundingSphere.center
     );
     const surface = Cesium.Cartesian3.fromRadians(
       carto.longitude,
       carto.latitude,
-      0,
+      0
     );
     const target = Cesium.Cartesian3.fromRadians(
       carto.longitude,
       carto.latitude,
-      offset,
+      offset
     );
     const translation = Cesium.Cartesian3.subtract(
       target,
       surface,
-      new Cesium.Cartesian3(),
+      new Cesium.Cartesian3()
     );
     tileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
   }
@@ -402,10 +399,10 @@ export class CesiumLayerSync {
     entry.appliedAlpha = key;
     const { Cesium } = this;
     const fill = Cesium.Color.fromCssColorString(
-      style.fillColor ?? "#3b82f6",
+      style.fillColor ?? "#3b82f6"
     ).withAlpha(fillAlpha);
     const stroke = Cesium.Color.fromCssColorString(
-      style.strokeColor ?? "#1e40af",
+      style.strokeColor ?? "#1e40af"
     ).withAlpha(opacity);
     // Point pins keep their baked-in colour; multiplying by white+alpha only
     // fades them.

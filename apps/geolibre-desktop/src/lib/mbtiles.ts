@@ -26,7 +26,7 @@ export async function readMbtilesMetadata(
   path: string,
 ): Promise<MbtilesMetadata> {
   if (!isTauri()) {
-    throw new Error("MBTiles files require GeoLibre Desktop.");
+    throw new Error("MBTiles files require geoIM3D Desktop.");
   }
 
   return invoke<MbtilesMetadata>("read_mbtiles_metadata", { path });
