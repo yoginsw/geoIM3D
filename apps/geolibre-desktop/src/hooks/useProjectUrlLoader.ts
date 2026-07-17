@@ -1,6 +1,7 @@
 import { useAppStore } from "@geolibre/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchProjectFromUrl, projectUrlFromLocation } from "../lib/project-url";
+import { getShareFetch } from "../lib/share-fetch";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 
 export type ProjectUrlLoadState =
@@ -28,7 +29,10 @@ export function useProjectUrlLoader(): ProjectUrlLoadState {
       status: "loading",
     });
 
-    void fetchProjectFromUrl(projectUrl, { signal: abortController.signal })
+    void fetchProjectFromUrl(projectUrl, {
+      signal: abortController.signal,
+      fetchImpl: getShareFetch(),
+    })
       .then((project) =>
         resolveProjectXyzLayers(project, abortController.signal),
       )

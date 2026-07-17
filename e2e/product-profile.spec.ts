@@ -65,6 +65,12 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
   await expect(mapLibreTab).toHaveAttribute("aria-selected", "true");
   await expect(mapLibreTab).toBeFocused();
 
+  // Make the unsaved-changes contract deterministic. A renderer camera drag is
+  // not guaranteed to update project state on every engine/frame timing.
+  await page
+    .getByRole("textbox", { name: "프로젝트 이름" })
+    .fill("작업 중 프로젝트");
+
   await page.getByRole("button", { name: "프로젝트", exact: true }).click();
   await page
     .getByRole("menuitem", { name: "새로 만들기...", exact: true })

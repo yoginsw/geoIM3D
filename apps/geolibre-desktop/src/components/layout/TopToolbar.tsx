@@ -88,6 +88,7 @@ import { useToolbarPanels } from "../../hooks/useToolbarPanels";
 import type { ThemeMode } from "../../hooks/useThemeMode";
 
 import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
+import { ensureProjectFileName } from "../../lib/file-names";
 import {
   MENU_MANAGED_PLUGIN_IDS,
   isMenuItemVisible,
@@ -1346,7 +1347,7 @@ export function TopToolbar({
             /[\u0000-\u001f\u007f/\\:*?"<>|]/g,
             "_",
           );
-          return { content, filename: `${safeName}.geolibre.json` };
+          return { content, filename: ensureProjectFileName(safeName) };
         }}
       />
       <ProjectGalleryDialog

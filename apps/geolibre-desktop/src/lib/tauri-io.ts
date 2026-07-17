@@ -38,6 +38,14 @@ import {
   isPhotoFileName,
 } from "./geotagged-photos";
 import { parseGpxLayer } from "./gpx";
+import {
+  ensureProjectFileName,
+  isCanonicalProjectFileName,
+  isCanonicalProjectReference,
+  isLegacyProjectFileName,
+  PROJECT_FILE_DIALOG_EXTENSION,
+  PROJECT_FILE_SUFFIX,
+} from "./file-names";
 import { isTauri } from "./is-tauri";
 import {
   parseKmlGroundOverlays,
@@ -58,7 +66,7 @@ import {
 export { isTauri };
 
 function browserSafeFileName(path: string): string {
-  return path.split(/[/\\]/).pop() || "project.geolibre.json";
+  return path.split(/[/\\]/).pop() || `project${PROJECT_FILE_SUFFIX}`;
 }
 
 export interface FileDialogFilter {
@@ -118,11 +126,11 @@ interface BrowserFilePickerWindow extends Window {
   }) => Promise<BrowserSaveFileHandle>;
 }
 
-const GEOLIBRE_PROJECT_FILE_TYPES: BrowserFilePickerType[] = [
+const GEOIM3D_PROJECT_FILE_TYPES: BrowserFilePickerType[] = [
   {
     description: "geoIM3D Project",
     accept: {
-      "application/json": [".geolibre", ".json"],
+      "application/json": [PROJECT_FILE_SUFFIX],
     },
   },
 ];
@@ -383,13 +391,14 @@ function pathWithoutExtension(path: string): string {
   return path.replace(/\.[^.\\/]+$/, "");
 }
 
-function isGeoLibreProjectFile(path: string): boolean {
-  const name = browserSafeFileName(path).toLowerCase();
-  return name.endsWith(".geolibre") || name.endsWith(".geolibre.json");
+function isProjectFileName(path: string): boolean {
+  return (
+    isCanonicalProjectFileName(path) || isLegacyProjectFileName(path)
+  );
 }
 
 function isVectorFileName(path: string): boolean {
-  if (isGeoLibreProjectFile(path)) return false;
+  if (isProjectFileName(path)) return false;
   if (browserSafeFileName(path).toLowerCase().endsWith(".shp.xml"))
     return false;
   // Rasters are handled by the raster drop path, not the DuckDB vector loader.
@@ -1901,11 +1910,14 @@ async function openProjectFileBrowser(): Promise<{
     try {
       const [handle] = await pickerWindow.showOpenFilePicker({
         multiple: false,
-        types: GEOLIBRE_PROJECT_FILE_TYPES,
-        excludeAcceptAllOption: false,
+        types: GEOIM3D_PROJECT_FILE_TYPES,
+        excludeAcceptAllOption: true,
       });
       if (!handle) return null;
       const file = await handle.getFile();
+      if (!isCanonicalProjectFileName(handle.name || file.name)) {
+        throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
+      }
       return {
         project: parseProject(await file.text()),
         path: handle.name || file.name,
@@ -1917,11 +1929,19 @@ async function openProjectFileBrowser(): Promise<{
   }
 
   const result = await openLocalDataFileWithFallback({
-    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
-    accept: ".geolibre,.json,.geolibre.json",
+    filters: [
+      {
+        name: "geoIM3D Project",
+        extensions: [PROJECT_FILE_DIALOG_EXTENSION],
+      },
+    ],
+    accept: PROJECT_FILE_SUFFIX,
     readText: true,
   });
   if (!result?.text) return null;
+  if (!isCanonicalProjectFileName(result.path)) {
+    throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
+  }
   return {
     project: parseProject(result.text),
     path: result.path,
@@ -1950,16 +1970,21 @@ async function saveProjectFileBrowser(
   content: string,
   defaultName?: string,
 ): Promise<string | null> {
-  const fileName = browserSafeFileName(defaultName ?? "project.geolibre.json");
+  const fileName = ensureProjectFileName(
+    browserSafeFileName(defaultName ?? `project${PROJECT_FILE_SUFFIX}`),
+  );
   const pickerWindow = window as BrowserFilePickerWindow;
 
   if (pickerWindow.showSaveFilePicker) {
     try {
       const handle = await pickerWindow.showSaveFilePicker({
         suggestedName: fileName,
-        types: GEOLIBRE_PROJECT_FILE_TYPES,
-        excludeAcceptAllOption: false,
+        types: GEOIM3D_PROJECT_FILE_TYPES,
+        excludeAcceptAllOption: true,
       });
+      if (!isCanonicalProjectFileName(handle.name)) {
+        throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
+      }
       const writable = await handle.createWritable();
       await writable.write(content);
       await writable.close();
@@ -2203,9 +2228,17 @@ export async function openProjectFile(): Promise<{
 
   const selected = await open({
     multiple: false,
-    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
+    filters: [
+      {
+        name: "geoIM3D Project",
+        extensions: [PROJECT_FILE_DIALOG_EXTENSION],
+      },
+    ],
   });
   if (!selected || typeof selected !== "string") return null;
+  if (!isCanonicalProjectFileName(selected)) {
+    throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
+  }
   const text = await readTextFile(selected);
   const project = parseProject(text);
   return { project, path: selected };
@@ -2240,12 +2273,18 @@ function isFileMissingError(error: unknown): boolean {
 export async function openRecentProjectFile(
   path: string,
   signal?: AbortSignal,
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
 ): Promise<{
   project: GeoLibreProject;
   path: string;
 }> {
-  if (isHttpUrl(path)) {
-    const response = await fetch(path, {
+  const remote = isHttpUrl(path);
+  if (!isCanonicalProjectReference(path)) {
+    throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
+  }
+
+  if (remote) {
+    const response = await fetchImpl(path, {
       headers: { Accept: "application/json, text/plain;q=0.9, */*;q=0.8" },
       signal,
     });
@@ -2307,12 +2346,20 @@ export async function saveProjectFile(
   }
 
   const path = await save({
-    filters: [{ name: "geoIM3D Project", extensions: ["geolibre", "json"] }],
-    defaultPath: defaultName ?? "project.geolibre.json",
+    filters: [
+      {
+        name: "geoIM3D Project",
+        extensions: [PROJECT_FILE_DIALOG_EXTENSION],
+      },
+    ],
+    defaultPath: ensureProjectFileName(
+      defaultName ?? `project${PROJECT_FILE_SUFFIX}`,
+    ),
   });
   if (!path) return null;
-  await writeTextFile(path, content);
-  return path;
+  const canonicalPath = ensureProjectFileName(path);
+  await writeTextFile(canonicalPath, content);
+  return canonicalPath;
 }
 
 /**
@@ -2324,7 +2371,7 @@ export async function saveProjectFileToPath(
   content: string,
   path: string,
 ): Promise<string | null> {
-  if (!isTauri() || isHttpUrl(path)) {
+  if (!isTauri() || isHttpUrl(path) || !isCanonicalProjectFileName(path)) {
     return saveProjectFile(content, path);
   }
   await writeTextFile(path, content);

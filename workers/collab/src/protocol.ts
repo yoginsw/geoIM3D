@@ -2,9 +2,10 @@
 //
 // This is the worker-side copy. The frontend keeps a parallel copy in
 // `apps/geolibre-desktop/src/lib/collab-protocol.ts` with the `project` field
-// typed as the concrete `GeoLibreProject`. The relay never inspects a project's
-// contents — it only stores and forwards the opaque JSON — so here `project` is
-// `unknown`. Keep the two `type` discriminants and field names in sync.
+// typed as the concrete `GeoLibreProject`. The relay treats project contents as
+// opaque except for removing `preferences.environmentVariables` before storage
+// and broadcast, so here `project` remains `unknown`. Keep the two `type`
+// discriminants and field names in sync.
 
 export type CollaborationRole = "host" | "guest";
 export type CollaborationMode = "view-only" | "co-edit";

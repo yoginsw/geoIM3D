@@ -68,6 +68,7 @@ import {
   type DroppedRaster,
 } from "../../lib/tauri-io";
 import { buildKmlModelLayer } from "../../lib/kml-model-layer";
+import { classifyProjectDrop } from "../../lib/project-file-contract";
 import {
   isPhotoDropFileName,
   type GeotaggedPhotoResult,
@@ -612,6 +613,8 @@ export function DesktopShell({
   // Browser panel, so their "open recent" calls coordinate their aborts (two
   // instances would race). Lifted here for the same reason as `collaboration`.
   const projectFiles = useProjectFileActions(mapControllerRef);
+  const projectFilesRef = useRef(projectFiles);
+  projectFilesRef.current = projectFiles;
   const notebookOpen = useAppStore((s) => s.ui.notebookOpen);
   const uiProfile = useDesktopSettingsStore(
     (state) => state.desktopSettings.uiProfile,
@@ -1391,6 +1394,24 @@ export function DesktopShell({
 
           try {
             const paths = event.payload.paths;
+            const projectDrop = classifyProjectDrop(paths);
+            if (projectDrop.kind === "invalid-project") {
+              throw new Error(
+                t(
+                  projectDrop.reason === "legacy"
+                    ? "toolbar.fileDrop.legacyProject"
+                    : "toolbar.fileDrop.oneProjectOnly",
+                ),
+              );
+            }
+            if (projectDrop.kind === "project") {
+              const error = await projectFilesRef.current.handleOpenRecent(
+                projectDrop.reference,
+              );
+              if (error) throw new Error(error);
+              setDropMessage(t("toolbar.fileDrop.openedProject"));
+              return;
+            }
             // OSM PBF files split into three layers, so they bypass the normal
             // single-FeatureCollection pipeline (which would otherwise route a
             // .pbf to DuckDB ST_Read and merge it).
@@ -1522,11 +1543,14 @@ export function DesktopShell({
       disposed = true;
       unlisten?.();
     };
-  }, [clearDropMessageLater,
+  }, [
+    clearDropMessageLater,
     finishDrop,
     addDroppedRasters,
     addDroppedPhotos,
-    addGeoJsonLayer]);
+    addGeoJsonLayer,
+    t,
+  ]);
 
   const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
     if (!hasDroppedFiles(event)) return;
@@ -1559,6 +1583,29 @@ export function DesktopShell({
 
       try {
         const allFiles = Array.from(event.dataTransfer.files);
+        const projectDrop = classifyProjectDrop(
+          allFiles.map((file) => file.name),
+        );
+        if (projectDrop.kind === "invalid-project") {
+          throw new Error(
+            t(
+              projectDrop.reason === "legacy"
+                ? "toolbar.fileDrop.legacyProject"
+                : "toolbar.fileDrop.oneProjectOnly",
+            ),
+          );
+        }
+        if (projectDrop.kind === "project") {
+          const file = allFiles.find(
+            (candidate) => candidate.name === projectDrop.reference,
+          );
+          if (!file) throw new Error(t("toolbar.error.couldNotOpenProject"));
+          const error =
+            await projectFilesRef.current.handleOpenDroppedProjectFile(file);
+          if (error) throw new Error(error);
+          setDropMessage(t("toolbar.fileDrop.openedProject"));
+          return;
+        }
         // OSM PBF files produce three separate layers (points/lines/polygons),
         // so they bypass the single-FeatureCollection vector drop pipeline.
         // Handle them first, then run the rest through the normal pipeline —
@@ -1662,11 +1709,14 @@ export function DesktopShell({
         clearDropMessageLater();
       }
     },
-    [clearDropMessageLater,
-    finishDrop,
-    addDroppedRasters,
-    addDroppedPhotos,
-    addGeoJsonLayer],
+    [
+      clearDropMessageLater,
+      finishDrop,
+      addDroppedRasters,
+      addDroppedPhotos,
+      addGeoJsonLayer,
+      t,
+    ],
   );
 
   const startLayerPanelResize = useCallback(

@@ -243,17 +243,16 @@ pub fn run() {
 
 /// Whether `read_project_file` may read `path`: an absolute local path (POSIX
 /// `/...` or a Windows drive-letter `C:\...`, never a UNC `\\host\share`), free
-/// of `..` traversal, ending in a GeoLibre project extension — `.geolibre` or
-/// `.geolibre.json`. These are the canonical formats `saveProject` writes and
-/// `isGeoLibreProjectPath` recognizes in `tauri-io.ts`.
+/// of `..` traversal, ending in the canonical geoIM3D project extension
+/// `.geoim3d.json`. Legacy upstream extensions are intentionally not imported.
 ///
 /// Without this, the command was an arbitrary local-file reader: any webview JS
 /// or loaded plugin could `invoke("read_project_file", { path: "~/.ssh/id_rsa" })`
 /// and receive the contents. A bare `.json` extension is deliberately NOT
 /// accepted: plenty of real secrets are JSON (GCP service-account keys,
 /// `application_default_credentials.json`, editor/CLI configs with tokens), so
-/// requiring the `.geolibre` marker keeps those out while still reading every
-/// real project. Byte-oriented like `is_allowed_local_vector_path` so Windows
+/// requiring the `.geoim3d` marker keeps those out while still reading every
+/// canonical project. Byte-oriented like `is_allowed_local_vector_path` so Windows
 /// paths behave the same on any host.
 pub(crate) fn is_allowed_project_path(path: &str) -> bool {
     let bytes = path.as_bytes();
@@ -278,7 +277,7 @@ pub(crate) fn is_allowed_project_path(path: &str) -> bool {
     }
 
     let lower = path.to_ascii_lowercase();
-    lower.ends_with(".geolibre") || lower.ends_with(".geolibre.json")
+    lower.ends_with(".geoim3d.json")
 }
 
 #[tauri::command]
@@ -289,14 +288,14 @@ fn read_project_file(path: String) -> Result<String, String> {
         ));
     }
     // Resolve symlinks and re-check the extension, so a symlink named
-    // `*.geolibre`/`*.geolibre.json` can't redirect the read to an arbitrary
-    // target (e.g. `~/notes.geolibre.json -> ~/.ssh/id_rsa`). Only the resolved
+    // `*.geoim3d.json` can't redirect the read to an arbitrary target (e.g.
+    // `~/notes.geoim3d.json -> ~/.ssh/id_rsa`). Only the resolved
     // extension is re-checked (not the full guard): `canonicalize` yields a
     // `\\?\C:\…` verbatim path on Windows, which the UNC check would reject.
     let canonical =
         fs::canonicalize(&path).map_err(|error| format!("Could not read project file: {error}"))?;
     let resolved = canonical.to_string_lossy().to_ascii_lowercase();
-    if !(resolved.ends_with(".geolibre") || resolved.ends_with(".geolibre.json")) {
+    if !resolved.ends_with(".geoim3d.json") {
         return Err(format!(
             "Refusing to read \"{path}\": resolves to a non-project file"
         ));
@@ -3200,18 +3199,22 @@ mod tests {
 
     #[test]
     fn project_path_guard_allows_projects_and_blocks_secrets() {
-        assert!(is_allowed_project_path("/home/u/map.geolibre.json"));
-        assert!(is_allowed_project_path("/home/u/map.geolibre"));
-        assert!(is_allowed_project_path("C:\\Users\\u\\map.geolibre.json"));
+        assert!(is_allowed_project_path("/home/u/map.geoim3d.json"));
+        assert!(is_allowed_project_path(
+            "C:\\Users\\u\\map.geoim3d.json"
+        ));
+        // Legacy project names are not imported before an explicit compatibility decision.
+        assert!(!is_allowed_project_path("/home/u/map.geolibre.json"));
+        assert!(!is_allowed_project_path("/home/u/map.geolibre"));
         // Secrets and traversal are refused.
         assert!(!is_allowed_project_path("/home/u/.ssh/id_rsa"));
         assert!(!is_allowed_project_path("/home/u/.aws/credentials"));
         assert!(!is_allowed_project_path(
-            "/home/u/../../etc/hosts.geolibre.json"
+            "/home/u/../../etc/hosts.geoim3d.json"
         ));
-        assert!(!is_allowed_project_path("relative/map.geolibre.json"));
+        assert!(!is_allowed_project_path("relative/map.geoim3d.json"));
         assert!(!is_allowed_project_path(
-            "\\\\server\\share\\map.geolibre.json"
+            "\\\\server\\share\\map.geoim3d.json"
         ));
         // A bare .json file (e.g. a JSON credential store) is NOT a project.
         assert!(!is_allowed_project_path(

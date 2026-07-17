@@ -4,20 +4,55 @@
 
 import { DEFAULT_PROJECT_NAME } from "@geolibre/core";
 
+export const PROJECT_FILE_SUFFIX = ".geoim3d.json";
+export const PROJECT_FILE_DIALOG_EXTENSION = "geoim3d.json";
+
+const LEGACY_PROJECT_SUFFIXES = [".geolibre.json", ".geolibre"] as const;
+
+function leafFileName(path: string): string {
+  return path.split(/[/\\]/).pop() ?? "";
+}
+
+/** Whether a path or file name uses the one canonical geoIM3D project suffix. */
+export function isCanonicalProjectFileName(path: string): boolean {
+  return leafFileName(path).toLowerCase().endsWith(PROJECT_FILE_SUFFIX);
+}
+
+/** Whether a local path or HTTP(S) URL uses the canonical project suffix. */
+export function isCanonicalProjectReference(value: string): boolean {
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return isCanonicalProjectFileName(new URL(value).pathname);
+    } catch {
+      return false;
+    }
+  }
+  return isCanonicalProjectFileName(value);
+}
+
+/** Whether a path still uses an upstream project suffix that is not imported. */
+export function isLegacyProjectFileName(path: string): boolean {
+  const lower = leafFileName(path).toLowerCase();
+  return LEGACY_PROJECT_SUFFIXES.some((suffix) => lower.endsWith(suffix));
+}
+
 /**
- * Ensure a user-entered project file name carries a recognized extension,
- * defaulting to `.geolibre.json` when none is present so the downloaded file
- * opens cleanly again later. Falls back to the default project name when blank.
+ * Ensure every newly written project uses the canonical geoIM3D extension.
+ * Legacy project and generic JSON suffixes are replaced, never preserved.
  *
- * @param name - The raw file name the user typed.
- * @returns A sanitized file name ending in a project extension.
+ * @param name - The raw file name or local path.
+ * @returns A trimmed name/path ending in `.geoim3d.json`.
  */
 export function ensureProjectFileName(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return `${DEFAULT_PROJECT_NAME}.geolibre.json`;
-  return /\.(geolibre\.json|geolibre|json)$/i.test(trimmed)
-    ? trimmed
-    : `${trimmed}.geolibre.json`;
+  const trimmed = name.trim() || DEFAULT_PROJECT_NAME;
+  if (isCanonicalProjectFileName(trimmed)) return trimmed;
+
+  const withoutOldSuffix = trimmed.replace(
+    /(?:\.geolibre\.json|\.geolibre|\.json)$/i,
+    "",
+  );
+  const base = withoutOldSuffix.trim() || DEFAULT_PROJECT_NAME;
+  return `${base}${PROJECT_FILE_SUFFIX}`;
 }
 
 /**

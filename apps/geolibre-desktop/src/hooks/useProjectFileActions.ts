@@ -1,5 +1,6 @@
 import {
   DEFAULT_PROJECT_NAME,
+  parseProject,
   projectFromStore,
   serializeProject,
   useAppStore,
@@ -25,6 +26,7 @@ import {
 } from "../lib/tauri-io";
 import { buildProjectHtml } from "../lib/html-export";
 import { ensureHtmlFileName, ensureProjectFileName } from "../lib/file-names";
+import { prepareProjectForFileSave } from "../lib/project-file-contract";
 import { mergeStringLists } from "../lib/string-lists";
 import { fetchProjectFromUrl } from "../lib/project-url";
 import { getShareFetch } from "../lib/share-fetch";
@@ -34,11 +36,6 @@ import { normalizeProjectUrl } from "../lib/urls";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 import type { MapControllerRef } from "../components/layout/toolbar/constants";
 
-/** A pending "strip env vars before saving?" prompt. */
-export interface EnvStripPrompt {
-  count: number;
-  resolve: (choice: "strip" | "keep" | "cancel") => void;
-}
 
 /**
  * A pending "embed local vector data?" prompt, shown on the web when saving a
@@ -100,8 +97,8 @@ function isReloadableLocalFileLayer(layer: GeoLibreLayer): boolean {
 
 /**
  * Bundles every project file action (open from file/URL/recent, save, save as)
- * along with the related dialog state (Open-from-URL, env-var strip prompt, and
- * the shared action-error dialog).
+ * along with the related dialog state (Open-from-URL, save prompts, and the
+ * shared action-error dialog).
  *
  * @param mapControllerRef - Ref to the live MapController, read when serializing.
  * @returns Handlers and state consumed by the toolbar menus and dialogs.
@@ -119,9 +116,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   const [projectUrl, setProjectUrl] = useState("");
   const [projectUrlError, setProjectUrlError] = useState<string | null>(null);
   const [projectUrlLoading, setProjectUrlLoading] = useState(false);
-  const [envStripPrompt, setEnvStripPrompt] = useState<EnvStripPrompt | null>(
-    null,
-  );
+
   const [embedVectorDataPrompt, setEmbedVectorDataPrompt] =
     useState<EmbedVectorDataPrompt | null>(null);
   const [saveNamePrompt, setSaveNamePrompt] = useState<SaveNamePrompt | null>(
@@ -158,6 +153,24 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     }
   };
 
+  /** Open one browser drag-dropped canonical project without inventing a path. */
+  const handleOpenDroppedProjectFile = async (
+    file: File,
+  ): Promise<string | null> => {
+    try {
+      const project = parseProject(await file.text());
+      loadProject(await resolveProjectXyzLayers(project), null, {
+        rememberRecent: false,
+      });
+      return null;
+    } catch (error) {
+      console.error("Failed to open dropped project", error);
+      return error instanceof Error
+        ? error.message
+        : t("toolbar.error.couldNotOpenProject");
+    }
+  };
+
   const handleOpenFromUrl = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedUrl = normalizeProjectUrl(projectUrl);
@@ -177,6 +190,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       const result = await openRecentProjectFile(
         normalizedUrl,
         controller.signal,
+        getShareFetch(),
       );
       const project = await resolveProjectXyzLayers(
         result.project,
@@ -229,39 +243,27 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     shareUrlAbortRef.current = controller;
 
     try {
-      if (options.authToken) {
-        const fetched = await fetchProjectFromUrl(normalizedUrl, {
-          signal: controller.signal,
-          fetchImpl: shareAuthorizedFetch(
-            options.authToken,
-            resolveShareBaseUrl(),
-            // Matches fetchMyProjects: on desktop this routes the share host
-            // through Tauri's native HTTP, which is exempt from the WebView's
-            // CORS enforcement. Omitting it falls back to browser `fetch`,
-            // which is why listing a private project worked but opening it did
-            // not.
-            getShareFetch(),
-          ),
-        });
-        const project = await resolveProjectXyzLayers(
-          fetched,
-          controller.signal,
-        );
-        if (controller.signal.aborted) return;
-        loadProject(project, null);
-        return;
-      }
-
-      const result = await openRecentProjectFile(
-        normalizedUrl,
-        controller.signal,
-      );
+      const baseFetch = getShareFetch();
+      const fetched = await fetchProjectFromUrl(normalizedUrl, {
+        signal: controller.signal,
+        fetchImpl: options.authToken
+          ? shareAuthorizedFetch(
+              options.authToken,
+              resolveShareBaseUrl(),
+              // On desktop this routes the share host through Tauri's native
+              // HTTP client, which is exempt from the WebView's CORS checks.
+              baseFetch,
+            )
+          : baseFetch,
+      });
       const project = await resolveProjectXyzLayers(
-        result.project,
+        fetched,
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      loadProject(project, result.path);
+      // Share service endpoints are compatibility APIs, not canonical local
+      // file references, so never persist them as writable/recent paths.
+      loadProject(project, null);
     } finally {
       if (shareUrlAbortRef.current === controller) {
         shareUrlAbortRef.current = null;
@@ -283,7 +285,11 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     let result: Awaited<ReturnType<typeof openRecentProjectFile>>;
 
     try {
-      result = await openRecentProjectFile(path, controller.signal);
+      result = await openRecentProjectFile(
+        path,
+        controller.signal,
+        getShareFetch(),
+      );
     } catch (error) {
       if (controller.signal.aborted) return null;
       // Only drop the entry when the project is permanently gone; preserve it
@@ -358,25 +364,13 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     return {
       project,
       defaultProjectName,
-      content: serializeProject(project),
+      content: serializeProject(prepareProjectForFileSave(project)),
       // Expose the path read from this same snapshot so callers don't take a
       // second `getState()` read that could be misread as a separate instant.
       projectPath: state.projectPath,
     };
   };
 
-  // Ask whether to strip environment variables before writing the file. The
-  // promise resolves when the user picks an option in the dialog.
-  const askStripEnvVars = (count: number) =>
-    new Promise<"strip" | "keep" | "cancel">((resolve) => {
-      setEnvStripPrompt({ count, resolve });
-    });
-
-  const resolveEnvStripPrompt = (choice: "strip" | "keep" | "cancel") => {
-    // Resolve outside the state updater (updaters must be side-effect free).
-    envStripPrompt?.resolve(choice);
-    setEnvStripPrompt(null);
-  };
 
   // Ask whether to embed local vector layers' data in the saved file. Resolves
   // when the user picks an option in the dialog.
@@ -557,22 +551,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     if (layersForSave === "cancel") return false;
     const { project, defaultProjectName, content, projectPath } =
       buildCurrentProject(undefined, layersForSave.layers);
-    // Env vars (possibly API keys) are serialized in plain text. If any are set,
-    // offer to strip them from the saved file before writing.
-    let contentToSave = content;
-    const envVarCount = (project.preferences.environmentVariables ?? []).filter(
-      (variable) => variable.key.trim(),
-    ).length;
-    if (envVarCount > 0) {
-      const choice = await askStripEnvVars(envVarCount);
-      if (choice === "cancel") return false;
-      if (choice === "strip") {
-        contentToSave = serializeProject({
-          ...project,
-          preferences: { ...project.preferences, environmentVariables: [] },
-        });
-      }
-    }
+    // buildCurrentProject always removes runtime environment values from the
+    // portable content while preserving them in the live store.
+    const contentToSave = content;
     // Projects opened from a URL have no writable path, so both Save and
     // Save As fall back to the save dialog for them.
     const existingLocalPath =
@@ -581,7 +562,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     // download under a fixed name, so Save As (and a first Save) would otherwise
     // reuse a default name — exactly the bug users hit. Prompt for the name so
     // they can choose it; later in-place Saves reuse the chosen name silently.
-    let saveName = `${defaultProjectName}.geolibre.json`;
+    let saveName = ensureProjectFileName(defaultProjectName);
     const promptForName =
       browserSaveFallsBackToDownload() &&
       (options?.saveAs === true || !existingLocalPath);
@@ -740,8 +721,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     projectUrlError,
     setProjectUrlError,
     projectUrlLoading,
-    envStripPrompt,
-    resolveEnvStripPrompt,
+
     embedVectorDataPrompt,
     resolveEmbedVectorDataPrompt,
     saveNamePrompt,
@@ -750,6 +730,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     submitSaveNamePrompt,
     cancelSaveNamePrompt,
     handleOpenFromFile,
+    handleOpenDroppedProjectFile,
     handleOpenFromUrl,
     openProjectFromShareUrl,
     handleOpenRecent,

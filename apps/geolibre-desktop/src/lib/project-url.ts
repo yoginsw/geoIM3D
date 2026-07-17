@@ -1,12 +1,13 @@
 import { parseProject, type GeoLibreProject } from "@geolibre/core";
+import { isCanonicalProjectFileName, PROJECT_FILE_SUFFIX } from "./file-names";
 import { normalizeProjectUrl } from "./urls";
 
-// Query parameters that carry a `.geolibre.json` project URL deep link. A bare
+// Query parameters that carry a `.geoim3d.json` project URL deep link. A bare
 // `?https://...` query (no key) is also accepted by `projectUrlFromLocation`.
 export const PROJECT_URL_PARAMS = ["url", "project", "projectUrl", "project_url"];
 
 /**
- * Reads a `.geolibre.json` project URL from the current `window.location` query
+ * Reads a `.geoim3d.json` project URL from the current `window.location` query
  * string, if one is present.
  *
  * Accepts any of {@link PROJECT_URL_PARAMS} or a bare `?https://...` query, and
@@ -22,19 +23,28 @@ export function projectUrlFromLocation(): string | null {
   for (const key of PROJECT_URL_PARAMS) {
     const value = params.get(key);
     const url = normalizeProjectUrl(value);
-    if (url) return url;
+    if (url && isCanonicalProjectUrl(url)) return url;
   }
 
   const bareQuery = search.startsWith("?")
     ? safeDecodeURIComponent(search.slice(1)).trim()
     : "";
-  return /^https?:\/\//i.test(bareQuery)
-    ? normalizeProjectUrl(bareQuery)
-    : null;
+  if (!/^https?:\/\//i.test(bareQuery)) return null;
+  const url = normalizeProjectUrl(bareQuery);
+  return url && isCanonicalProjectUrl(url) ? url : null;
+}
+
+/** Whether an absolute project URL ends in the canonical file extension. */
+export function isCanonicalProjectUrl(value: string): boolean {
+  try {
+    return isCanonicalProjectFileName(new URL(value).pathname);
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Fetches and parses a `.geolibre.json` project from a URL, turning every
+ * Fetches and parses a serialized project from a URL, turning every
  * failure mode into a message that names the URL and the likely cause.
  *
  * A bare `fetch` rejects with an unhelpful `TypeError` ("Failed to fetch" in
@@ -124,7 +134,7 @@ export async function fetchProjectFromUrl(
     const detail = raw.replace(/^Invalid GeoLibre project:\s*/i, "") || raw;
     throw new Error(
       `The file at ${projectUrl} is not a valid geoIM3D project ` +
-        `(.geolibre.json): ${detail}`,
+        `(${PROJECT_FILE_SUFFIX}): ${detail}`,
       { cause: error },
     );
   }

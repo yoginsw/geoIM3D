@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fetchProjectFromUrl } from "../apps/geolibre-desktop/src/lib/project-url";
 
-const PROJECT_URL = "https://example.com/Test.geolibre.json";
+const PROJECT_URL = "https://example.com/Test.geoim3d.json";
 
 // A serialized project carrying exactly the fields `parseProject` requires
 // (version, name, mapView). Kept as a string so the fixture stays decoupled

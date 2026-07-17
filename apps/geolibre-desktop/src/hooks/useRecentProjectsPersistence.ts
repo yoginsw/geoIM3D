@@ -1,5 +1,6 @@
 import { useAppStore, type RecentProjectEntry } from "@geolibre/core";
 import { useEffect } from "react";
+import { filterCanonicalRecentProjects } from "../lib/project-file-contract";
 
 const RECENT_PROJECTS_STORAGE_KEY = "geolibre.recentProjects";
 
@@ -20,7 +21,9 @@ function loadRecentProjects(): RecentProjectEntry[] {
     const stored = window.localStorage.getItem(RECENT_PROJECTS_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isRecentProjectEntry) : [];
+    return Array.isArray(parsed)
+      ? filterCanonicalRecentProjects(parsed.filter(isRecentProjectEntry))
+      : [];
   } catch {
     // localStorage may be unavailable (SecurityError) or hold invalid JSON.
     return [];
