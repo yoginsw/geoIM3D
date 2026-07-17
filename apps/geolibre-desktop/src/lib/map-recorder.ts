@@ -762,11 +762,19 @@ export async function recordMapCanvas({
           }
         }
       });
-      // Composite the rasterized DOM overlays (the HTML panel) on top of the
+      // Composite the rasterized DOM overlays (the info panels) on top of the
       // map, re-measuring each one's live on-screen position so it tracks the
       // map as the viewport resizes. The rasters were checked origin-clean at
       // record start, so this keeps captureStream alive where compositing the
       // live DOM never could.
+      //
+      // The raster is captured once at the record-start device-pixel ratio but
+      // drawn each frame to a rect sized from the live scale, so a panel whose
+      // pixel size changes mid-recording is scaled (drawImage handles that). A
+      // mid-recording DPR change (e.g. dragging the window to a different-DPI
+      // display) can therefore soften the overlay slightly relative to the map,
+      // which is re-read from the live canvas every frame — a rare, cosmetic-only
+      // gap not worth an async re-rasterize.
       if (overlays.length > 0) {
         const baseRect = base.getBoundingClientRect();
         const overlayScale = liveCssWidth > 0 ? base.width / liveCssWidth : 1;
