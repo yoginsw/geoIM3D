@@ -541,6 +541,13 @@ export interface RecordMapOptions {
    * would never settle and the RAF loop / MediaRecorder would run forever.
    */
   signal: AbortSignal;
+  /**
+   * Called once, right after `MediaRecorder.start()`, i.e. when capture actually
+   * begins. Overlay rasterization ({@link htmlOverlays}) runs before this, so the
+   * caller can show a "preparing" state until then rather than a "recording" one
+   * that is not yet capturing.
+   */
+  onStarted?: () => void;
   /** Reports elapsed seconds while recording, for a live timer. */
   onElapsed?: (seconds: number) => void;
 }
@@ -571,6 +578,7 @@ export async function recordMapCanvas({
   htmlOverlays,
   fps,
   signal,
+  onStarted,
   onElapsed,
 }: RecordMapOptions): Promise<MapRecording> {
   const mimeType = pickSupportedMimeType(
@@ -603,6 +611,12 @@ export async function recordMapCanvas({
   const overlays = htmlOverlays?.length
     ? await rasterizeHtmlOverlays(htmlOverlays, deviceScale)
     : [];
+  // Rasterization is async and can outlast a quick Stop; if the caller already
+  // aborted during it, bail before starting the recorder. An empty blob reads as
+  // a cancel to the dialog (it never entered the "recording" state).
+  if (signal.aborted) {
+    return { blob: new Blob([], { type: mimeType }), mimeType, extension };
+  }
 
   // Fixed-size offscreen canvas: MediaRecorder does not tolerate a mid-stream
   // resize, so the output dimensions are locked here from the initial rect even
@@ -767,6 +781,8 @@ export async function recordMapCanvas({
     // recordings instead of buffering the whole video until stop().
     recorder.start(1000);
     startedAt = performance.now();
+    // Capture has begun: let the caller flip from "preparing" to "recording".
+    onStarted?.();
     rafId = requestAnimationFrame(drawFrame);
     // Recording runs until the caller aborts (Stop button) or the recorder
     // errors; both settle the promise below.

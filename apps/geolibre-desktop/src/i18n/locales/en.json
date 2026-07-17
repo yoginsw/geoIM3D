@@ -729,6 +729,7 @@
     },
     "includeHtmlPanel": "Include HTML panel in video",
     "record": "Record",
+    "preparing": "Preparing…",
     "stop": "Stop",
     "savingStatus": "Saving video…",
     "recordingReady": "Recording ready. Name it and save, or discard to re-record.",

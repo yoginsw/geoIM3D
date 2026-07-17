@@ -38,7 +38,10 @@ interface RecordVideoDialogProps {
 
 // "ready" holds a finished recording in memory so saving is a deliberate second
 // step (name + Save) rather than an automatic download the moment recording ends.
-type Status = "idle" | "recording" | "ready" | "saving";
+// "preparing" covers the brief async setup before capture starts (rasterizing
+// the HTML panel overlay); the UI stays out of the live "recording" state until
+// MediaRecorder is actually running.
+type Status = "idle" | "preparing" | "recording" | "ready" | "saving";
 // Which part of the map a recording captures.
 type Mode = "whole" | "region";
 
@@ -129,7 +132,8 @@ export function RecordVideoDialog({
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const busy = status === "recording" || status === "saving";
+  const busy =
+    status === "preparing" || status === "recording" || status === "saving";
   // Also frozen in "ready": a finished take is held, so mode/region editing is
   // locked until it is saved or discarded, matching the tour recorder.
   const editingFrozen = busy || status === "ready";
@@ -212,7 +216,10 @@ export function RecordVideoDialog({
     }
     clearResultMessages();
     setElapsed(0);
-    setStatus("recording");
+    // "preparing" until MediaRecorder actually starts (onStarted below): the
+    // HTML-panel overlay is rasterized first, so the red "recording" UI must not
+    // claim capture is live before it is.
+    setStatus("preparing");
     const controller = new AbortController();
     abortRef.current = controller;
     // Snapshot the caption text at record start; blank fields draw nothing.
@@ -238,6 +245,7 @@ export function RecordVideoDialog({
         htmlOverlays,
         fps,
         signal: controller.signal,
+        onStarted: () => setStatus("recording"),
         onElapsed: setElapsed,
       });
       // An empty clip (a stop before the first frame flushed) is treated as a
@@ -258,7 +266,9 @@ export function RecordVideoDialog({
       setStatus("idle");
     } finally {
       abortRef.current = null;
-      setStatus((current) => (current === "recording" ? "idle" : current));
+      setStatus((current) =>
+        current === "recording" || current === "preparing" ? "idle" : current,
+      );
     }
   };
 
@@ -275,14 +285,32 @@ export function RecordVideoDialog({
   }, [open]);
 
   // Offer the "include HTML panel" option only when such a panel is actually on
-  // the map. Re-checked each time the dialog opens (the panel can be toggled on
-  // or off from the toolbar between recordings).
+  // the map. Kept live while the dialog is open by observing the map's control
+  // container, so toggling the panel on/off from the toolbar between recordings
+  // updates the checkbox without reopening the dialog.
   useEffect(() => {
     if (!open) return;
     const container = mapControllerRef.current?.getMap()?.getContainer();
-    const present = Boolean(container?.querySelector(HTML_PANEL_SELECTOR));
-    setHtmlPanelAvailable(present);
-    if (!present) setIncludeHtmlPanel(false);
+    // Observe the control container specifically (not the whole map) so tile and
+    // marker churn don't fire the callback — only control add/removes do.
+    const controlContainer =
+      container?.querySelector(".maplibregl-control-container") ?? container;
+    if (!controlContainer) {
+      setHtmlPanelAvailable(false);
+      setIncludeHtmlPanel(false);
+      return;
+    }
+    const refresh = () => {
+      const present = Boolean(
+        controlContainer.querySelector(HTML_PANEL_SELECTOR),
+      );
+      setHtmlPanelAvailable(present);
+      if (!present) setIncludeHtmlPanel(false);
+    };
+    refresh();
+    const observer = new MutationObserver(refresh);
+    observer.observe(controlContainer, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [open, mapControllerRef]);
 
   const handleSave = async () => {
@@ -531,7 +559,7 @@ export function RecordVideoDialog({
           )}
 
           {/* Record / Stop, then the save step. */}
-          {status === "recording" ? (
+          {status === "recording" || status === "preparing" ? (
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -542,10 +570,16 @@ export function RecordVideoDialog({
                 <Square className="me-1.5 h-3.5 w-3.5 fill-current" />
                 {t("recordVideo.stop")}
               </Button>
-              <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
-                <Circle className="h-2.5 w-2.5 animate-pulse fill-current" />
-                {formatElapsed(elapsed)}
-              </span>
+              {status === "preparing" ? (
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("recordVideo.preparing")}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                  <Circle className="h-2.5 w-2.5 animate-pulse fill-current" />
+                  {formatElapsed(elapsed)}
+                </span>
+              )}
             </div>
           ) : status === "ready" ? (
             <div className="flex flex-col gap-2 rounded-md border border-border/60 p-2">
