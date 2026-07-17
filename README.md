@@ -1,26 +1,27 @@
-# GeoLibre
+# geoIM3D
 
-[![Launch GeoLibre Web](https://img.shields.io/badge/Launch-GeoLibre%20Web-green.svg)](https://web.geolibre.app/)
-[![GeoLibre shared project](https://img.shields.io/badge/GeoLibre-share-green.svg)](https://share.geolibre.app)
-[![GeoLibre plugins](https://img.shields.io/badge/GeoLibre-plugins-green.svg)](https://plugins.geolibre.app)
-[![image](https://img.shields.io/pypi/v/geolibre.svg)](https://pypi.python.org/pypi/geolibre)
-[![image](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/GeoLibre/blob/main/python/examples/getting-started.ipynb)
-[![image](https://img.shields.io/conda/vn/conda-forge/geolibre.svg)](https://anaconda.org/conda-forge/geolibre)
-[![Conda Recipe](https://img.shields.io/badge/recipe-geolibre-green.svg)](https://github.com/conda-forge/geolibre-feedstock)
-[![Open in CodeSandbox](https://img.shields.io/badge/Open%20in-CodeSandbox-blue?logo=codesandbox)](https://codesandbox.io/p/github/opengeos/geolibre)
-[![Open in StackBlitz](https://img.shields.io/badge/Open%20in-StackBlitz-blue?logo=stackblitz)](https://stackblitz.com/github/opengeos/geolibre)
-[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-GeoLibre-0078D4?logo=windows)](https://apps.microsoft.com/detail/9nwt67rv531x)
-[![AUR version](https://img.shields.io/aur/version/geolibre-bin?logo=archlinux&label=AUR)](https://aur.archlinux.org/packages/geolibre-bin)
-[![FlatPark](https://img.shields.io/badge/FlatPark-GeoLibre-4A90D9?logo=flatpak)](https://flatpark.org/apps/app.geolibre.GeoLibre/)
-[![image](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20785400.svg)](https://doi.org/10.5281/zenodo.20785400)
+**지오아임3D(geoIM3D)**는 JBT의 **실감형 3D 플랫폼**입니다. 건축·토목·부동산·환경·안전·공간 분석 업무를 위한 2D/3D 공간정보 기능을 제공합니다.
 
+> geoIM3D는 오픈소스 GIS 플랫폼 [GeoLibre](https://github.com/opengeos/GeoLibre)에서 영감을 받아 Fork한 제품 특화 프로젝트입니다. 원본 프로젝트의 MIT License와 Attribution을 존중하며 유지합니다.
 
-A free and open-source, lightweight, cloud-native GIS platform for visualizing, exploring, and analyzing geospatial data. It runs everywhere you do, in the web browser, on the desktop, on mobile, and inside Jupyter notebooks, all while keeping your data local and private.
+[![JBT](https://img.shields.io/badge/JBT-geoIM3D-0B365F)](https://www.ejbt.co.kr/)
+[![Upstream](https://img.shields.io/badge/Upstream-GeoLibre-33CC27)](https://github.com/opengeos/GeoLibre)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-GeoLibre is built with **Tauri v2**, **React**, **TypeScript**, **MapLibre GL JS**, **DuckDB-WASM Spatial**, and **deck.gl**. The same workspace runs as a native desktop app, a native Android app, in any modern web browser, and adapts responsively to mobile and small screens.
+## 프로젝트 소개
 
-[![GeoLibre demo showing 3D Tiles rendered on a MapLibre map](https://files.opengeos.org/GeoLibre-demo.webp)](https://web.geolibre.app/?url=https://share.geolibre.app/giswqs/3d-tiles.geolibre.json)
+geoIM3D는 GeoLibre의 웹·데스크톱·모바일 GIS 기반과 호환 가능한 내부 API를 유지하면서, JBT 업무 환경에 맞는 브랜드, 2D/3D Workspace, `.geoim3d.json` Project Identity 및 안전한 Credential Architecture를 제공합니다.
+
+- **제품명:** 지오아임3D(geoIM3D)
+- **회사:** [JBT](https://www.ejbt.co.kr/)
+- **슬로건:** 실감형 3D 플랫폼
+- **대상 업무:** 건축, 토목, 부동산, 환경, 안전, 공간 분석
+- **Upstream:** [opengeos/GeoLibre](https://github.com/opengeos/GeoLibre)
+- **License:** MIT — 원본 GeoLibre 저작권 및 라이선스 고지 유지
+
+geoIM3D는 **Tauri v2**, **React**, **TypeScript**, **MapLibre GL JS**, **CesiumJS**, **DuckDB-WASM Spatial**, **deck.gl**을 기반으로 합니다.
+
+아래 기능 설명과 기술 문서에는 Upstream GeoLibre와의 API·Schema 호환성을 위해 기존 내부 명칭 및 원본 프로젝트 링크가 포함될 수 있습니다.
 
 **Video tutorials:**
 
@@ -99,8 +100,9 @@ GeoLibre is built with **Tauri v2**, **React**, **TypeScript**, **MapLibre GL JS
 
 ## Install
 
-Prebuilt desktop installers for Linux, Windows, and macOS are published on the
-[Releases](https://github.com/opengeos/GeoLibre/releases) page. On Windows you
+geoIM3D 전용 Installer는 Packaging Phase에서 제공합니다. 현재 서명된
+Prebuilt Installer가 필요한 경우 Upstream GeoLibre의
+[Releases](https://github.com/opengeos/GeoLibre/releases) page를 사용할 수 있습니다. On Windows you
 can install the signed, auto-updating build from the
 [Microsoft Store](https://apps.microsoft.com/detail/9nwt67rv531x), or the
 unsigned GitHub Release build via `winget install OpenGeos.GeoLibre`. On macOS
@@ -116,11 +118,11 @@ The macOS app is signed with an Apple Developer ID certificate and notarized by
 Apple, so it launches normally with no quarantine workaround. See
 [Downloads](docs/downloads.md) for details and the manual install steps.
 
-To build from source instead:
+To build geoIM3D from source:
 
 ```bash
-git clone https://github.com/opengeos/GeoLibre.git
-cd GeoLibre
+git clone https://github.com/yoginsw/geoIM3D.git
+cd geoIM3D
 npm install
 ```
 
