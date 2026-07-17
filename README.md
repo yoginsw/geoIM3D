@@ -411,13 +411,9 @@ VITE_MAPILLARY_ACCESS_TOKEN=your_mapillary_access_token
 
 For Google Street View, enable the Maps Embed API for the key in Google Cloud. For Mapillary, create an app in the Mapillary developer dashboard and use its client access token.
 
-The optional **Cesium 3D-globe view** — a split-pane globe rendered with [CesiumJS](https://cesium.com/platform/cesiumjs/) alongside the 2D MapLibre map — needs a [Cesium Ion](https://ion.cesium.com/) access token for its world imagery and terrain. Create a free Ion account, copy your default access token, and set it at build time:
+The optional **Cesium 3D-globe view** — a split-pane globe rendered with [CesiumJS](https://cesium.com/platform/cesiumjs/) alongside the 2D MapLibre map — needs a [Cesium Ion](https://ion.cesium.com/) access token for its world imagery and terrain. Create a free Ion account and enter the token at runtime in the Settings dialog's dedicated masked **Cesium Ion token** field.
 
-```env
-CESIUM_TOKEN=your_cesium_ion_access_token
-```
-
-`CESIUM_TOKEN` (or the `VITE_`-prefixed `VITE_CESIUM_TOKEN`) is read by `vite.config.ts` and baked into the build. A user can **also set it at runtime** — with no rebuild — in the Settings dialog's **Environment Variables** section, which has a dedicated masked **Cesium Ion token** field. That token is stored locally on the device (in browser storage on the web build), **not** in the shared project file, and overrides the build-time value; it is how a web user brings their own Ion token. (A free-form `VITE_CESIUM_TOKEN` variable in the same section still works and takes precedence, as an override.) Without a token from any source, the 3D-globe toggle is hidden entirely (the 2D map is unaffected). Ion access tokens are designed to ship in client bundles. See [docs/architecture.md](docs/architecture.md#3d-globe-view-cesiumjs) for how the globe integrates.
+Desktop builds store the token in the Windows user credential store. Web builds keep it in memory only until the page reloads. The token is never baked into the client bundle, written to browser storage, exposed through the public runtime environment, or serialized into a project file. Without a token, the 3D-globe toggle is hidden entirely (the 2D map is unaffected). See [docs/architecture.md](docs/architecture.md#3d-globe-view-cesiumjs) for how the globe integrates.
 
 The optional **Python (Pyodide)** vector engine loads its runtime from the public jsDelivr CDN by default. To self-host it for offline or production use, point it at a mirrored copy of the Pyodide distribution:
 

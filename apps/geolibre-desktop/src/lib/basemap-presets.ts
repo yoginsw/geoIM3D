@@ -3,6 +3,7 @@ import {
   OPENFREEMAP_BASEMAPS,
   PROTOMAPS_BASEMAPS,
 } from "@geolibre/core";
+import { readPrivateCredentialEnvironment } from "./private-credential-runtime";
 
 /**
  * Ids of the predefined basemaps that resolve to a ready-to-use style URL
@@ -46,7 +47,10 @@ export function getOpenFreeMapPresets(): PresetBasemap[] {
  */
 export function resolveProtomapsPresets(): PresetBasemap[] {
   return PROTOMAPS_BASEMAPS.flatMap((basemap) => {
-    const styleUrl = getProtomapsStyleUrl(basemap.flavor);
+    const styleUrl = getProtomapsStyleUrl(
+      basemap.flavor,
+      readPrivateCredentialEnvironment()
+    );
     return styleUrl ? [{ id: basemap.id, name: basemap.name, styleUrl }] : [];
   });
 }

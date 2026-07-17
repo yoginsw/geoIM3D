@@ -1,3 +1,4 @@
+mod credential_store;
 mod earth_engine_oauth;
 #[cfg(feature = "native-duckdb")]
 mod native_duckdb;
@@ -210,6 +211,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             close_oauth_popups,
+            credential_store::credential_clear,
+            credential_store::credential_delete,
+            credential_store::credential_load,
+            credential_store::credential_set,
             native_duckdb::count_native_vector_file_features,
             ensure_martin_binary,
             fetch_url_bytes,

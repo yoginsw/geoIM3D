@@ -26,7 +26,10 @@ import {
 } from "../lib/tauri-io";
 import { buildProjectHtml } from "../lib/html-export";
 import { ensureHtmlFileName, ensureProjectFileName } from "../lib/file-names";
-import { prepareProjectForFileSave } from "../lib/project-file-contract";
+import {
+  prepareProjectForFileSave,
+  sanitizeIncomingProjectCredentials,
+} from "../lib/project-file-contract";
 import { mergeStringLists } from "../lib/string-lists";
 import { fetchProjectFromUrl } from "../lib/project-url";
 import { getShareFetch } from "../lib/share-fetch";
@@ -138,7 +141,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     if (result) {
       try {
         loadProject(
-          await resolveProjectXyzLayers(result.project),
+          sanitizeIncomingProjectCredentials(
+            await resolveProjectXyzLayers(result.project),
+          ),
           result.path,
           { rememberRecent: isTauri() },
         );
@@ -159,9 +164,15 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   ): Promise<string | null> => {
     try {
       const project = parseProject(await file.text());
-      loadProject(await resolveProjectXyzLayers(project), null, {
-        rememberRecent: false,
-      });
+      loadProject(
+        sanitizeIncomingProjectCredentials(
+          await resolveProjectXyzLayers(project),
+        ),
+        null,
+        {
+          rememberRecent: false,
+        },
+      );
       return null;
     } catch (error) {
       console.error("Failed to open dropped project", error);
@@ -197,7 +208,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      loadProject(project, result.path);
+      loadProject(sanitizeIncomingProjectCredentials(project), result.path);
       setProjectUrl("");
       setProjectUrlDialogOpen(false);
     } catch (error) {
@@ -263,7 +274,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       if (controller.signal.aborted) return;
       // Share service endpoints are compatibility APIs, not canonical local
       // file references, so never persist them as writable/recent paths.
-      loadProject(project, null);
+      loadProject(sanitizeIncomingProjectCredentials(project), null);
     } finally {
       if (shareUrlAbortRef.current === controller) {
         shareUrlAbortRef.current = null;
@@ -309,7 +320,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         controller.signal,
       );
       if (controller.signal.aborted) return null;
-      loadProject(project, result.path);
+      loadProject(sanitizeIncomingProjectCredentials(project), result.path);
       return null;
     } catch (error) {
       if (controller.signal.aborted) return null;

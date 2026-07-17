@@ -6,11 +6,85 @@
  * a rebuild. Carries no React/MapLibre dependency so callers stay unit-testable.
  */
 
-const buildEnv = (
-  import.meta as ImportMeta & {
-    env?: Record<string, string | undefined>;
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_DUCKDB_SPATIAL_EXTENSION_PATH?: string;
+    readonly VITE_ROUTING_ENDPOINT?: string;
+    readonly VITE_GEOCODER_PROVIDER?: string;
+    readonly VITE_GEOCODER_ENDPOINT?: string;
+    readonly VITE_GEOCODER_REVERSE_ENDPOINT?: string;
+    readonly VITE_GEOCODER_EMAIL?: string;
+    readonly VITE_AMAZON_LOCATION_AWS_REGION?: string;
   }
-).env;
+}
+
+const buildEnv: Record<string, string | undefined> = {
+  VITE_DUCKDB_SPATIAL_EXTENSION_PATH: import.meta.env
+    ?.VITE_DUCKDB_SPATIAL_EXTENSION_PATH,
+  VITE_ROUTING_ENDPOINT: import.meta.env?.VITE_ROUTING_ENDPOINT,
+  VITE_GEOCODER_PROVIDER: import.meta.env?.VITE_GEOCODER_PROVIDER,
+  VITE_GEOCODER_ENDPOINT: import.meta.env?.VITE_GEOCODER_ENDPOINT,
+  VITE_GEOCODER_REVERSE_ENDPOINT: import.meta.env
+    ?.VITE_GEOCODER_REVERSE_ENDPOINT,
+  VITE_GEOCODER_EMAIL: import.meta.env?.VITE_GEOCODER_EMAIL,
+  VITE_AMAZON_LOCATION_AWS_REGION: import.meta.env
+    ?.VITE_AMAZON_LOCATION_AWS_REGION,
+};
+
+export const CREDENTIAL_ENV_NAMES = [
+  "VITE_CESIUM_TOKEN",
+  "CESIUM_TOKEN",
+  "VWORLD_API_KEY",
+  "VITE_GEOCODER_API_KEY",
+  "VITE_GOOGLE_MAPS_API_KEY",
+  "GOOGLE_MAPS_API_KEY",
+  "VITE_MAPILLARY_ACCESS_TOKEN",
+  "VITE_PROTOMAPS_API_KEY",
+  "VITE_TOMTOM_API_KEY",
+  "VITE_HERE_API_KEY",
+  "VITE_AMAZON_LOCATION_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_API_KEY",
+  "GOOGLE_GENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "AWS_PROFILE",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "BEDROCK_MODEL_ID",
+  "OPENAI_COMPATIBLE_API_KEY",
+  "OPENAI_COMPATIBLE_BASE_URL",
+  "OPENAI_COMPATIBLE_MODEL",
+  "TAVILY_API_KEY",
+  "OLLAMA_BASE_URL",
+  "OLLAMA_MODEL",
+] as const;
+
+const CREDENTIAL_ENV_NAME_SET = new Set<string>(CREDENTIAL_ENV_NAMES);
+
+export function isCredentialEnvironmentName(name: string): boolean {
+  return CREDENTIAL_ENV_NAME_SET.has(name.trim());
+}
+
+function publicBuildEnvironment(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(buildEnv).filter(
+      ([key]) => !isCredentialEnvironmentName(key)
+    )
+  );
+}
+
+function publicRuntimeEnvironment(
+  env: Record<string, string | undefined> | undefined
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(env ?? {}).filter(
+      ([key]) => !isCredentialEnvironmentName(key)
+    )
+  );
+}
 
 /**
  * Merges build-time env with project runtime env (the latter wins). Falls back
@@ -19,12 +93,14 @@ const buildEnv = (
  * @returns The resolved environment variables.
  */
 export function getRuntimeEnvironment(): Record<string, string | undefined> {
-  if (typeof window === "undefined") return buildEnv ?? {};
+  if (typeof window === "undefined") {
+    return publicBuildEnvironment();
+  }
 
   // __GEOLIBRE_RUNTIME_ENV__ is declared globally in ./types.
   return {
-    ...(buildEnv ?? {}),
-    ...(window.__GEOLIBRE_RUNTIME_ENV__ ?? {}),
+    ...publicBuildEnvironment(),
+    ...publicRuntimeEnvironment(window.__GEOLIBRE_RUNTIME_ENV__),
   };
 }
 
@@ -43,7 +119,7 @@ export function getRuntimeEnvironment(): Record<string, string | undefined> {
  * @returns The trimmed extension path, or undefined when unset.
  */
 export function getSpatialExtensionPath(
-  env?: Record<string, string | undefined>,
+  env?: Record<string, string | undefined>
 ): string | undefined {
   const runtimeEnv = env ?? getRuntimeEnvironment();
   const trimmed = runtimeEnv.VITE_DUCKDB_SPATIAL_EXTENSION_PATH?.trim();
@@ -63,9 +139,9 @@ export function getSpatialExtensionPath(
  * @returns The trimmed API key, or undefined when unset.
  */
 export function getProtomapsApiKey(
-  env?: Record<string, string | undefined>,
+  env?: Record<string, string | undefined>
 ): string | undefined {
-  const runtimeEnv = env ?? getRuntimeEnvironment();
+  const runtimeEnv = env ?? {};
   const trimmed = runtimeEnv.VITE_PROTOMAPS_API_KEY?.trim();
   return trimmed || undefined;
 }
@@ -86,9 +162,9 @@ export function getProtomapsApiKey(
  * @returns The trimmed API key, or undefined when unset.
  */
 export function getGoogleMapsApiKey(
-  env?: Record<string, string | undefined>,
+  env?: Record<string, string | undefined>
 ): string | undefined {
-  const runtimeEnv = env ?? getRuntimeEnvironment();
+  const runtimeEnv = env ?? {};
   const trimmed =
     runtimeEnv.VITE_GOOGLE_MAPS_API_KEY?.trim() ||
     runtimeEnv.GOOGLE_MAPS_API_KEY?.trim();
@@ -99,21 +175,18 @@ export function getGoogleMapsApiKey(
  * Resolves the Cesium Ion access token from the runtime environment.
  *
  * The 3D-globe view's world imagery and terrain need a Cesium Ion token. It is
- * supplied via `VITE_CESIUM_TOKEN` (baked in at build time from the bare
- * `CESIUM_TOKEN` env var, which `vite.config.ts` copies into the prefixed name)
- * or set at runtime through Settings → Environment variables
- * (`window.__GEOLIBRE_RUNTIME_ENV__`, which bypasses Vite's envPrefix allowlist,
- * so a bare `CESIUM_TOKEN` entry works there too). When unset, the globe cannot
- * render and the 3D view is not offered.
+ * It is supplied at runtime through the module-scoped credential overlay. The
+ * value is not copied to project preferences or `window.__GEOLIBRE_RUNTIME_ENV__`.
+ * When unset, the globe cannot render and the 3D view is not offered.
  *
  * @param env - Environment record (defaults to the runtime environment);
  *   injectable for testing.
  * @returns The trimmed token, or undefined when unset.
  */
 export function getCesiumIonToken(
-  env?: Record<string, string | undefined>,
+  env?: Record<string, string | undefined>
 ): string | undefined {
-  const runtimeEnv = env ?? getRuntimeEnvironment();
+  const runtimeEnv = env ?? {};
   const trimmed =
     runtimeEnv.VITE_CESIUM_TOKEN?.trim() || runtimeEnv.CESIUM_TOKEN?.trim();
   return trimmed || undefined;
@@ -130,11 +203,11 @@ export function getCesiumIonToken(
  */
 export function getProtomapsStyleUrl(
   flavor: string,
-  env?: Record<string, string | undefined>,
+  env?: Record<string, string | undefined>
 ): string | undefined {
   const key = getProtomapsApiKey(env);
   if (!key) return undefined;
   return `https://api.protomaps.com/styles/v5/${encodeURIComponent(
-    flavor,
+    flavor
   )}/en.json?key=${encodeURIComponent(key)}`;
 }

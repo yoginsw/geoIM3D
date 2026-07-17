@@ -12,19 +12,15 @@ import { OS_ENV_VAR_NAMES, type RuntimeEnv } from "./provider";
  * set of names read is the curated {@link OS_ENV_VAR_NAMES} allowlist (also
  * enforced Rust-side), which excludes ambient credentials like `AWS_*`.
  *
- * The result is cached on `window.__GEOLIBRE_OS_ENV__` so callers (the runtime
- * env merge, the Settings dialog badges) can read it synchronously after the
- * one-time async load without re-invoking the backend.
+ * The result is cached in this module so callers can read it synchronously
+ * without exposing credentials through a public window map.
  */
 
-interface OsEnvWindow {
-  __GEOLIBRE_OS_ENV__?: RuntimeEnv;
-}
+let cachedOsEnv: RuntimeEnv = {};
 
 /** Read the cached OS environment snapshot, or `{}` before it has loaded. */
 export function readOsEnv(): RuntimeEnv {
-  if (typeof window === "undefined") return {};
-  return (window as unknown as OsEnvWindow).__GEOLIBRE_OS_ENV__ ?? {};
+  return { ...cachedOsEnv };
 }
 
 /** The OS environment is fixed for the app's lifetime, so load it at most once
@@ -34,7 +30,7 @@ let loadPromise: Promise<RuntimeEnv> | null = null;
 
 /**
  * Load the allowlisted AI-provider variables from the OS environment and cache
- * them on `window.__GEOLIBRE_OS_ENV__`. Only the names in
+ * them in module memory. Only the names in
  * {@link OS_ENV_VAR_NAMES} are requested, so unrelated environment
  * variables (PATH, HOME, …) never enter the webview. Outside Tauri this is a
  * no-op that caches an empty map.
@@ -64,20 +60,15 @@ async function readOsEnvVars(): Promise<RuntimeEnv> {
     });
     cacheOsEnv(env);
     return env;
-  } catch (error) {
+  } catch {
     // Let a later call retry instead of memoizing the failure, and preserve any
     // previously cached values rather than clobbering them with an empty map.
     loadPromise = null;
-    console.warn(
-      "[geolibre] Could not read OS environment variables for the AI assistant:",
-      error,
-    );
+    console.warn("[geoim3d] OS environment credential read failed");
     return readOsEnv();
   }
 }
 
 function cacheOsEnv(env: RuntimeEnv): void {
-  if (typeof window !== "undefined") {
-    (window as unknown as OsEnvWindow).__GEOLIBRE_OS_ENV__ = env;
-  }
+  cachedOsEnv = { ...env };
 }

@@ -4,6 +4,7 @@ import {
   isCanonicalProjectReference,
   isLegacyProjectFileName,
 } from "./file-names";
+import { removeManagedCredentialsFromEnvironment } from "./credentials";
 
 export type ProjectDropClassification =
   | { kind: "project"; reference: string }
@@ -39,11 +40,31 @@ export function classifyProjectDrop(
 export function preparePortableProject(
   project: GeoLibreProject,
 ): GeoLibreProject {
+  const sanitized = sanitizeIncomingProjectCredentials(project);
+  return {
+    ...sanitized,
+    preferences: {
+      ...sanitized.preferences,
+      environmentVariables: [],
+    },
+  };
+}
+
+/** Strip managed credentials from a project entering the live application. */
+export function sanitizeIncomingProjectCredentials(
+  project: GeoLibreProject,
+): GeoLibreProject {
   return {
     ...project,
     preferences: {
       ...project.preferences,
-      environmentVariables: [],
+      environmentVariables: removeManagedCredentialsFromEnvironment(
+        project.preferences.environmentVariables,
+      ),
+      geocoding: {
+        ...project.preferences.geocoding,
+        apiKeys: {},
+      },
     },
   };
 }

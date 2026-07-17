@@ -8,6 +8,7 @@ import {
   filterCanonicalRecentProjects,
   preparePortableProject,
   prepareProjectForFileSave,
+  sanitizeIncomingProjectCredentials,
 } from "../apps/geolibre-desktop/src/lib/project-file-contract";
 import { isCanonicalProjectUrl } from "../apps/geolibre-desktop/src/lib/project-url";
 import { sanitizePortableProjectSnapshot } from "../workers/collab/src/project-snapshot";
@@ -74,6 +75,10 @@ describe("prepareProjectForFileSave", () => {
           environmentVariables: [
             { key: "API_TOKEN", value: "do-not-save", enabled: true },
           ],
+          geocoding: {
+            providerId: "mapbox",
+            apiKeys: { mapbox: "geocoder-do-not-save" },
+          },
         },
         plugins: {
           activePluginIds: ["maplibre-gl-swipe"],
@@ -86,13 +91,46 @@ describe("prepareProjectForFileSave", () => {
     const reloaded = parseProject(content);
 
     assert.equal(content.includes("do-not-save"), false);
+    assert.equal(content.includes("geocoder-do-not-save"), false);
     assert.deepEqual(reloaded.preferences.environmentVariables, []);
+    assert.deepEqual(reloaded.preferences.geocoding.apiKeys, {});
     assert.equal(reloaded.layers[0]?.id, "layer-a");
     assert.deepEqual(reloaded.mapView, project.mapView);
     assert.deepEqual(reloaded.plugins?.activePluginIds, ["maplibre-gl-swipe"]);
     assert.deepEqual(reloaded.plugins?.settings, {
       "maplibre-gl-swipe": { position: 35 },
     });
+  });
+});
+
+describe("incoming project credential boundary", () => {
+  it("drops managed credentials while preserving non-secret environment rows", () => {
+    const project = parseProject(
+      JSON.stringify({
+        version: "0.2.0",
+        name: "Incoming",
+        mapView: { center: [0, 0], zoom: 2, bearing: 0, pitch: 0 },
+        preferences: {
+          environmentVariables: [
+            { key: "OPENAI_API_KEY", value: "incoming-ai", enabled: true },
+            { key: "SAFE_RENDER_OPTION", value: "1", enabled: true },
+          ],
+          geocoding: {
+            providerId: "google",
+            apiKeys: { google: "incoming-geocoder" },
+          },
+        },
+      }),
+    );
+
+    const sanitized = sanitizeIncomingProjectCredentials(project);
+    assert.deepEqual(sanitized.preferences.environmentVariables, [
+      { key: "SAFE_RENDER_OPTION", value: "1", enabled: true },
+    ]);
+    assert.deepEqual(sanitized.preferences.geocoding.apiKeys, {});
+    const content = serializeProject(sanitized);
+    assert.equal(content.includes("incoming-ai"), false);
+    assert.equal(content.includes("incoming-geocoder"), false);
   });
 });
 

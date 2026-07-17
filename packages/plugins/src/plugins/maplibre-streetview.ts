@@ -1,4 +1,3 @@
-import { getGoogleMapsApiKey } from "@geolibre/core";
 import {
   StreetViewControl,
   type StreetViewControlOptions,
@@ -8,29 +7,14 @@ import type {
   GeoLibreMapControlPosition,
   GeoLibrePlugin,
 } from "../types";
-
-const streetViewEnv = (
-  import.meta as ImportMeta & {
-    env?: Record<string, string | undefined>;
-  }
-).env;
-
-function getRuntimeEnvironment(): Record<string, string | undefined> {
-  if (typeof window === "undefined") return streetViewEnv ?? {};
-
-  // __GEOLIBRE_RUNTIME_ENV__ is declared globally in @geolibre/core.
-  return {
-    ...(streetViewEnv ?? {}),
-    ...(window.__GEOLIBRE_RUNTIME_ENV__ ?? {}),
-  };
-}
+import { readStreetViewCredentials } from "../built-in-credential-runtime";
 
 function getStreetViewCredentials(): Pick<
   StreetViewControlOptions,
   "defaultProvider" | "googleApiKey" | "mapillaryAccessToken"
 > {
-  const env = getRuntimeEnvironment();
-  const googleApiKey = getGoogleMapsApiKey(env);
+  const env = readStreetViewCredentials();
+  const googleApiKey = env.VITE_GOOGLE_MAPS_API_KEY?.trim() || undefined;
   const mapillaryAccessToken =
     env.VITE_MAPILLARY_ACCESS_TOKEN?.trim() || undefined;
 
@@ -106,7 +90,7 @@ export const maplibreStreetViewPlugin: GeoLibrePlugin = {
   getMapControlPosition: () => streetViewPosition,
   setMapControlPosition: (
     app: GeoLibreAppAPI,
-    position: GeoLibreMapControlPosition,
+    position: GeoLibreMapControlPosition
   ) => {
     streetViewPosition = position;
     if (!streetViewControl) return;
@@ -137,7 +121,10 @@ function addRuntimeEnvListener(): void {
     if (streetViewControl && signature === appliedCredentialsSignature) return;
     if (streetViewControl) activeApp.removeMapControl(streetViewControl);
     streetViewControl = new StreetViewControl(getStreetViewOptions());
-    const added = activeApp.addMapControl(streetViewControl, streetViewPosition);
+    const added = activeApp.addMapControl(
+      streetViewControl,
+      streetViewPosition
+    );
     if (!added) {
       // Keep the listener registered so a later credential change can retry.
       // addMapControl failures here are typically transient (e.g. the map is
@@ -145,7 +132,7 @@ function addRuntimeEnvListener(): void {
       // so the next event re-attempts the add.
       streetViewControl = null;
       console.warn(
-        "[maplibre-streetview] addMapControl failed during credential update; will retry on next env change.",
+        "[maplibre-streetview] addMapControl failed during credential update; will retry on next env change."
       );
       return;
     }
@@ -153,14 +140,42 @@ function addRuntimeEnvListener(): void {
     setTimeout(() => streetViewControl?.expand(), 0);
   };
 
+  const handleCredentialClear = () => {
+    if (streetViewControl && activeApp) {
+      activeApp.removeMapControl(streetViewControl);
+    }
+    streetViewControl = null;
+    appliedCredentialsSignature = null;
+  };
+
+  const handleCredentialDelete = (event: Event) => {
+    const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+    if (
+      id === "map:google-maps-api-key" ||
+      id === "map:mapillary-access-token"
+    ) {
+      handleCredentialClear();
+    }
+  };
+
   window.addEventListener(
     "geolibre:runtime-env-change",
-    handleRuntimeEnvChange,
+    handleRuntimeEnvChange
   );
+  window.addEventListener("geoim3d:credentials-cleared", handleCredentialClear);
+  window.addEventListener("geoim3d:credential-deleted", handleCredentialDelete);
   removeRuntimeEnvListener = () => {
     window.removeEventListener(
       "geolibre:runtime-env-change",
-      handleRuntimeEnvChange,
+      handleRuntimeEnvChange
+    );
+    window.removeEventListener(
+      "geoim3d:credentials-cleared",
+      handleCredentialClear
+    );
+    window.removeEventListener(
+      "geoim3d:credential-deleted",
+      handleCredentialDelete
     );
   };
 }

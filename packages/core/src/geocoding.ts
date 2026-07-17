@@ -138,14 +138,14 @@ export interface GeocodingProvider {
   buildForwardUrl(
     config: GeocoderConfig,
     query: string,
-    options: ForwardRequestOptions,
+    options: ForwardRequestOptions
   ): string;
   parseForward(data: unknown): GeocodeMatch[];
   buildReverseUrl(
     config: GeocoderConfig,
     lon: number,
     lat: number,
-    options: ReverseRequestOptions,
+    options: ReverseRequestOptions
   ): string;
   parseReverse(data: unknown): ReverseGeocodeDisplay | null;
 }
@@ -228,7 +228,7 @@ function readString(obj: unknown, key: string): string | undefined {
 export function buildForwardGeocodeUrl(
   endpoint: string,
   query: string,
-  options: { email?: string; limit?: number } = {},
+  options: { email?: string; limit?: number } = {}
 ): string {
   const url = new URL(endpoint);
   url.searchParams.set("q", query);
@@ -244,21 +244,22 @@ export function buildReverseGeocodeUrl(
   endpoint: string,
   lon: number,
   lat: number,
-  options: { email?: string; zoom?: number } = {},
+  options: { email?: string; zoom?: number } = {}
 ): string {
   const url = new URL(endpoint);
   url.searchParams.set("lat", String(lat));
   url.searchParams.set("lon", String(lon));
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("addressdetails", "1");
-  if (options.zoom !== undefined) url.searchParams.set("zoom", String(options.zoom));
+  if (options.zoom !== undefined)
+    url.searchParams.set("zoom", String(options.zoom));
   if (options.email) url.searchParams.set("email", options.email);
   return url.toString();
 }
 
 /** Map one Nominatim forward result onto a normalized match, or null. */
 function nominatimForwardResultToMatch(
-  result: NominatimForwardResult,
+  result: NominatimForwardResult
 ): GeocodeMatch | null {
   const lat = Number(result.lat);
   const lon = Number(result.lon);
@@ -281,7 +282,7 @@ function nominatimForwardResultToMatch(
  */
 export function geocodeMatchToFeature(
   match: GeocodeMatch,
-  originalRow: Record<string, string> = {},
+  originalRow: Record<string, string> = {}
 ): Feature<Point> | null {
   if (!Number.isFinite(match.lat) || !Number.isFinite(match.lon)) return null;
 
@@ -311,7 +312,7 @@ export function geocodeMatchToFeature(
  */
 export function nominatimResultToFeature(
   result: NominatimForwardResult,
-  originalRow: Record<string, string> = {},
+  originalRow: Record<string, string> = {}
 ): Feature<Point> | null {
   const match = nominatimForwardResultToMatch(result);
   return match ? geocodeMatchToFeature(match, originalRow) : null;
@@ -322,7 +323,7 @@ export function nominatimResultToFeature(
  * null when the point could not be reverse-geocoded.
  */
 export function nominatimReverseResultToDisplay(
-  result: NominatimReverseResult | null,
+  result: NominatimReverseResult | null
 ): ReverseGeocodeDisplay | null {
   if (!result || result.error) return null;
   const displayName = result.display_name?.trim();
@@ -359,22 +360,28 @@ const nominatimProvider: GeocodingProvider = {
     }),
   parseReverse: (data) =>
     nominatimReverseResultToDisplay(
-      data && typeof data === "object" ? (data as NominatimReverseResult) : null,
+      data && typeof data === "object" ? (data as NominatimReverseResult) : null
     ),
 };
 
 /** Read a GeoJSON FeatureCollection's features array, or []. */
 function geojsonFeatures(data: unknown): Record<string, unknown>[] {
-  if (data && typeof data === "object" && Array.isArray((data as { features?: unknown }).features)) {
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { features?: unknown }).features)
+  ) {
     return (data as { features: unknown[] }).features.filter(
-      (f): f is Record<string, unknown> => !!f && typeof f === "object",
+      (f): f is Record<string, unknown> => !!f && typeof f === "object"
     );
   }
   return [];
 }
 
 /** Pull `[lon, lat]` from a GeoJSON Point geometry, or null. */
-function pointCoords(feature: Record<string, unknown>): [number, number] | null {
+function pointCoords(
+  feature: Record<string, unknown>
+): [number, number] | null {
   const geometry = feature.geometry as { coordinates?: unknown } | undefined;
   const coords = geometry?.coordinates;
   if (Array.isArray(coords) && coords.length >= 2) {
@@ -449,18 +456,26 @@ const arcgisProvider: GeocodingProvider = {
     url.searchParams.set("SingleLine", query);
     url.searchParams.set("f", "json");
     url.searchParams.set("outFields", "Match_addr");
-    if (options.limit) url.searchParams.set("maxLocations", String(options.limit));
+    if (options.limit)
+      url.searchParams.set("maxLocations", String(options.limit));
     if (config.apiKey) url.searchParams.set("token", config.apiKey);
     return url.toString();
   },
   parseForward: (data) => {
     const candidates =
-      data && typeof data === "object" && Array.isArray((data as { candidates?: unknown }).candidates)
-        ? ((data as { candidates: unknown[] }).candidates as Record<string, unknown>[])
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as { candidates?: unknown }).candidates)
+        ? ((data as { candidates: unknown[] }).candidates as Record<
+            string,
+            unknown
+          >[])
         : [];
     return candidates
       .map((candidate) => {
-        const location = candidate.location as { x?: unknown; y?: unknown } | undefined;
+        const location = candidate.location as
+          | { x?: unknown; y?: unknown }
+          | undefined;
         const lon = Number(location?.x);
         const lat = Number(location?.y);
         if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
@@ -482,13 +497,18 @@ const arcgisProvider: GeocodingProvider = {
   },
   parseReverse: (data) => {
     const address =
-      data && typeof data === "object" ? (data as { address?: unknown }).address : undefined;
+      data && typeof data === "object"
+        ? (data as { address?: unknown }).address
+        : undefined;
     if (!address || typeof address !== "object") return null;
     const displayName = (
       readString(address, "LongLabel") ?? readString(address, "Match_addr")
     )?.trim();
     return displayName
-      ? { displayName, parts: stringifyParts(address as Record<string, unknown>) }
+      ? {
+          displayName,
+          parts: stringifyParts(address as Record<string, unknown>),
+        }
       : null;
   },
 };
@@ -543,7 +563,7 @@ const mapboxProvider: GeocodingProvider = {
       ? {
           displayName,
           parts: stringifyParts(
-            (feature.properties as Record<string, unknown>) ?? {},
+            (feature.properties as Record<string, unknown>) ?? {}
           ),
         }
       : null;
@@ -599,8 +619,13 @@ const googleProvider: GeocodingProvider = {
     const error = googleErrorMessage(data);
     if (error) throw new Error(error);
     const results =
-      data && typeof data === "object" && Array.isArray((data as { results?: unknown }).results)
-        ? ((data as { results: unknown[] }).results as Record<string, unknown>[])
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as { results?: unknown }).results)
+        ? ((data as { results: unknown[] }).results as Record<
+            string,
+            unknown
+          >[])
         : [];
     const displayName = readString(results[0], "formatted_address")?.trim();
     return displayName ? { displayName, parts: {} } : null;
@@ -610,13 +635,17 @@ const googleProvider: GeocodingProvider = {
 /** Map a Google Geocoding API `results` array onto normalized matches. */
 function parseGoogleResults(data: unknown): GeocodeMatch[] {
   const results =
-    data && typeof data === "object" && Array.isArray((data as { results?: unknown }).results)
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { results?: unknown }).results)
       ? ((data as { results: unknown[] }).results as Record<string, unknown>[])
       : [];
   return results
     .map((result): GeocodeMatch | null => {
       const geometry = result.geometry as { location?: unknown } | undefined;
-      const location = geometry?.location as { lat?: unknown; lng?: unknown } | undefined;
+      const location = geometry?.location as
+        | { lat?: unknown; lng?: unknown }
+        | undefined;
       const lat = Number(location?.lat);
       const lon = Number(location?.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -640,12 +669,12 @@ export const GEOCODING_PROVIDERS: readonly GeocodingProvider[] = [
 ];
 
 const PROVIDERS_BY_ID = new Map<GeocodingProviderId, GeocodingProvider>(
-  GEOCODING_PROVIDERS.map((provider) => [provider.id, provider]),
+  GEOCODING_PROVIDERS.map((provider) => [provider.id, provider])
 );
 
 /** Coerce an arbitrary string to a known provider id, defaulting to Nominatim. */
 export function normalizeGeocodingProviderId(
-  value: string | undefined | null,
+  value: string | undefined | null
 ): GeocodingProviderId {
   const id = value?.trim() as GeocodingProviderId | undefined;
   return id && PROVIDERS_BY_ID.has(id) ? id : DEFAULT_GEOCODING_PROVIDER_ID;
@@ -653,7 +682,7 @@ export function normalizeGeocodingProviderId(
 
 /** Look up a provider by id, falling back to Nominatim for unknown ids. */
 export function getGeocodingProvider(
-  id: string | undefined | null,
+  id: string | undefined | null
 ): GeocodingProvider {
   return (
     PROVIDERS_BY_ID.get(normalizeGeocodingProviderId(id)) ?? nominatimProvider
@@ -667,8 +696,9 @@ export function getGeocodingProvider(
  * the endpoints; `VITE_GEOCODER_EMAIL` supplies the contact email; and
  * `VITE_GEOCODER_API_KEY` supplies the API key for keyed providers.
  */
-export function getGeocoderConfig(): GeocoderConfig {
-  const env = getRuntimeEnvironment();
+export function getGeocoderConfig(
+  env: Record<string, string | undefined> = getRuntimeEnvironment()
+): GeocoderConfig {
   const provider = getGeocodingProvider(env.VITE_GEOCODER_PROVIDER);
   return {
     providerId: provider.id,
@@ -700,7 +730,7 @@ export interface GeocodingPreferenceInput {
  * and API key without round-tripping through runtime env.
  */
 export function resolveGeocoderConfig(
-  input: GeocodingPreferenceInput,
+  input: GeocodingPreferenceInput
 ): GeocoderConfig {
   const provider = getGeocodingProvider(input.providerId);
   return {
@@ -760,7 +790,10 @@ export function geocoderNeedsApiKey(config: GeocoderConfig): boolean {
   if (provider.id === "pelias") {
     try {
       const host = new URL(config.forwardEndpoint).hostname;
-      return host === GEOCODE_EARTH_HOST_SUFFIX || host.endsWith(`.${GEOCODE_EARTH_HOST_SUFFIX}`);
+      return (
+        host === GEOCODE_EARTH_HOST_SUFFIX ||
+        host.endsWith(`.${GEOCODE_EARTH_HOST_SUFFIX}`)
+      );
     } catch {
       return false;
     }
@@ -777,7 +810,7 @@ export function geocoderNeedsApiKey(config: GeocoderConfig): boolean {
 export function nextDelayMs(
   lastStartedAt: number | null,
   now: number,
-  intervalMs: number,
+  intervalMs: number
 ): number {
   if (lastStartedAt === null) return 0;
   return Math.max(0, intervalMs - (now - lastStartedAt));
@@ -791,7 +824,7 @@ export function nextDelayMs(
  */
 export function csvRowsToGeocodeRequests(
   rows: Record<string, string>[],
-  addressColumns: string[],
+  addressColumns: string[]
 ): GeocodeRequest[] {
   const requests: GeocodeRequest[] = [];
   rows.forEach((row, index) => {
@@ -830,7 +863,7 @@ let geocodingFetch: typeof globalThis.fetch | null = null;
  * Safe to call multiple times; only the most recent implementation is used.
  */
 export function setGeocodingFetch(
-  fetchImpl: typeof globalThis.fetch | null,
+  fetchImpl: typeof globalThis.fetch | null
 ): void {
   geocodingFetch = fetchImpl;
 }
@@ -846,7 +879,11 @@ function geocodeFetch(): typeof globalThis.fetch {
  */
 export async function geocodeForward(
   query: string,
-  options: { signal?: AbortSignal; config?: GeocoderConfig; limit?: number } = {},
+  options: {
+    signal?: AbortSignal;
+    config?: GeocoderConfig;
+    limit?: number;
+  } = {}
 ): Promise<GeocodeMatch[]> {
   const config = options.config ?? getGeocoderConfig();
   const provider = getGeocodingProvider(config.providerId);
@@ -872,7 +909,7 @@ export async function geocodeForward(
 export async function geocodeReverse(
   lon: number,
   lat: number,
-  options: { signal?: AbortSignal; config?: GeocoderConfig; zoom?: number } = {},
+  options: { signal?: AbortSignal; config?: GeocoderConfig; zoom?: number } = {}
 ): Promise<ReverseGeocodeDisplay | null> {
   const config = options.config ?? getGeocoderConfig();
   const provider = getGeocodingProvider(config.providerId);

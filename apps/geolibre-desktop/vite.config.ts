@@ -41,43 +41,43 @@ function resolveViteMode(): string {
   return process.env.NODE_ENV || "development";
 }
 
-// Vite only exposes `VITE_`-prefixed vars to the client, so the Google Maps key
-// is surfaced as `VITE_GOOGLE_MAPS_API_KEY`. Accept a bare `GOOGLE_MAPS_API_KEY`
-// too (handy for local shell/CI testing) and copy it into the prefixed name.
-// `loadEnv(mode, dir, "")` reads the app's `.env*` files with no prefix filter,
-// so a key placed in `apps/geolibre-desktop/.env.local` also works, not just a
-// real shell env var (process.env alone would miss the file).
 const CONFIG_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FILE_ENV = loadEnv(resolveViteMode(), CONFIG_DIR, "");
-if (!process.env.VITE_GOOGLE_MAPS_API_KEY) {
-  const googleMapsApiKey =
-    process.env.GOOGLE_MAPS_API_KEY ||
-    FILE_ENV.VITE_GOOGLE_MAPS_API_KEY ||
-    FILE_ENV.GOOGLE_MAPS_API_KEY;
-  if (googleMapsApiKey) {
-    process.env.VITE_GOOGLE_MAPS_API_KEY = googleMapsApiKey;
-  }
+
+// Never expose the generic VITE_* namespace. Only reviewed, non-credential
+// deployment settings are client-visible.
+const PUBLIC_CLIENT_ENV_NAMES = [
+  "VITE_AMAZON_LOCATION_AWS_REGION",
+  "VITE_DUCKDB_SPATIAL_EXTENSION_PATH",
+  "VITE_E2E_EXPOSE_ALL_LOCALES",
+  "VITE_GEE_OAUTH_CLIENT_ID",
+  "VITE_GEE_PROJECT_ID",
+  "VITE_GEOCODER_EMAIL",
+  "VITE_GEOCODER_ENDPOINT",
+  "VITE_GEOCODER_PROVIDER",
+  "VITE_GEOCODER_REVERSE_ENDPOINT",
+  "VITE_GEOLIBRE_COLLAB_URL",
+  "VITE_GEOLIBRE_PLUGIN_REGISTRY_URL",
+  "VITE_GEOLIBRE_SHARE_URL",
+  "VITE_GEOLIBRE_VIEWER_URL",
+  "VITE_ROUTING_ENDPOINT",
+  "VITE_WELCOME_DISABLED",
+] as const;
+
+function publicClientEnvDefines(): Record<string, string> {
+  return Object.fromEntries(
+    PUBLIC_CLIENT_ENV_NAMES.map((name) => {
+      const value = process.env[name] ?? FILE_ENV[name];
+      return [
+        `import.meta.env.${name}`,
+        value === undefined ? "undefined" : JSON.stringify(value),
+      ];
+    }),
+  );
 }
 
-// Cesium Ion token for the 3D-globe view: same bare→prefixed bridge as the
-// Google Maps key. A bare `CESIUM_TOKEN` (shell or .env file) is surfaced as
-// `VITE_CESIUM_TOKEN` so `import.meta.env` exposes it, and getCesiumIonToken()
-// then lets a runtime Settings override win over this build-time value.
-if (!process.env.VITE_CESIUM_TOKEN) {
-  const cesiumToken =
-    process.env.CESIUM_TOKEN ||
-    FILE_ENV.VITE_CESIUM_TOKEN ||
-    FILE_ENV.CESIUM_TOKEN;
-  if (cesiumToken) {
-    process.env.VITE_CESIUM_TOKEN = cesiumToken;
-  }
-}
-
-// Earth Engine OAuth client ID: same bare→prefixed bridge as the Google Maps
-// and Cesium keys. The app reads `import.meta.env.VITE_GEE_OAUTH_CLIENT_ID`, so
-// a bare `GEE_OAUTH_CLIENT_ID` (shell/.zshrc or an .env file) is surfaced under
-// the prefixed name here; otherwise Vite ignores the unprefixed var and the
-// plugin falls back to its hardcoded DEFAULT_GEE_OAUTH_CLIENT_ID.
+// Earth Engine OAuth client ID is a public OAuth client identifier; the actual
+// OAuth token remains runtime/session scoped.
 if (!process.env.VITE_GEE_OAUTH_CLIENT_ID) {
   const geeOauthClientId =
     process.env.GEE_OAUTH_CLIENT_ID ||
@@ -884,6 +884,7 @@ export default defineConfig({
   ],
   clearScreen: false,
   define: {
+    ...publicClientEnvDefines(),
     __GEOLIBRE_VERSION__: JSON.stringify(APP_VERSION),
     __GEOLIBRE_STORE_BUILD__: JSON.stringify(IS_STORE_BUILD),
     __PGLITE_CDN_URL__: JSON.stringify(PGLITE_CDN_URL),
@@ -898,7 +899,7 @@ export default defineConfig({
   worker: {
     format: "es",
   },
-  envPrefix: ["VITE_", "TAURI_"],
+  envPrefix: ["GEOIM3D_PUBLIC_"],
   optimizeDeps: {
     // Pre-bundle the AI Assistant's heavy deps at dev-server startup. They are
     // only reached through the lazily-imported assistant panel (and, for the

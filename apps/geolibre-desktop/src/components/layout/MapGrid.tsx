@@ -1,4 +1,4 @@
-import { getCesiumIonToken, useAppStore } from "@geolibre/core";
+import { useAppStore } from "@geolibre/core";
 import {
   CesiumCanvas,
   isCesiumSupportedLayerType,
@@ -14,32 +14,25 @@ import {
   DropdownMenuTrigger,
 } from "@geolibre/ui";
 import { Globe, Layers, Map as MapIcon, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   isGeoIm3dProductMapWorkspaceEnabled,
   PRODUCT_PROFILE,
 } from "../../config/product-profile";
+import { useCredentialStore } from "../../hooks/useCredentials";
 
 /**
  * The current Cesium Ion token, re-resolved whenever the runtime environment
- * changes. It can come from the build (the `CESIUM_TOKEN` env var) or from
- * Settings → Environment variables (`VITE_CESIUM_TOKEN`), so the 3D-globe view
- * can use premium Cesium World Imagery + Terrain with no rebuild. Without a
- * token, the globe remains available through Cesium's OpenStreetMap fallback.
+ * changes. The value comes from the device/session credential store through the
+ * module-scoped runtime resolver and is never copied to project state or the
+ * public window runtime map. Without a token, the globe remains available
+ * through Cesium's OpenStreetMap fallback.
  */
 function useCesiumIonToken(): string | undefined {
-  const [token, setToken] = useState<string | undefined>(() =>
-    getCesiumIonToken(),
+  return useCredentialStore(
+    (state) => state.values["cesium:ion-token"]?.trim() || undefined
   );
-  useEffect(() => {
-    const refresh = () => setToken(getCesiumIonToken());
-    refresh();
-    window.addEventListener("geolibre:runtime-env-change", refresh);
-    return () =>
-      window.removeEventListener("geolibre:runtime-env-change", refresh);
-  }, []);
-  return token;
 }
 
 /**
@@ -148,7 +141,7 @@ function TabbedMapWorkspace({
 }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<MapWorkspaceTab>(
-    PRODUCT_PROFILE.defaultMapTab,
+    PRODUCT_PROFILE.defaultMapTab
   );
   const tabs: Array<{
     id: MapWorkspaceTab;
@@ -163,14 +156,14 @@ function TabbedMapWorkspace({
     setActiveTab(tab);
     if (focus) {
       requestAnimationFrame(() =>
-        document.getElementById(`map-view-tab-${tab}`)?.focus(),
+        document.getElementById(`map-view-tab-${tab}`)?.focus()
       );
     }
   };
 
   const handleTabKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,
-    index: number,
+    index: number
   ) => {
     let nextIndex: number | undefined;
     if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
@@ -226,9 +219,7 @@ function TabbedMapWorkspace({
         aria-labelledby="map-view-tab-maplibre"
         aria-hidden={activeTab !== "maplibre"}
         className={`absolute inset-0 ${
-          activeTab === "maplibre"
-            ? "visible"
-            : "invisible pointer-events-none"
+          activeTab === "maplibre" ? "visible" : "invisible pointer-events-none"
         }`}
       >
         {children}
@@ -239,15 +230,10 @@ function TabbedMapWorkspace({
         aria-labelledby="map-view-tab-cesium"
         aria-hidden={activeTab !== "cesium"}
         className={`absolute inset-0 ${
-          activeTab === "cesium"
-            ? "visible"
-            : "invisible pointer-events-none"
+          activeTab === "cesium" ? "visible" : "invisible pointer-events-none"
         }`}
       >
-        <CesiumCanvas
-          ionToken={cesiumToken}
-          active={activeTab === "cesium"}
-        />
+        <CesiumCanvas ionToken={cesiumToken} active={activeTab === "cesium"} />
       </div>
     </div>
   );
@@ -261,17 +247,22 @@ interface SecondaryMapPaneProps {
   cesiumToken?: string;
 }
 
-function SecondaryMapPane({ viewId, index, cesiumToken }: SecondaryMapPaneProps) {
+function SecondaryMapPane({
+  viewId,
+  index,
+  cesiumToken,
+}: SecondaryMapPaneProps) {
   const { t } = useTranslation();
   const removeSecondaryMapView = useAppStore((s) => s.removeSecondaryMapView);
   const setSecondaryMapLabel = useAppStore((s) => s.setSecondaryMapLabel);
   const setSecondaryViewKind = useAppStore((s) => s.setSecondaryViewKind);
   const label = useAppStore(
-    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.label ?? "",
+    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.label ?? ""
   );
   // Absent viewKind means the default 2D map (back-compat with older panes).
   const wantsCesium = useAppStore(
-    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.viewKind === "cesium",
+    (s) =>
+      s.secondaryMapViews.find((p) => p.id === viewId)?.viewKind === "cesium"
   );
   const is3d = wantsCesium;
 
@@ -282,7 +273,11 @@ function SecondaryMapPane({ viewId, index, cesiumToken }: SecondaryMapPaneProps)
         // the globe: `Cesium.Ion.defaultAccessToken` is applied once at viewer
         // creation, so without a remount a swapped (e.g. corrected) token would
         // never take effect on an already-mounted pane.
-        <CesiumCanvas key={cesiumToken} viewId={viewId} ionToken={cesiumToken} />
+        <CesiumCanvas
+          key={cesiumToken}
+          viewId={viewId}
+          ionToken={cesiumToken}
+        />
       ) : (
         <SecondaryMapCanvas viewId={viewId} />
       )}
@@ -344,10 +339,10 @@ function PaneLayerToggle({ viewId, index, is3d }: PaneLayerToggleProps) {
   const { t } = useTranslation();
   const layers = useAppStore((s) => s.layers);
   const layerVisibility = useAppStore(
-    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.layerVisibility,
+    (s) => s.secondaryMapViews.find((p) => p.id === viewId)?.layerVisibility
   );
   const setSecondaryLayerVisibility = useAppStore(
-    (s) => s.setSecondaryLayerVisibility,
+    (s) => s.setSecondaryLayerVisibility
   );
 
   return (
@@ -363,7 +358,10 @@ function PaneLayerToggle({ viewId, index, is3d }: PaneLayerToggleProps) {
           {t("mapGrid.layers")}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-80 w-56 overflow-auto">
+      <DropdownMenuContent
+        align="start"
+        className="max-h-80 w-56 overflow-auto"
+      >
         <DropdownMenuLabel>{t("mapGrid.layers")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {layers.length === 0 ? (

@@ -1,6 +1,10 @@
 import { useAppStore } from "@geolibre/core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchProjectFromUrl, projectUrlFromLocation } from "../lib/project-url";
+import {
+  fetchProjectFromUrl,
+  projectUrlFromLocation,
+} from "../lib/project-url";
+import { sanitizeIncomingProjectCredentials } from "../lib/project-file-contract";
 import { getShareFetch } from "../lib/share-fetch";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 
@@ -40,7 +44,9 @@ export function useProjectUrlLoader(): ProjectUrlLoadState {
         if (abortController.signal.aborted) return;
         // A `?url=` deep link is reloaded on every visit, so treat it as
         // transient rather than persisting it to the recent-projects list.
-        loadProject(project, projectUrl, { rememberRecent: false });
+        loadProject(sanitizeIncomingProjectCredentials(project), projectUrl, {
+          rememberRecent: false,
+        });
         setState({
           error: null,
           message: `Loaded ${project.name}`,

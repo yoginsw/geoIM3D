@@ -169,7 +169,9 @@ export const CesiumCanvas = memo(function CesiumCanvas({
         if (cancelled || !container.isConnected) return;
 
         const token = ionTokenRef.current?.trim();
-        if (token) Cesium.Ion.defaultAccessToken = token;
+        // Never fall through to Cesium's package-level public default token.
+        // geoIM3D uses Ion only when the user explicitly configured a credential.
+        Cesium.Ion.defaultAccessToken = token ?? "";
 
         const viewer = new Cesium.Viewer(container, {
           // A focused globe: no base-layer picker, geocoder, timeline, or

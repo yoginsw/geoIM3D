@@ -8,6 +8,7 @@ export {
   type SecondaryMapCanvasProps,
 } from "./SecondaryMapCanvas";
 export { CesiumCanvas, type CesiumCanvasProps } from "./CesiumCanvas";
+export { setMapGoogleMapsApiKey } from "./private-credential-runtime";
 export { isCesiumSupportedLayerType } from "./cesium-layer-sync";
 export {
   applyMapViewToCamera,
@@ -82,19 +83,11 @@ export {
   type SldExportOptions,
   type SldExportResult,
 } from "./sld-export";
-export {
-  applySldImport,
-  parseSld,
-  type SldImportResult,
-} from "./sld-import";
+export { applySldImport, parseSld, type SldImportResult } from "./sld-import";
 export {
   buildQml,
   type QmlExportableLayer,
   type QmlExportOptions,
   type QmlExportResult,
 } from "./qml-export";
-export {
-  applyQmlImport,
-  parseQml,
-  type QmlImportResult,
-} from "./qml-import";
+export { applyQmlImport, parseQml, type QmlImportResult } from "./qml-import";

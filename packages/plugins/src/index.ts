@@ -1,4 +1,5 @@
 export * from "./types";
+export { setBuiltInPluginCredentials } from "./built-in-credential-runtime";
 export { PluginManager } from "./plugin-manager";
 export {
   registerRightPanel,

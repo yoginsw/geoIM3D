@@ -34,39 +34,7 @@ export interface DesktopSettings {
   language: string;
   layout: DesktopLayoutSettings;
   pluginManifestUrls: string[];
-  /**
-   * Personal API token for uploading projects to share.geolibre.app. Stored in
-   * the same localStorage-backed settings as everything else, so on the web
-   * build it shares the exposure surface of any other localStorage entry (a
-   * same-origin script could read it). This is the well-understood "PAT in local
-   * storage" trade-off; the token is short-lived/revocable and scoped to one
-   * service. Moving it to OS secure storage on desktop is a possible future
-   * hardening (see PR #190 review).
-   */
-  shareToken: string;
-  /**
-   * Cesium Ion access token for the 3D-globe view (Cesium World Imagery +
-   * Terrain need one). Stored here — device-local localStorage, not the shared
-   * project file — so a personal credential is never serialized into a
-   * `.geolibre.json` a user shares. Projected into `VITE_CESIUM_TOKEN` at
-   * runtime by `useRuntimeEnvironmentVariables`, and resolved through
-   * `getCesiumIonToken`, so it overrides the build-time token with no rebuild.
-   * Same "token in localStorage" trade-off as {@link shareToken}.
-   */
-  cesiumIonToken: string;
-  /**
-   * AI Assistant provider credentials (Settings → AI Providers), keyed by the
-   * runtime environment variable each field maps to (e.g. `ANTHROPIC_API_KEY`,
-   * `OPENAI_API_KEY`, `OLLAMA_BASE_URL`). Stored here — device-local
-   * localStorage, not the shared project file — so a personal API key survives
-   * app restarts (the desktop webview persists localStorage across launches)
-   * yet is never serialized into a `.geolibre.json` a user shares. Projected
-   * into `window.__GEOLIBRE_RUNTIME_ENV__` at runtime by
-   * `useRuntimeEnvironmentVariables`, below any explicit project Environment
-   * variable of the same name. Same "secret in localStorage" trade-off as
-   * {@link cesiumIonToken}.
-   */
-  aiProviderEnv: Record<string, string>;
+
   /**
    * Appearance preferences (the accent color scheme). The light/dark mode is
    * handled separately by `useThemeMode` (it tracks the OS / embed preference).
@@ -181,9 +149,7 @@ const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   language: E2E_EXPOSES_ALL_LOCALES ? "" : PRODUCT_PROFILE.language,
   layout: DEFAULT_DESKTOP_LAYOUT_SETTINGS,
   pluginManifestUrls: [],
-  shareToken: "",
-  cesiumIonToken: "",
-  aiProviderEnv: {},
+
   theme: DEFAULT_THEME_SETTINGS,
   uiProfile: DEFAULT_UI_PROFILE_SETTINGS,
   updates: DEFAULT_UPDATE_SETTINGS,
@@ -216,35 +182,13 @@ export function normalizeDesktopSettings(settings: unknown): DesktopSettings {
     pluginManifestUrls: normalizeStringList(candidate.pluginManifestUrls).filter(
       isAllowedPluginManifestUrl,
     ),
-    shareToken:
-      typeof candidate.shareToken === "string" ? candidate.shareToken.trim() : "",
-    cesiumIonToken:
-      typeof candidate.cesiumIonToken === "string"
-        ? candidate.cesiumIonToken.trim()
-        : "",
-    aiProviderEnv: normalizeEnvRecord(candidate.aiProviderEnv),
+
     theme: normalizeThemeSettings(candidate.theme),
     uiProfile: normalizeUiProfileSettings(candidate.uiProfile),
     updates: normalizeUpdateSettings(candidate.updates),
   };
 }
 
-/**
- * Coerce a persisted (or tampered) value into a clean env-var record: entries
- * with a non-empty trimmed name mapped to a non-empty string value. Blank keys,
- * blank values, and non-string values are dropped so a malformed localStorage
- * entry cannot inject bad values into the runtime environment and the persisted
- * blob never accrues empty leftovers (every consumer treats a blank as unset).
- */
-function normalizeEnvRecord(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const result: Record<string, string> = {};
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-    const name = key.trim();
-    if (name && typeof entry === "string" && entry) result[name] = entry;
-  }
-  return result;
-}
 
 function normalizeThemeSettings(theme: unknown): ThemeSettings {
   if (!theme || typeof theme !== "object") {
@@ -332,14 +276,21 @@ function normalizeDesktopLayoutSettings(
   };
 }
 
-function loadDesktopSettings(): DesktopSettings {
+export function loadDesktopSettings(): DesktopSettings {
   if (typeof window === "undefined") return DEFAULT_DESKTOP_SETTINGS;
 
   try {
     const stored = window.localStorage.getItem(DESKTOP_SETTINGS_STORAGE_KEY);
     if (!stored) return DEFAULT_DESKTOP_SETTINGS;
-    return normalizeDesktopSettings(JSON.parse(stored) as unknown);
+    const sanitized = normalizeDesktopSettings(JSON.parse(stored) as unknown);
+    // Immediately overwrite the legacy blob before React effects run. Credential
+    // fields are never migrated to memory or the OS store; users re-enter them.
+    saveDesktopSettings(sanitized);
+    return sanitized;
   } catch {
+    // A malformed legacy blob can still contain secret material. Replace it
+    // instead of leaving the unreadable payload in persistent browser storage.
+    saveDesktopSettings(DEFAULT_DESKTOP_SETTINGS);
     return DEFAULT_DESKTOP_SETTINGS;
   }
 }

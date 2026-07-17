@@ -11,65 +11,56 @@ const NO_SOURCES = {
   projectEnv: {},
 };
 
-// AI provider credentials entered in Settings → AI Providers are stored in the
-// device-local `DesktopSettings.aiProviderEnv` (localStorage) so they survive
-// app restarts (issue #1249). normalizeDesktopSettings is the load-path guard
-// that restores those keys from persisted storage, so these tests pin the
-// round-trip and the defensiveness against malformed/legacy data.
-describe("DesktopSettings.aiProviderEnv persistence", () => {
-  it("defaults to an empty record", () => {
-    assert.deepEqual(normalizeDesktopSettings(undefined).aiProviderEnv, {});
-    assert.deepEqual(normalizeDesktopSettings({}).aiProviderEnv, {});
+// Credential material is intentionally absent from DesktopSettings. Legacy
+// fields are discarded rather than migrated so localStorage remains non-secret.
+describe("DesktopSettings credential disposal", () => {
+  it("does not expose credential fields in defaults", () => {
+    const defaults = normalizeDesktopSettings(undefined) as unknown as Record<
+      string,
+      unknown
+    >;
+    assert.equal("shareToken" in defaults, false);
+    assert.equal("cesiumIonToken" in defaults, false);
+    assert.equal("aiProviderEnv" in defaults, false);
   });
 
-  it("restores stored provider credentials verbatim", () => {
-    const stored = {
-      aiProviderEnv: {
-        ANTHROPIC_API_KEY: "sk-ant-123",
-        OPENAI_API_KEY: "sk-openai-456",
-        OLLAMA_BASE_URL: "http://localhost:11434",
+  it("drops valid, malformed, and legacy credential payloads", () => {
+    for (const candidate of [
+      {
+        shareToken: "legacy-share",
+        cesiumIonToken: "legacy-cesium",
+        aiProviderEnv: {
+          ANTHROPIC_API_KEY: "legacy-anthropic",
+          OLLAMA_BASE_URL: "http://localhost:11434",
+        },
       },
-    };
-    assert.deepEqual(normalizeDesktopSettings(stored).aiProviderEnv, {
-      ANTHROPIC_API_KEY: "sk-ant-123",
-      OPENAI_API_KEY: "sk-openai-456",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-    });
-  });
-
-  it("drops non-string values, blank values, and blank keys from tampered storage", () => {
-    const stored = {
-      aiProviderEnv: {
-        ANTHROPIC_API_KEY: "sk-ant-123",
-        OPENAI_API_KEY: 42,
-        GEMINI_API_KEY: null,
-        OLLAMA_MODEL: "",
-        "   ": "orphan",
-        "  AWS_REGION  ": "us-east-1",
-      },
-    };
-    assert.deepEqual(normalizeDesktopSettings(stored).aiProviderEnv, {
-      ANTHROPIC_API_KEY: "sk-ant-123",
-      AWS_REGION: "us-east-1",
-    });
-  });
-
-  it("tolerates a non-record aiProviderEnv", () => {
-    for (const bad of [null, "nope", 7, ["ANTHROPIC_API_KEY"]]) {
-      assert.deepEqual(
-        normalizeDesktopSettings({ aiProviderEnv: bad }).aiProviderEnv,
-        {},
-      );
+      { aiProviderEnv: null },
+      { aiProviderEnv: ["legacy-array"] },
+    ]) {
+      const normalized = normalizeDesktopSettings(candidate) as unknown as Record<
+        string,
+        unknown
+      >;
+      const serialized = JSON.stringify(normalized);
+      assert.equal("shareToken" in normalized, false);
+      assert.equal("cesiumIonToken" in normalized, false);
+      assert.equal("aiProviderEnv" in normalized, false);
+      assert.equal(serialized.includes("legacy-"), false);
+      assert.equal(serialized.includes("localhost:11434"), false);
     }
   });
 
-  it("normalizes legacy settings with no aiProviderEnv field", () => {
-    const legacy = {
-      shareToken: "tok",
-      cesiumIonToken: "cesium",
+  it("preserves ordinary settings while dropping legacy credentials", () => {
+    const normalized = normalizeDesktopSettings({
+      shareToken: "discard-me",
+      cesiumIonToken: "discard-me-too",
       layout: { toolbarLabels: false },
-    };
-    assert.deepEqual(normalizeDesktopSettings(legacy).aiProviderEnv, {});
+    }) as unknown as Record<string, unknown>;
+    assert.equal(
+      (normalized.layout as { toolbarLabels: boolean }).toolbarLabels,
+      false,
+    );
+    assert.equal(JSON.stringify(normalized).includes("discard-me"), false);
   });
 });
 
