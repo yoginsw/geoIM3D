@@ -500,15 +500,23 @@ export function overlayOutputRect(
  * panel would taint it, and compositing a tainted source would break
  * `captureStream` for the whole take. A tainted or un-rasterizable overlay is
  * dropped (the recording proceeds without it) rather than failing the recording.
+ *
+ * The elements are rasterized serially; `signal` (the recording's abort signal)
+ * is checked between them so a Stop clicked while still "preparing" is honored
+ * promptly instead of after every panel has finished rasterizing.
  */
 export async function rasterizeDomOverlays(
   elements: readonly HTMLElement[],
   scale: number,
+  signal?: AbortSignal,
 ): Promise<RasterOverlay[]> {
   if (elements.length === 0) return [];
   const { default: html2canvas } = await import("html2canvas-pro");
   const overlays: RasterOverlay[] = [];
   for (const el of elements) {
+    // Stop clicked during preparation: return what we have; the caller re-checks
+    // signal.aborted and discards it as a cancel.
+    if (signal?.aborted) break;
     if (!el.isConnected || el.offsetWidth === 0 || el.offsetHeight === 0) {
       continue;
     }
@@ -629,9 +637,21 @@ export async function recordMapCanvas({
   // rasters are origin-clean (checked inside), so compositing them each frame
   // keeps the recording canvas recordable.
   const deviceScale = cssWidth > 0 ? base.width / cssWidth : 1;
-  const overlays = domOverlays?.length
-    ? await rasterizeDomOverlays(domOverlays, deviceScale)
-    : [];
+  let overlays: RasterOverlay[] = [];
+  if (domOverlays?.length) {
+    try {
+      overlays = await rasterizeDomOverlays(domOverlays, deviceScale, signal);
+    } catch (err) {
+      // Panel capture is an opt-in enhancement and must not take down a
+      // recording that would otherwise succeed. If html2canvas-pro fails to load
+      // (chunk 404, offline desktop build, blocked by an extension), fall back to
+      // a canvas-only recording instead of failing the whole take.
+      console.warn(
+        "Skipping map panel overlays; html2canvas-pro failed to load",
+        err,
+      );
+    }
+  }
   // Rasterization is async and can outlast a quick Stop; if the caller already
   // aborted during it, bail before starting the recorder. An empty blob reads as
   // a cancel to the dialog (it never entered the "recording" state).

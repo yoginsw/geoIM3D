@@ -292,8 +292,10 @@ export function RecordVideoDialog({
   useEffect(() => {
     if (!open) return;
     const container = mapControllerRef.current?.getMap()?.getContainer();
-    // Observe the control container specifically (not the whole map) so tile and
-    // marker churn don't fire the callback — only control add/removes do.
+    // Observe the control container specifically (not the whole map) to avoid
+    // tile/marker churn. A control's own internal DOM updates (e.g. legend
+    // swatches) can still fire the callback, but refresh() is a cheap querySelector
+    // and React bails on an unchanged value, so the extra calls are harmless.
     const controlContainer =
       container?.querySelector(".maplibregl-control-container") ?? container;
     if (!controlContainer) {
