@@ -147,6 +147,15 @@ describe("portable project boundaries", () => {
     assert.deepEqual(sanitized.plugins, {
       settings: { sample: { enabled: true } },
     });
+
+    const relay = readFileSync(
+      path.join(repoRoot, "workers/collab/src/session.ts"),
+      "utf8",
+    );
+    assert.match(
+      relay,
+      /snapshot:\s*sanitizePortableProjectSnapshot\(\s*parseStoredSnapshot\(snapshot\)/,
+    );
   });
 });
 

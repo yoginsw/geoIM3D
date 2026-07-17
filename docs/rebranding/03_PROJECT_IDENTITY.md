@@ -38,7 +38,7 @@
 
 ### Credential-safe Serialization
 
-Save, Share, Collaboration, Embed가 공유하는 Portable Project 경계에서 `preferences.environmentVariables`를 항상 비운다. Collaboration/Embed의 송신뿐 아니라 수신 Project도 Store 적용 전에 동일하게 정리하며, Collaboration Relay도 Storage/Broadcast 전에 다시 제거한다. Runtime의 기존 Live Store 값은 Local Save/Share 시 유지되며 외부 Project에는 기록·전송하지 않는다.
+Save, Share, Collaboration, Embed가 공유하는 Portable Project 경계에서 `preferences.environmentVariables`를 항상 비운다. Collaboration/Embed의 송신뿐 아니라 수신 Project도 Store 적용 전에 동일하게 정리한다. Collaboration Relay는 신규 Snapshot의 Storage/Broadcast 전과 기존 저장 Snapshot의 `welcome` 전송 전에 다시 제거한다. Runtime의 기존 Live Store 값은 Local Save/Share 시 유지되며 외부 Project에는 기록·전송하지 않는다.
 
 Round-trip Test에서 다음을 확인했다.
 

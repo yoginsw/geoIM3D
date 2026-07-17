@@ -387,7 +387,9 @@ export class CollabSession extends DurableObject<Env> {
       // A corrupt stored snapshot (partial write/storage error) must not throw
       // here — that would close the socket 1011 and every reconnect would hit
       // the same poison value, locking the whole session out. Fall back to null.
-      snapshot: parseStoredSnapshot(snapshot),
+      // Sanitize after parsing so snapshots stored by pre-redaction clients cannot
+      // expose environment credentials to a newly joined participant.
+      snapshot: sanitizePortableProjectSnapshot(parseStoredSnapshot(snapshot)),
       // Bootstrap the joiner with existing participants' live cursors/viewports.
       presence: Object.fromEntries(this.presence),
       // Bootstrap the joiner with the recent chat history.
