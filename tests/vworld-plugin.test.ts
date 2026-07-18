@@ -9,6 +9,7 @@ import {
 } from "../packages/map/src/vworld-ephemeral-layer.ts";
 import type {
   GeoLibreAppAPI,
+  GeoLibreFloatingPanelRegistration,
   GeoLibreToolbarMenu,
 } from "../packages/plugins/src/types.ts";
 
@@ -44,7 +45,7 @@ class FakeMap implements VWorldMapLike {
   }
 }
 
-function setup(desktop: boolean) {
+function setup(desktop: boolean, withSearch = false) {
   resetVWorldProtocolForTests();
   const map = new FakeMap();
   const maps: VWorldMapLike[] = [map];
@@ -60,6 +61,9 @@ function setup(desktop: boolean) {
   };
   let menu: GeoLibreToolbarMenu | null = null;
   let menuDisposed = 0;
+  let floatingPanel: GeoLibreFloatingPanelRegistration | null = null;
+  let floatingPanelDisposed = 0;
+  let floatingPanelOpened = 0;
   let credentialDisposal: (() => void) | null = null;
   let credentialSubscriptionDisposed = 0;
   const app = {
@@ -71,11 +75,30 @@ function setup(desktop: boolean) {
         menu = null;
       };
     },
+    registerFloatingPanel(next: GeoLibreFloatingPanelRegistration) {
+      floatingPanel = next;
+      return () => {
+        floatingPanelDisposed += 1;
+        floatingPanel = null;
+      };
+    },
+    openFloatingPanel(id: string) {
+      if (floatingPanel?.id !== id) return false;
+      floatingPanelOpened += 1;
+      return true;
+    },
   } as unknown as GeoLibreAppAPI;
   const plugin = createVWorld2DPlugin({
     desktop,
     getMaps: () => maps,
     protocol,
+    searchClient: withSearch
+      ? {
+          search: async () => ({ status: "OK", result: { items: [] } }),
+          geocode: async () => ({ status: "OK", result: {} }),
+          reverseGeocode: async () => ({ status: "OK", result: { item: [] } }),
+        }
+      : undefined,
     subscribeMaps(listener) {
       mapSubscription = listener;
       return () => {
@@ -104,6 +127,15 @@ function setup(desktop: boolean) {
     },
     get menuDisposed() {
       return menuDisposed;
+    },
+    get floatingPanel() {
+      return floatingPanel;
+    },
+    get floatingPanelDisposed() {
+      return floatingPanelDisposed;
+    },
+    get floatingPanelOpened() {
+      return floatingPanelOpened;
     },
     disposeCredential() {
       credentialDisposal?.();
@@ -201,5 +233,19 @@ describe("VWorld 2D built-in plugin", () => {
     subject.plugin.deactivate(subject.app);
     assert.equal(secondary.sources.size, 0);
     assert.equal(subject.handlers.size, 0);
+  });
+
+  it("registers and cleans the desktop-only search/address panel", () => {
+    const subject = setup(true, true);
+    subject.plugin.activate(subject.app);
+    assert.equal(subject.floatingPanel?.id, "geoim3d-vworld-search-panel");
+    const search = subject.menu?.items.find((item) => item.id === "search-address");
+    assert.ok(search && "onSelect" in search);
+    search.onSelect();
+    assert.equal(subject.floatingPanelOpened, 1);
+
+    subject.plugin.deactivate(subject.app);
+    assert.equal(subject.floatingPanel, null);
+    assert.equal(subject.floatingPanelDisposed, 1);
   });
 });

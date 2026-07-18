@@ -6,6 +6,12 @@ import {
   type VWorldTileTransport,
 } from "@geolibre/map/vworld-ephemeral-layer";
 
+import {
+  mountVWorldSearchPanel,
+  type VWorldSearchMapLike,
+} from "./vworld-search-panel";
+import { VWorldSearchSession, type VWorldSearchClient } from "./vworld-search";
+
 import type { GeoLibreAppAPI, GeoLibrePlugin } from "../types";
 
 export const VWORLD_2D_PLUGIN_ID = "geoim3d-vworld-2d";
@@ -17,6 +23,7 @@ interface VWorld2DPluginOptions {
   getMaps?: () => readonly VWorldMapLike[];
   subscribeMaps?: (listener: () => void) => () => void;
   subscribeCredentialDisposal?: (listener: () => void) => () => void;
+  searchClient?: VWorldSearchClient;
 }
 
 const ACTIONS: ReadonlyArray<{
@@ -37,8 +44,10 @@ export function createVWorld2DPlugin(
   let activated = false;
   let activeLayer: VWorldRasterLayer | null = null;
   let unregisterMenu: (() => void) | null = null;
+  let unregisterSearchPanel: (() => void) | null = null;
   let unsubscribeMaps: (() => void) | null = null;
   let unsubscribeCredentialDisposal: (() => void) | null = null;
+  let searchSession: VWorldSearchSession | null = null;
 
   const reconcileMaps = (app: GeoLibreAppAPI) => {
     const primary = app.getMap?.() as unknown as VWorldMapLike | undefined;
@@ -74,6 +83,11 @@ export function createVWorld2DPlugin(
     for (const controller of controllers.values()) controller.deactivate();
   };
 
+  const clearConsumers = () => {
+    clearLayer();
+    searchSession?.clear();
+  };
+
   return {
     id: VWORLD_2D_PLUGIN_ID,
     name: "VWorld 2D 지도",
@@ -85,8 +99,29 @@ export function createVWorld2DPlugin(
       activated = true;
       reconcileMaps(app);
       unsubscribeMaps = options.subscribeMaps?.(() => reconcileMaps(app)) ?? null;
+      if (options.searchClient && app.registerFloatingPanel) {
+        searchSession = new VWorldSearchSession(options.searchClient);
+        unregisterSearchPanel = app.registerFloatingPanel({
+          id: "geoim3d-vworld-search-panel",
+          title: "VWorld 검색·주소 변환",
+          defaultWidth: 360,
+          defaultHeight: 520,
+          position: "top-left",
+          render: (container) =>
+            mountVWorldSearchPanel(container, {
+              session: searchSession!,
+              getMaps: () => {
+                const primary = app.getMap?.() as unknown as
+                  | VWorldSearchMapLike
+                  | undefined;
+                return (options.getMaps?.() ??
+                  (primary ? [primary] : [])) as readonly VWorldSearchMapLike[];
+              },
+            }),
+        });
+      }
       unsubscribeCredentialDisposal =
-        options.subscribeCredentialDisposal?.(clearLayer) ?? null;
+        options.subscribeCredentialDisposal?.(clearConsumers) ?? null;
       unregisterMenu = app.registerToolbarMenu({
         id: "geoim3d-vworld-map-menu",
         label: "VWorld 지도",
@@ -96,6 +131,17 @@ export function createVWorld2DPlugin(
             label,
             onSelect: () => selectLayer(app, layer),
           })),
+          ...(searchSession
+            ? [
+                { type: "separator" as const, id: "vworld-search-separator" },
+                {
+                  id: "search-address",
+                  label: "검색·주소 변환",
+                  onSelect: () =>
+                    app.openFloatingPanel?.("geoim3d-vworld-search-panel"),
+                },
+              ]
+            : []),
           { type: "separator" as const, id: "vworld-remove-separator" },
           {
             id: "remove",
@@ -111,10 +157,14 @@ export function createVWorld2DPlugin(
       unsubscribeCredentialDisposal = null;
       unsubscribeMaps?.();
       unsubscribeMaps = null;
+      unregisterSearchPanel?.();
+      unregisterSearchPanel = null;
       unregisterMenu?.();
       unregisterMenu = null;
       for (const controller of controllers.values()) controller.dispose();
       controllers.clear();
+      searchSession?.clear();
+      searchSession = null;
       activeLayer = null;
       activated = false;
     },

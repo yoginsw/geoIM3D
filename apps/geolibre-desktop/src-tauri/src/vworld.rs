@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,6 +16,7 @@ const MAX_PNG_BYTES: usize = 8 * 1024 * 1024;
 const MAX_QUERY_CHARS: usize = 200;
 const MAX_ADDRESS_CHARS: usize = 300;
 const CANCEL_ID_CHARS: usize = 96;
+const DAILY_GEOCODER_LIMIT: u32 = 40_000;
 
 const ERR_INVALID_REQUEST: &str = "vworld_invalid_request";
 const ERR_INVALID_REQUEST_ID: &str = "vworld_invalid_request_id";
@@ -28,10 +29,18 @@ const ERR_TIMEOUT: &str = "vworld_timeout";
 const ERR_HTTP: &str = "vworld_http_error";
 const ERR_RESPONSE: &str = "vworld_invalid_response";
 const ERR_PNG: &str = "vworld_invalid_tile";
+const ERR_RATE_LIMIT: &str = "vworld_rate_limit";
+
+#[derive(Default)]
+struct DailyUsage {
+    utc_day: u64,
+    count: u32,
+}
 
 #[derive(Default)]
 pub struct VWorldState {
     requests: Arc<Mutex<HashMap<String, oneshot::Sender<()>>>>,
+    geocoder_usage: Arc<Mutex<DailyUsage>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -218,7 +227,7 @@ fn valid_search_type(value: &str) -> bool {
 }
 fn valid_search_category(search_type: &str, category: Option<&str>) -> bool {
     match (search_type, category) {
-        (_, None) => true,
+        ("PLACE" | "ROAD", None) => true,
         ("ADDRESS", Some(value)) => matches!(value, "ROAD" | "PARCEL"),
         ("DISTRICT", Some(value)) => matches!(value, "L1" | "L2" | "L3" | "L4"),
         _ => false,
@@ -239,6 +248,28 @@ fn valid_tile(req: &TileRequest) -> bool {
 fn endpoint_url(path: &str) -> String {
     format!("{API_BASE}{path}")
 }
+
+fn reserve_geocoder_request(state: &VWorldState) -> Result<(), String> {
+    let utc_day = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        / 86_400;
+    let mut usage = state
+        .geocoder_usage
+        .lock()
+        .map_err(|_| ERR_RESPONSE.to_string())?;
+    if usage.utc_day != utc_day {
+        usage.utc_day = utc_day;
+        usage.count = 0;
+    }
+    if usage.count >= DAILY_GEOCODER_LIMIT {
+        return Err(ERR_RATE_LIMIT.to_string());
+    }
+    usage.count += 1;
+    Ok(())
+}
+
 async fn read_limited(mut response: reqwest::Response, limit: usize) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|error| {
@@ -285,9 +316,30 @@ async fn execute_json(
     request: reqwest::RequestBuilder,
 ) -> Result<Value, String> {
     let cancel = register(state, request_id)?;
+    execute_registered_json(state, request_id, cancel, request).await
+}
+
+async fn execute_registered_json(
+    state: &VWorldState,
+    request_id: &str,
+    cancel: oneshot::Receiver<()>,
+    request: reqwest::RequestBuilder,
+) -> Result<Value, String> {
     let result = json_request(cancel, request.send()).await;
     unregister(state, request_id);
     result
+}
+
+fn register_geocoder_request(
+    state: &VWorldState,
+    request_id: &str,
+) -> Result<oneshot::Receiver<()>, String> {
+    let cancel = register(state, request_id)?;
+    if let Err(error) = reserve_geocoder_request(state) {
+        unregister(state, request_id);
+        return Err(error);
+    }
+    Ok(cancel)
 }
 fn response_dto(value: Value) -> VWorldResponse {
     let status = value
@@ -339,6 +391,9 @@ fn sanitize_value(value: &Value) -> Value {
         "features",
         "featureCollection",
         "items",
+        "item",
+        "road",
+        "parcel",
         "refined",
         "pnu",
         "jibun",
@@ -434,6 +489,7 @@ pub async fn vworld_geocode(
         return invalid();
     }
     let (key, client) = with_credential(credential_key, |key| Ok((key, client()?)))?;
+    let cancel = register_geocoder_request(&state, &request_id)?;
     let params = [
         ("key", key),
         ("service", "address".into()),
@@ -447,9 +503,10 @@ pub async fn vworld_geocode(
         ("simple", request.simple.unwrap_or(false).to_string()),
         ("crs", "EPSG:4326".into()),
     ];
-    execute_json(
+    execute_registered_json(
         &state,
         &request_id,
+        cancel,
         client.get(endpoint_url(ADDRESS_PATH)).query(&params),
     )
     .await
@@ -472,6 +529,7 @@ pub async fn vworld_reverse_geocode(
         }
     }
     let (key, client) = with_credential(credential_key, |key| Ok((key, client()?)))?;
+    let cancel = register_geocoder_request(&state, &request_id)?;
     let params = [
         ("key", key),
         ("service", "address".into()),
@@ -488,9 +546,10 @@ pub async fn vworld_reverse_geocode(
         ("simple", request.simple.unwrap_or(false).to_string()),
         ("crs", "EPSG:4326".into()),
     ];
-    execute_json(
+    execute_registered_json(
         &state,
         &request_id,
+        cancel,
         client.get(endpoint_url(ADDRESS_PATH)).query(&params),
     )
     .await
@@ -706,6 +765,86 @@ mod tests {
         assert!(valid_id("abc-123_X"));
         assert!(!valid_id("../secret"));
         assert!(!valid_id(""));
+    }
+    #[test]
+    fn search_categories_follow_the_official_type_contract() {
+        assert!(valid_search_category("PLACE", None));
+        assert!(valid_search_category("ROAD", None));
+        assert!(valid_search_category("ADDRESS", Some("ROAD")));
+        assert!(valid_search_category("DISTRICT", Some("L4")));
+        assert!(!valid_search_category("ADDRESS", None));
+        assert!(!valid_search_category("DISTRICT", None));
+        assert!(!valid_search_category("PLACE", Some("ROAD")));
+    }
+    #[test]
+    fn reverse_and_search_address_fields_survive_allowlist_sanitizing() {
+        let sanitized = sanitize_value(&serde_json::json!({
+            "item": [{ "road": "도로", "parcel": "지번", "secret": "drop" }]
+        }));
+        assert_eq!(sanitized["item"][0]["road"], "도로");
+        assert_eq!(sanitized["item"][0]["parcel"], "지번");
+        assert!(sanitized["item"][0].get("secret").is_none());
+    }
+    #[test]
+    fn geocoder_daily_limit_is_memory_only_and_resets_on_utc_day_change() {
+        let state = VWorldState::default();
+        let utc_day = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            / 86_400;
+        {
+            let mut usage = state.geocoder_usage.lock().unwrap();
+            usage.utc_day = utc_day;
+            usage.count = DAILY_GEOCODER_LIMIT;
+        }
+        assert_eq!(reserve_geocoder_request(&state), Err(ERR_RATE_LIMIT.into()));
+        {
+            let mut usage = state.geocoder_usage.lock().unwrap();
+            usage.utc_day = utc_day.saturating_sub(1);
+        }
+        assert!(reserve_geocoder_request(&state).is_ok());
+        assert_eq!(state.geocoder_usage.lock().unwrap().count, 1);
+    }
+    #[test]
+    fn invalid_and_duplicate_request_ids_do_not_consume_geocoder_quota() {
+        let state = VWorldState::default();
+        assert_eq!(
+            register_geocoder_request(&state, "../invalid").unwrap_err(),
+            ERR_INVALID_REQUEST_ID
+        );
+        assert_eq!(state.geocoder_usage.lock().unwrap().count, 0);
+
+        let _active = register(&state, "duplicate").unwrap();
+        assert_eq!(
+            register_geocoder_request(&state, "duplicate").unwrap_err(),
+            ERR_DUPLICATE_REQUEST_ID
+        );
+        assert_eq!(state.geocoder_usage.lock().unwrap().count, 0);
+        unregister(&state, "duplicate");
+    }
+    #[test]
+    fn quota_rejection_rolls_back_the_registered_request() {
+        let state = VWorldState::default();
+        let utc_day = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            / 86_400;
+        {
+            let mut usage = state.geocoder_usage.lock().unwrap();
+            usage.utc_day = utc_day;
+            usage.count = DAILY_GEOCODER_LIMIT;
+        }
+        assert_eq!(
+            register_geocoder_request(&state, "quota-rejected").unwrap_err(),
+            ERR_RATE_LIMIT
+        );
+        assert!(!state
+            .requests
+            .lock()
+            .unwrap()
+            .contains_key("quota-rejected"));
     }
     #[test]
     fn tile_allowlist_rejects_satellite_and_out_of_range_coordinates() {

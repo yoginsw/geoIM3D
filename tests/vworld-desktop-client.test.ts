@@ -105,6 +105,7 @@ describe("VWorld desktop client boundary", () => {
       "vworld_invalid_tile",
       "vworld_missing_api_key",
       "vworld_network_error",
+      "vworld_rate_limit",
       "vworld_timeout",
     ];
     for (const code of codes) {
