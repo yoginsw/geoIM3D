@@ -575,6 +575,24 @@ function duckdbWasmBundlesPlugin(): Plugin {
   };
 }
 
+function vworldPluginHostTargetPlugin(): Plugin {
+  const modulePath = path.resolve(
+    __dirname,
+    IS_TAURI_BUILD
+      ? "src/lib/vworld-plugin-host.tauri.ts"
+      : "src/lib/vworld-plugin-host.ts",
+  );
+  return {
+    name: "geoim3d-vworld-plugin-host-target",
+    enforce: "pre",
+    resolveId(source) {
+      return /(?:^|\/)vworld-plugin-host(?:\.ts)?$/.test(source)
+        ? modulePath
+        : null;
+    },
+  };
+}
+
 function removeJupyterLiteFromTauriDistPlugin(): Plugin {
   return {
     name: "geolibre-remove-jupyterlite-from-tauri-dist",
@@ -864,6 +882,7 @@ export default defineConfig({
     ...(PGLITE_CDN ? [pgliteCdnLoaderPlugin()] : []),
     ...(CEREUS_CDN ? [cereusCdnLoaderPlugin()] : []),
     duckdbWasmBundlesPlugin(),
+    vworldPluginHostTargetPlugin(),
     stripDuckDbWorkerSourcemapPlugin(),
     projectUrlQueryPlugin(),
     bundledPlugins(path.resolve(__dirname, "public/plugins")),

@@ -239,6 +239,47 @@ describe("credential backend", () => {
     assert.deepEqual(store.getState().configuredIds, ["vworld:api-key"]);
   });
 
+  it("signals replacement only after an existing credential is overwritten", async () => {
+    const originalWindow = globalThis.window;
+    const events = new EventTarget();
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: events,
+    });
+    let replacementCount = 0;
+    let replacementId = "";
+    events.addEventListener("geoim3d:credential-replaced", (event) => {
+      replacementCount += 1;
+      replacementId = (event as CustomEvent<{ id: string }>).detail.id;
+    });
+    const backend: CredentialBackend = {
+      kind: "windows",
+      async load() {
+        return { values: {}, configuredIds: [], errorCode: null };
+      },
+      async set() {},
+      async delete() {},
+      async clear() {},
+    };
+    try {
+      const store = createCredentialStore(backend);
+      await store.getState().setCredential("vworld:api-key", "first-value");
+      assert.equal(replacementCount, 0);
+      await store.getState().setCredential("vworld:api-key", "second-value");
+      assert.equal(replacementCount, 1);
+      assert.equal(replacementId, "vworld:api-key");
+    } finally {
+      if (originalWindow === undefined) {
+        delete (globalThis as { window?: unknown }).window;
+      } else {
+        Object.defineProperty(globalThis, "window", {
+          configurable: true,
+          value: originalWindow,
+        });
+      }
+    }
+  });
+
   it("reloads remaining state when purge-all partially fails", async () => {
     const backend: CredentialBackend = {
       kind: "windows",

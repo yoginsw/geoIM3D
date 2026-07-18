@@ -45,6 +45,10 @@ export { maplibreLayerControlPlugin } from "./plugins/layer-control";
 export { osmBasemapPlugin } from "./plugins/osm-basemap";
 export { cartoLightPlugin } from "./plugins/carto-light";
 export {
+  createVWorld2DPlugin,
+  VWORLD_2D_PLUGIN_ID,
+} from "./plugins/vworld-2d";
+export {
   maplibreBasemapControlPlugin,
   BASEMAP_CONTROL_PLUGIN_ID,
   getActiveBasemapControl,

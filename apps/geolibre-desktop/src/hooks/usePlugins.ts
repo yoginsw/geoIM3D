@@ -61,6 +61,7 @@ import type {
   GeoLibreExternalNativeLayerRegistration,
   GeoLibreFileDialogOptions,
   GeoLibreMapControlPosition,
+  GeoLibrePlugin,
   GeoLibreTileLayerOptions,
   GeoLibreWmsLayerOptions,
 } from "@geolibre/plugins";
@@ -84,6 +85,7 @@ import {
 import { appendDiagnostic } from "../lib/diagnostics";
 import { fetchUrlBytes } from "../lib/native-http";
 import { partitionProjectPluginManifestUrls } from "../lib/plugin-trust";
+import { vworldBuiltInPlugin } from "../lib/vworld-plugin-host";
 import {
   createWmsTileUrl,
   normalizeWmsVersion,
@@ -137,7 +139,7 @@ interface TauriRuntimeWindow extends Window {
 }
 
 const manager = new PluginManager();
-manager.registerAll([
+const builtInPlugins: GeoLibrePlugin[] = [
   maplibreLayerControlPlugin,
   maplibreGeoEditorPlugin,
   maplibreAnnotationsPlugin,
@@ -172,7 +174,9 @@ manager.registerAll([
   maplibreReverseGeocodePlugin,
   maplibreDeckGlVizPlugin,
   maplibreComponentsPlugin,
-]);
+];
+if (vworldBuiltInPlugin) builtInPlugins.push(vworldBuiltInPlugin);
+manager.registerAll(builtInPlugins);
 
 // The Timelapse plugin records the map to a video blob but cannot depend on
 // the app's Tauri I/O helpers, so the save step (native dialog under Tauri,

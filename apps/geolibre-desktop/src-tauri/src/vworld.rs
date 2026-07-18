@@ -228,11 +228,7 @@ fn valid_keyed_layer(layer: &str) -> bool {
     matches!(layer, "Base" | "white" | "midnight" | "Hybrid")
 }
 fn valid_tile(req: &TileRequest) -> bool {
-    let max_zoom = if matches!(req.layer.as_str(), "white" | "midnight") {
-        18
-    } else {
-        19
-    };
+    let max_zoom = if req.layer == "Base" { 19 } else { 18 };
     if !valid_keyed_layer(&req.layer) || req.z < 6 || req.z > max_zoom {
         return false;
     }
@@ -731,9 +727,30 @@ mod tests {
             x: 1023,
             y: 1023,
         };
+        let base_at_max_zoom = TileRequest {
+            layer: "Base".into(),
+            z: 19,
+            x: 0,
+            y: 0,
+        };
+        let hybrid_at_max_zoom = TileRequest {
+            layer: "Hybrid".into(),
+            z: 18,
+            x: 0,
+            y: 0,
+        };
+        let hybrid_above_max_zoom = TileRequest {
+            layer: "Hybrid".into(),
+            z: 19,
+            x: 0,
+            y: 0,
+        };
         assert!(!valid_tile(&satellite));
         assert!(!valid_tile(&out_of_range));
         assert!(valid_tile(&valid));
+        assert!(valid_tile(&base_at_max_zoom));
+        assert!(valid_tile(&hybrid_at_max_zoom));
+        assert!(!valid_tile(&hybrid_above_max_zoom));
     }
     #[test]
     fn coordinate_and_bbox_validation_is_bounded() {

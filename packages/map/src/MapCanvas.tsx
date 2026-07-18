@@ -21,6 +21,7 @@ import {
   vectorTileStyleLayerIds,
 } from "./layer-sync";
 import { createMapController, type MapController } from "./map-controller";
+import { registerMapInstance } from "./map-instance-registry";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "maplibre-gl-layer-control/style.css";
 import "./layer-control-overrides.css";
@@ -1017,6 +1018,7 @@ export const MapCanvas = memo(function MapCanvas({
       mapView,
       mapPreferences,
     });
+    const unregisterMapInstance = registerMapInstance(map);
     controller.current = mc;
     if (controllerRef) controllerRef.current = mc;
 
@@ -1121,6 +1123,7 @@ export const MapCanvas = memo(function MapCanvas({
       if (resizeFrame !== null) {
         window.cancelAnimationFrame(resizeFrame);
       }
+      unregisterMapInstance();
       mc.destroy();
       controller.current = null;
       if (controllerRef) controllerRef.current = null;

@@ -52,7 +52,10 @@ function errorCode(
 }
 
 function dispatchCredentialDisposalEvent(
-  type: "geoim3d:credential-deleted" | "geoim3d:credentials-cleared",
+  type:
+    | "geoim3d:credential-deleted"
+    | "geoim3d:credential-replaced"
+    | "geoim3d:credentials-cleared",
   id?: CredentialId
 ): void {
   if (
@@ -79,7 +82,7 @@ export interface CredentialState {
 }
 
 export function createCredentialStore(backend: CredentialBackend) {
-  return create<CredentialState>((set) => ({
+  return create<CredentialState>((set, get) => ({
     backend: backend.kind,
     values: {},
     configuredIds: [],
@@ -104,8 +107,12 @@ export function createCredentialStore(backend: CredentialBackend) {
       }
     },
     async setCredential(id, value) {
+      const replacesConfiguredCredential = get().configuredIds.includes(id);
       try {
         await backend.set(id, value);
+        if (replacesConfiguredCredential) {
+          dispatchCredentialDisposalEvent("geoim3d:credential-replaced", id);
+        }
         const normalized = value.trim();
         set((state) => {
           const values = { ...state.values };

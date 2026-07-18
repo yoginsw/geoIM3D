@@ -6,6 +6,7 @@ import {
 } from "@geolibre/core";
 import { memo, useEffect, useMemo, useRef } from "react";
 import { createMapController, type MapController } from "./map-controller";
+import { registerMapInstance } from "./map-instance-registry";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export interface SecondaryMapCanvasProps {
@@ -91,6 +92,7 @@ export const SecondaryMapCanvas = memo(function SecondaryMapCanvas({
       // map and the global store, so a second control here would fight them.
       controlVisibility: { "layer-control": false },
     });
+    const unregisterMapInstance = registerMapInstance(map);
     controller.current = mc;
 
     const sameCamera = (a: MapViewState, b: MapViewState) =>
@@ -143,6 +145,7 @@ export const SecondaryMapCanvas = memo(function SecondaryMapCanvas({
     return () => {
       resizeObserver.disconnect();
       if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+      unregisterMapInstance();
       mc.destroy();
       controller.current = null;
     };
