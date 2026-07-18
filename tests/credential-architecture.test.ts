@@ -133,15 +133,21 @@ describe("credential backend", () => {
       "share:token": "memory-share-value",
       "ai:OPENAI_API_KEY": "memory-ai-value",
       },
+      configuredIds: ["share:token", "ai:OPENAI_API_KEY"],
       errorCode: null,
     });
     await backend.delete("share:token");
     assert.deepEqual(await backend.load(), {
       values: { "ai:OPENAI_API_KEY": "memory-ai-value" },
+      configuredIds: ["ai:OPENAI_API_KEY"],
       errorCode: null,
     });
     await backend.clear();
-    assert.deepEqual(await backend.load(), { values: {}, errorCode: null });
+    assert.deepEqual(await backend.load(), {
+      values: {},
+      configuredIds: [],
+      errorCode: null,
+    });
     assert.equal(invokeCount, 0);
   });
 
@@ -154,6 +160,7 @@ describe("credential backend", () => {
         if (command === "credential_load") {
           return {
             values: { "cesium:ion-token": "desktop-value" },
+            configuredIds: ["cesium:ion-token", "vworld:api-key"],
             errorCode: "credential_read_failed",
           } as T;
         }
@@ -163,6 +170,7 @@ describe("credential backend", () => {
 
     assert.deepEqual(await backend.load(), {
       values: { "cesium:ion-token": "desktop-value" },
+      configuredIds: ["cesium:ion-token", "vworld:api-key"],
       errorCode: "credential_read_failed",
     });
     await backend.set("cesium:ion-token", "replacement-value");
@@ -210,12 +218,34 @@ describe("credential backend", () => {
     assert.equal(store.getState().errorCode, "credential_invalid_value");
   });
 
+  it("keeps VWorld provisioning write-only in frontend state", async () => {
+    let savedValue = "";
+    const backend: CredentialBackend = {
+      kind: "windows",
+      async load() {
+        return { values: {}, configuredIds: [], errorCode: null };
+      },
+      async set(id, value) {
+        assert.equal(id, "vworld:api-key");
+        savedValue = value;
+      },
+      async delete() {},
+      async clear() {},
+    };
+    const store = createCredentialStore(backend);
+    await store.getState().setCredential("vworld:api-key", "write-only-secret");
+    assert.equal(savedValue, "write-only-secret");
+    assert.equal(store.getState().values["vworld:api-key"], undefined);
+    assert.deepEqual(store.getState().configuredIds, ["vworld:api-key"]);
+  });
+
   it("reloads remaining state when purge-all partially fails", async () => {
     const backend: CredentialBackend = {
       kind: "windows",
       async load() {
         return {
           values: { "cesium:ion-token": "remaining-value" },
+          configuredIds: ["cesium:ion-token"],
           errorCode: null,
         };
       },
@@ -340,12 +370,38 @@ describe("credential runtime boundaries", () => {
       {
         shareToken: "share-value",
         cesiumIonToken: "cesium-value",
-        vworldApiKey: "vworld-value",
         aiProviderEnv: { OPENAI_API_KEY: "ai-value" },
         geocodingApiKeys: { mapbox: "geocoder-value" },
         serviceEnv: { VITE_GOOGLE_MAPS_API_KEY: "google-value" },
       }
     );
+  });
+
+  it("keeps VWorld out of every frontend runtime projection", () => {
+    const runtimeHook = readFileSync(
+      path.join(
+        repoRoot,
+        "apps/geolibre-desktop/src/hooks/useRuntimeEnvironmentVariables.ts"
+      ),
+      "utf8"
+    );
+    assert.doesNotMatch(runtimeHook, /vworldApiKey/);
+    assert.doesNotMatch(runtimeHook, /VWORLD_API_KEY/);
+    assert.doesNotMatch(runtimeHook, /vworldEnv/);
+    assert.equal(
+      "vworldApiKey" in
+        credentialRuntimeValues({ "vworld:api-key": "must-not-project" }),
+      false
+    );
+    const settings = readFileSync(
+      path.join(
+        repoRoot,
+        "apps/geolibre-desktop/src/components/layout/SettingsDialog.tsx"
+      ),
+      "utf8"
+    );
+    assert.match(settings, /\{isTauri\(\) \? \([\s\S]*?VWorld API Key/);
+    assert.match(settings, /delete next\["vworld:api-key"\]/);
   });
 
   it("preserves the configured Bedrock region through the private runtime", () => {
@@ -463,6 +519,9 @@ describe("Windows credential command contract", () => {
       ...credentialRust.matchAll(/^\s{4}"([^"]+)",$/gm),
     ].map((match) => match[1]);
     assert.deepEqual(rustAllowlist, [...CREDENTIAL_IDS]);
+    assert.match(credentialRust, /configured_ids/);
+    assert.match(credentialRust, /WRITE_ONLY_CREDENTIAL_IDS/);
+    assert.match(credentialRust, /"vworld:api-key"/);
     assert.doesNotMatch(credentialRust, /format!\([^\n]*error/);
   });
 });

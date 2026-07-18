@@ -1,4 +1,5 @@
 mod credential_store;
+mod vworld;
 mod earth_engine_oauth;
 #[cfg(feature = "native-duckdb")]
 mod native_duckdb;
@@ -209,6 +210,7 @@ pub fn run() {
             token: Mutex::new(None),
             startup: Mutex::new(()),
         })
+        .manage(vworld::VWorldState::default())
         .invoke_handler(tauri::generate_handler![
             close_oauth_popups,
             credential_store::credential_clear,
@@ -236,7 +238,13 @@ pub fn run() {
             start_jupyter_server,
             stop_jupyter_server,
             start_earth_engine_oauth,
-            poll_earth_engine_oauth
+            poll_earth_engine_oauth,
+            vworld::vworld_search,
+            vworld::vworld_geocode,
+            vworld::vworld_reverse_geocode,
+            vworld::vworld_get_features,
+            vworld::vworld_tile,
+            vworld::vworld_cancel
         ])
         .setup(|app| {
             create_main_window(app)?;

@@ -4,6 +4,7 @@ import {
   CREDENTIAL_IDS,
   createCredentialBackend,
   discardLegacyCredentialStorage,
+  isWriteOnlyCredentialId,
   type CredentialBackend,
   type CredentialBackendKind,
   type CredentialErrorCode,
@@ -68,6 +69,7 @@ function dispatchCredentialDisposalEvent(
 export interface CredentialState {
   backend: CredentialBackendKind;
   values: CredentialValues;
+  configuredIds: CredentialId[];
   loaded: boolean;
   errorCode: CredentialErrorCode | null;
   loadCredentials(): Promise<void>;
@@ -80,6 +82,7 @@ export function createCredentialStore(backend: CredentialBackend) {
   return create<CredentialState>((set) => ({
     backend: backend.kind,
     values: {},
+    configuredIds: [],
     loaded: false,
     errorCode: null,
     async loadCredentials() {
@@ -87,12 +90,14 @@ export function createCredentialStore(backend: CredentialBackend) {
         const result = await backend.load();
         set({
           values: result.values,
+          configuredIds: result.configuredIds,
           loaded: true,
           errorCode: result.errorCode,
         });
       } catch (error) {
         set({
           values: {},
+          configuredIds: [],
           loaded: true,
           errorCode: errorCode(error, "credential_read_failed"),
         });
@@ -104,9 +109,15 @@ export function createCredentialStore(backend: CredentialBackend) {
         const normalized = value.trim();
         set((state) => {
           const values = { ...state.values };
-          if (normalized) values[id] = normalized;
+          if (normalized && !isWriteOnlyCredentialId(id)) values[id] = normalized;
           else delete values[id];
-          return { values, errorCode: null };
+          const configured = new Set(state.configuredIds);
+          configured.add(id);
+          return {
+            values,
+            configuredIds: CREDENTIAL_IDS.filter((candidate) => configured.has(candidate)),
+            errorCode: null,
+          };
         });
       } catch (error) {
         const code = errorCode(error, "credential_write_failed");
@@ -121,7 +132,11 @@ export function createCredentialStore(backend: CredentialBackend) {
         set((state) => {
           const values = { ...state.values };
           delete values[id];
-          return { values, errorCode: null };
+          return {
+            values,
+            configuredIds: state.configuredIds.filter((candidate) => candidate !== id),
+            errorCode: null,
+          };
         });
       } catch (error) {
         set({ errorCode: errorCode(error, "credential_delete_failed") });
@@ -132,12 +147,16 @@ export function createCredentialStore(backend: CredentialBackend) {
       dispatchCredentialDisposalEvent("geoim3d:credentials-cleared");
       try {
         await backend.clear();
-        set({ values: {}, errorCode: null });
+        set({ values: {}, configuredIds: [], errorCode: null });
       } catch (error) {
         const deleteErrorCode = errorCode(error, "credential_delete_failed");
         try {
           const result = await backend.load();
-          set({ values: result.values, errorCode: deleteErrorCode });
+          set({
+            values: result.values,
+            configuredIds: result.configuredIds,
+            errorCode: deleteErrorCode,
+          });
         } catch {
           set({ errorCode: deleteErrorCode });
         }

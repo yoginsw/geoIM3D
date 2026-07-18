@@ -35,6 +35,7 @@ export const CREDENTIAL_IDS = [
 
 export type CredentialId = (typeof CREDENTIAL_IDS)[number];
 export type CredentialValues = Partial<Record<CredentialId, string>>;
+export const WRITE_ONLY_CREDENTIAL_IDS = ["vworld:api-key"] as const satisfies readonly CredentialId[];
 export type CredentialBackendKind = "memory" | "windows";
 export const LEGACY_CREDENTIAL_STORAGE_KEYS = [
   "geolibre:mapillary-access-token",
@@ -62,6 +63,7 @@ export interface CredentialBackend {
 
 export interface CredentialLoadResult {
   values: CredentialValues;
+  configuredIds: CredentialId[];
   errorCode: CredentialErrorCode | null;
 }
 
@@ -87,12 +89,33 @@ function normalizeCredentialValues(value: unknown): CredentialValues {
   return result;
 }
 
+export function isWriteOnlyCredentialId(id: CredentialId): boolean {
+  return (WRITE_ONLY_CREDENTIAL_IDS as readonly CredentialId[]).includes(id);
+}
+
+function normalizeConfiguredIds(
+  configuredIds: unknown,
+  rawValues: CredentialValues
+): CredentialId[] {
+  const configured = new Set<CredentialId>(Object.keys(rawValues).filter(isCredentialId));
+  if (Array.isArray(configuredIds)) {
+    for (const id of configuredIds) {
+      if (typeof id === "string" && isCredentialId(id)) configured.add(id);
+    }
+  }
+  return CREDENTIAL_IDS.filter((id) => configured.has(id));
+}
+
 function normalizeCredentialLoadResult(value: unknown): CredentialLoadResult {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
     if ("values" in record) {
+      const values = normalizeCredentialValues(record.values);
+      const configuredIds = normalizeConfiguredIds(record.configuredIds, values);
+      for (const id of WRITE_ONLY_CREDENTIAL_IDS) delete values[id];
       return {
-        values: normalizeCredentialValues(record.values),
+        values,
+        configuredIds,
         errorCode:
           record.errorCode === "credential_read_failed"
             ? "credential_read_failed"
@@ -100,7 +123,10 @@ function normalizeCredentialLoadResult(value: unknown): CredentialLoadResult {
       };
     }
   }
-  return { values: normalizeCredentialValues(value), errorCode: null };
+  const values = normalizeCredentialValues(value);
+  const configuredIds = normalizeConfiguredIds(undefined, values);
+  for (const id of WRITE_ONLY_CREDENTIAL_IDS) delete values[id];
+  return { values, configuredIds, errorCode: null };
 }
 
 export function isCredentialId(value: string): value is CredentialId {
@@ -115,7 +141,11 @@ export function createCredentialBackend(
     return {
       kind: "memory",
       async load() {
-        return { values: { ...values }, errorCode: null };
+        return {
+          values: { ...values },
+          configuredIds: CREDENTIAL_IDS.filter((id) => Boolean(values[id])),
+          errorCode: null,
+        };
       },
       async set(id, value) {
         const normalized = value.trim();
@@ -160,7 +190,6 @@ export function createCredentialBackend(
 export interface CredentialRuntimeValues {
   shareToken: string;
   cesiumIonToken: string;
-  vworldApiKey: string;
   aiProviderEnv: Record<string, string>;
   geocodingApiKeys: Record<string, string>;
   serviceEnv: Record<string, string>;
@@ -204,7 +233,6 @@ export function credentialRuntimeValues(
   return {
     shareToken: values["share:token"] ?? "",
     cesiumIonToken: values["cesium:ion-token"] ?? "",
-    vworldApiKey: values["vworld:api-key"] ?? "",
     aiProviderEnv,
     geocodingApiKeys,
     serviceEnv,

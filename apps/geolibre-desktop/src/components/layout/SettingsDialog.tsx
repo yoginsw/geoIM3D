@@ -399,6 +399,9 @@ export function SettingsDialog({
     (s) => s.setDesktopSettings,
   );
   const credentialValues = useCredentialStore((state) => state.values);
+  const configuredCredentialIds = useCredentialStore(
+    (state) => state.configuredIds,
+  );
   const credentialBackend = useCredentialStore((state) => state.backend);
   const credentialErrorCode = useCredentialStore((state) => state.errorCode);
   const setCredential = useCredentialStore((state) => state.setCredential);
@@ -738,7 +741,7 @@ export function SettingsDialog({
   };
 
   const isCredentialConfigured = (id: CredentialId): boolean =>
-    Boolean(credentialValues[id] || credentialDrafts[id]?.trim());
+    configuredCredentialIds.includes(id) || Boolean(credentialDrafts[id]?.trim());
 
   const setCredentialDraft = (id: CredentialId, value: string) => {
     setCredentialDrafts((current) => ({ ...current, [id]: value }));
@@ -1143,6 +1146,11 @@ export function SettingsDialog({
         if (value?.trim()) await setCredential(id as CredentialId, value);
       }
     } catch {
+      setCredentialDrafts((current) => {
+        const next = { ...current };
+        delete next["vworld:api-key"];
+        return next;
+      });
       setError(useCredentialStore.getState().errorCode ?? "credential_write_failed");
       return;
     }
@@ -2538,38 +2546,40 @@ export function SettingsDialog({
                     </div>
 
                   </div>
-                  <div className="space-y-2 border-t pt-5">
-                    <h3 className="text-sm font-semibold">VWorld API Key</h3>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        aria-label="VWorld API Key"
-                        type="password"
-                        autoComplete="new-password"
-                        placeholder={
-                          isCredentialConfigured("vworld:api-key")
-                            ? t("settings.ai.configuredMark")
-                            : "VWorld API Key"
-                        }
-                        value={credentialDrafts["vworld:api-key"] ?? ""}
-                        onChange={(event) =>
-                          setCredentialDraft("vworld:api-key", event.target.value)
-                        }
-                      />
-                      {isCredentialConfigured("vworld:api-key") ? (
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          aria-label={t("common.remove")}
-                          onClick={() =>
-                            void handleDeleteCredential("vworld:api-key")
+                  {isTauri() ? (
+                    <div className="space-y-2 border-t pt-5">
+                      <h3 className="text-sm font-semibold">VWorld API Key</h3>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          aria-label="VWorld API Key"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={
+                            isCredentialConfigured("vworld:api-key")
+                              ? t("settings.ai.configuredMark")
+                              : "VWorld API Key"
                           }
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      ) : null}
+                          value={credentialDrafts["vworld:api-key"] ?? ""}
+                          onChange={(event) =>
+                            setCredentialDraft("vworld:api-key", event.target.value)
+                          }
+                        />
+                        {isCredentialConfigured("vworld:api-key") ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            aria-label={t("common.remove")}
+                            onClick={() =>
+                              void handleDeleteCredential("vworld:api-key")
+                            }
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                   {SERVICE_CREDENTIAL_FIELDS.map(({ id, label }) => (
                     <div key={id} className="space-y-2 border-t pt-5">
                       <h3 className="text-sm font-semibold">{label}</h3>

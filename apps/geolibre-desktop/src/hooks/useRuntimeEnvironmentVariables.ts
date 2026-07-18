@@ -24,7 +24,6 @@ export function useRuntimeEnvironmentVariables() {
   const {
     cesiumIonToken,
     aiProviderEnv,
-    vworldApiKey,
     geocodingApiKeys,
     serviceEnv,
   } = credentialRuntimeValues(credentialValues);
@@ -95,9 +94,6 @@ export function useRuntimeEnvironmentVariables() {
     const cesiumEnv: Record<string, string> = cesiumIonToken.trim()
       ? { VITE_CESIUM_TOKEN: cesiumIonToken.trim() }
       : {};
-    const vworldEnv: Record<string, string> = vworldApiKey.trim()
-      ? { VWORLD_API_KEY: vworldApiKey.trim() }
-      : {};
 
     // Precedence (low -> high): OS env < device AI keys < geocoder < device
     // product credentials < non-credential project Environment variables.
@@ -105,7 +101,7 @@ export function useRuntimeEnvironmentVariables() {
       osEnv,
       aiEnv: { ...aiEnv, ...serviceEnv },
       geocoderEnv: geocoderCredentialEnv,
-      cesiumEnv: { ...cesiumEnv, ...vworldEnv },
+      cesiumEnv,
       projectEnv: {},
     });
     setPrivateCredentialEnvironment(credentialEnv);
@@ -160,7 +156,6 @@ export function useRuntimeEnvironmentVariables() {
     geocoding,
     credentialValues,
     cesiumIonToken,
-    vworldApiKey,
     aiProviderEnv,
     geocodingApiKeys,
     serviceEnv,

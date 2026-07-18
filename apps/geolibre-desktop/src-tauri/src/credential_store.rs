@@ -32,6 +32,7 @@ pub(crate) const ALLOWED_CREDENTIAL_IDS: [&str; 27] = [
     "map:here-api-key",
     "map:amazon-location-api-key",
 ];
+const WRITE_ONLY_CREDENTIAL_IDS: [&str; 1] = ["vworld:api-key"];
 
 const BACKEND_UNAVAILABLE: &str = "credential_backend_unavailable";
 const INVALID_ID: &str = "credential_invalid_id";
@@ -44,7 +45,12 @@ const INVALID_VALUE: &str = "credential_invalid_value";
 #[serde(rename_all = "camelCase")]
 pub struct CredentialLoadResult {
     values: HashMap<String, String>,
+    configured_ids: Vec<String>,
     error_code: Option<&'static str>,
+}
+
+fn is_write_only(credential_id: &str) -> bool {
+    WRITE_ONLY_CREDENTIAL_IDS.contains(&credential_id)
 }
 
 fn validate_id(credential_id: &str) -> Result<&str, String> {
@@ -66,11 +72,29 @@ fn is_not_found(error: &keyring::Error) -> bool {
     matches!(error, keyring::Error::NoEntry)
 }
 
+pub(crate) fn read_credential(credential_id: &str) -> Result<Option<String>, String> {
+    validate_id(credential_id)?;
+    #[cfg(target_os = "windows")]
+    {
+        match entry(credential_id)?.get_password() {
+            Ok(value) if !value.trim().is_empty() => Ok(Some(value.trim().to_string())),
+            Ok(_) => Ok(None),
+            Err(error) if is_not_found(&error) => Ok(None),
+            Err(_) => Err(READ_FAILED.to_string()),
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err(BACKEND_UNAVAILABLE.to_string())
+    }
+}
+
 #[tauri::command]
 pub fn credential_load() -> Result<CredentialLoadResult, String> {
     #[cfg(target_os = "windows")]
     {
         let mut values = HashMap::new();
+        let mut configured_ids = Vec::new();
         let mut failed = false;
         for credential_id in ALLOWED_CREDENTIAL_IDS {
             let Ok(entry) = entry(credential_id) else {
@@ -79,7 +103,10 @@ pub fn credential_load() -> Result<CredentialLoadResult, String> {
             };
             match entry.get_password() {
                 Ok(value) if !value.trim().is_empty() => {
-                    values.insert(credential_id.to_string(), value);
+                    configured_ids.push(credential_id.to_string());
+                    if !is_write_only(credential_id) {
+                        values.insert(credential_id.to_string(), value);
+                    }
                 }
                 Ok(_) => {}
                 Err(error) if is_not_found(&error) => {}
@@ -88,6 +115,7 @@ pub fn credential_load() -> Result<CredentialLoadResult, String> {
         }
         Ok(CredentialLoadResult {
             values,
+            configured_ids,
             error_code: failed.then_some(READ_FAILED),
         })
     }
@@ -177,6 +205,8 @@ mod tests {
         assert!(validate_id("ai:OPENAI_API_KEY").is_ok());
         assert!(validate_id("../../arbitrary").is_err());
         assert!(validate_id("AWS_PROFILE").is_err());
+        assert!(is_write_only("vworld:api-key"));
+        assert!(!is_write_only("cesium:ion-token"));
     }
 
     #[cfg(target_os = "windows")]
