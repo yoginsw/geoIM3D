@@ -7,6 +7,15 @@ import {
 } from "@geolibre/map/vworld-ephemeral-layer";
 
 import {
+  VWorldDataLayerController,
+  type VWorldDataMapLike,
+} from "./vworld-data-layer";
+import {
+  mountVWorldDataPanel,
+  type VWorldDataInteractiveMapLike,
+} from "./vworld-data-panel";
+import { VWorldDataSession, type VWorldDataClient } from "./vworld-data";
+import {
   mountVWorldSearchPanel,
   type VWorldSearchMapLike,
 } from "./vworld-search-panel";
@@ -24,6 +33,7 @@ interface VWorld2DPluginOptions {
   subscribeMaps?: (listener: () => void) => () => void;
   subscribeCredentialDisposal?: (listener: () => void) => () => void;
   searchClient?: VWorldSearchClient;
+  dataClient?: VWorldDataClient;
 }
 
 const ACTIONS: ReadonlyArray<{
@@ -41,13 +51,17 @@ export function createVWorld2DPlugin(
   options: VWorld2DPluginOptions,
 ): GeoLibrePlugin {
   const controllers = new Map<VWorldMapLike, VWorldEphemeralLayerController>();
+  const dataControllers = new Map<VWorldMapLike, VWorldDataLayerController>();
   let activated = false;
   let activeLayer: VWorldRasterLayer | null = null;
   let unregisterMenu: (() => void) | null = null;
   let unregisterSearchPanel: (() => void) | null = null;
+  let unregisterDataPanel: (() => void) | null = null;
   let unsubscribeMaps: (() => void) | null = null;
+  let unsubscribeDataSession: (() => void) | null = null;
   let unsubscribeCredentialDisposal: (() => void) | null = null;
   let searchSession: VWorldSearchSession | null = null;
+  let dataSession: VWorldDataSession | null = null;
 
   const reconcileMaps = (app: GeoLibreAppAPI) => {
     const primary = app.getMap?.() as unknown as VWorldMapLike | undefined;
@@ -59,16 +73,33 @@ export function createVWorld2DPlugin(
       controller.dispose();
       controllers.delete(map);
     }
+    for (const [map, controller] of dataControllers) {
+      if (desired.has(map)) continue;
+      controller.dispose();
+      dataControllers.delete(map);
+    }
     for (const map of desired) {
-      if (controllers.has(map)) continue;
-      const controller = new VWorldEphemeralLayerController({
-        desktop: true,
-        map,
-        protocol: options.protocol,
-        transport: options.transport,
-      });
-      controllers.set(map, controller);
-      if (activeLayer) controller.activate(activeLayer);
+      if (!controllers.has(map)) {
+        const controller = new VWorldEphemeralLayerController({
+          desktop: true,
+          map,
+          protocol: options.protocol,
+          transport: options.transport,
+        });
+        controllers.set(map, controller);
+        if (activeLayer) controller.activate(activeLayer);
+      }
+      if (options.dataClient && !dataControllers.has(map)) {
+        const controller = new VWorldDataLayerController(
+          map as unknown as VWorldDataMapLike,
+        );
+        dataControllers.set(map, controller);
+        const snapshot = dataSession?.getSnapshot();
+        if (snapshot?.cadastral) controller.setCadastral(snapshot.cadastral);
+        if (snapshot?.zoning && snapshot.zoningService) {
+          controller.setZoning(snapshot.zoning, snapshot.zoningService);
+        }
+      }
     }
   };
 
@@ -83,9 +114,23 @@ export function createVWorld2DPlugin(
     for (const controller of controllers.values()) controller.deactivate();
   };
 
+  const syncDataLayers = () => {
+    const snapshot = dataSession?.getSnapshot();
+    for (const controller of dataControllers.values()) {
+      if (snapshot?.cadastral) controller.setCadastral(snapshot.cadastral);
+      else controller.clearCadastral();
+      if (snapshot?.zoning && snapshot.zoningService) {
+        controller.setZoning(snapshot.zoning, snapshot.zoningService);
+      } else {
+        controller.clearZoning();
+      }
+    }
+  };
+
   const clearConsumers = () => {
     clearLayer();
     searchSession?.clear();
+    dataSession?.clear();
   };
 
   return {
@@ -97,6 +142,10 @@ export function createVWorld2DPlugin(
       if (!options.getMaps && !app.getMap?.()) return false;
 
       activated = true;
+      if (options.dataClient) {
+        dataSession = new VWorldDataSession(options.dataClient);
+        unsubscribeDataSession = dataSession.subscribe(syncDataLayers);
+      }
       reconcileMaps(app);
       unsubscribeMaps = options.subscribeMaps?.(() => reconcileMaps(app)) ?? null;
       if (options.searchClient && app.registerFloatingPanel) {
@@ -120,6 +169,26 @@ export function createVWorld2DPlugin(
             }),
         });
       }
+      if (dataSession && app.registerFloatingPanel) {
+        unregisterDataPanel = app.registerFloatingPanel({
+          id: "geoim3d-vworld-data-panel",
+          title: "VWorld 지적·용도지역",
+          defaultWidth: 380,
+          defaultHeight: 560,
+          position: "top-left",
+          render: (container) =>
+            mountVWorldDataPanel(container, {
+              session: dataSession!,
+              getMaps: () => {
+                const primary = app.getMap?.() as unknown as
+                  | VWorldDataInteractiveMapLike
+                  | undefined;
+                return (options.getMaps?.() ??
+                  (primary ? [primary] : [])) as readonly VWorldDataInteractiveMapLike[];
+              },
+            }),
+        });
+      }
       unsubscribeCredentialDisposal =
         options.subscribeCredentialDisposal?.(clearConsumers) ?? null;
       unregisterMenu = app.registerToolbarMenu({
@@ -131,15 +200,29 @@ export function createVWorld2DPlugin(
             label,
             onSelect: () => selectLayer(app, layer),
           })),
-          ...(searchSession
+          ...(searchSession || dataSession
             ? [
-                { type: "separator" as const, id: "vworld-search-separator" },
-                {
-                  id: "search-address",
-                  label: "검색·주소 변환",
-                  onSelect: () =>
-                    app.openFloatingPanel?.("geoim3d-vworld-search-panel"),
-                },
+                { type: "separator" as const, id: "vworld-tools-separator" },
+                ...(searchSession
+                  ? [
+                      {
+                        id: "search-address",
+                        label: "검색·주소 변환",
+                        onSelect: () =>
+                          app.openFloatingPanel?.("geoim3d-vworld-search-panel"),
+                      },
+                    ]
+                  : []),
+                ...(dataSession
+                  ? [
+                      {
+                        id: "data-layers",
+                        label: "지적·용도지역",
+                        onSelect: () =>
+                          app.openFloatingPanel?.("geoim3d-vworld-data-panel"),
+                      },
+                    ]
+                  : []),
               ]
             : []),
           { type: "separator" as const, id: "vworld-remove-separator" },
@@ -159,12 +242,20 @@ export function createVWorld2DPlugin(
       unsubscribeMaps = null;
       unregisterSearchPanel?.();
       unregisterSearchPanel = null;
+      unregisterDataPanel?.();
+      unregisterDataPanel = null;
       unregisterMenu?.();
       unregisterMenu = null;
-      for (const controller of controllers.values()) controller.dispose();
-      controllers.clear();
       searchSession?.clear();
       searchSession = null;
+      dataSession?.clear();
+      dataSession = null;
+      unsubscribeDataSession?.();
+      unsubscribeDataSession = null;
+      for (const controller of controllers.values()) controller.dispose();
+      controllers.clear();
+      for (const controller of dataControllers.values()) controller.dispose();
+      dataControllers.clear();
       activeLayer = null;
       activated = false;
     },

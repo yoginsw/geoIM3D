@@ -31,6 +31,7 @@ function subscribeCredentialDisposal(listener: () => void): () => void {
 
 export const vworldBuiltInPlugin = createVWorld2DPlugin({
   desktop: true,
+  dataClient: vworldDesktopClient,
   getMaps: getVWorldMaps,
   searchClient: vworldDesktopClient,
   subscribeMaps: subscribeMapInstances,

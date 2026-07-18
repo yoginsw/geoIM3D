@@ -15,6 +15,9 @@ const MAX_JSON_BYTES: usize = 1_048_576;
 const MAX_PNG_BYTES: usize = 8 * 1024 * 1024;
 const MAX_QUERY_CHARS: usize = 200;
 const MAX_ADDRESS_CHARS: usize = 300;
+const MAX_DATA_FEATURES: usize = 1_000;
+const MAX_DATA_COORDINATES: usize = 20_000;
+const MAX_DATA_STRING_CHARS: usize = 500;
 const CANCEL_ID_CHARS: usize = 96;
 const DAILY_GEOCODER_LIMIT: u32 = 40_000;
 
@@ -403,6 +406,11 @@ fn sanitize_value(value: &Value) -> Value {
         "gosi_year",
         "gosi_month",
         "jiga",
+        "uname",
+        "sido_name",
+        "sigg_name",
+        "dyear",
+        "dnum",
         "total",
         "current",
         "size",
@@ -425,6 +433,221 @@ fn sanitize_value(value: &Value) -> Value {
         Value::Bool(value) => Value::Bool(*value),
         Value::Null => Value::Null,
     }
+}
+
+fn valid_geometry_filter(geometry: &GeometryFilter) -> bool {
+    match geometry {
+        GeometryFilter::Point {
+            coordinates: [x, y],
+        } => finite(*x) && finite(*y) && (-180.0..=180.0).contains(x) && (-90.0..=90.0).contains(y),
+        GeometryFilter::Box { bounds } => {
+            let [min_x, min_y, max_x, max_y] = *bounds;
+            let mid_lat = (min_y + max_y) / 2.0;
+            let area_km2 = (max_x - min_x).abs()
+                * 111.32
+                * mid_lat.to_radians().cos().abs()
+                * (max_y - min_y).abs()
+                * 110.57;
+            valid_bbox(*bounds) && area_km2 <= 2.0
+        }
+    }
+}
+
+fn valid_feature_request_shape(request: &FeatureRequest) -> bool {
+    match request.service.as_str() {
+        "LP_PA_CBND_BUBUN" => {
+            request.geometry.is_none()
+                && request.pnu.as_deref().is_some_and(|pnu| {
+                    pnu.len() == 19 && pnu.bytes().all(|byte| byte.is_ascii_digit())
+                })
+        }
+        "LT_C_UQ111" | "LT_C_UQ112" | "LT_C_UQ113" | "LT_C_UQ114" => {
+            request.pnu.is_none() && request.geometry.as_ref().is_some_and(valid_geometry_filter)
+        }
+        _ => false,
+    }
+}
+
+fn bounded_data_value(value: &Value) -> Option<Value> {
+    match value {
+        Value::String(text) => Some(Value::String(
+            text.trim().chars().take(MAX_DATA_STRING_CHARS).collect(),
+        )),
+        Value::Number(number) => Some(Value::Number(number.clone())),
+        _ => None,
+    }
+}
+
+fn data_properties(value: &Value, service: &str) -> Value {
+    const CADASTRAL: &[&str] = &[
+        "pnu",
+        "jibun",
+        "bonbun",
+        "bubun",
+        "addr",
+        "gosi_year",
+        "gosi_month",
+        "jiga",
+    ];
+    const ZONING: &[&str] = &["uname", "sido_name", "sigg_name", "dyear", "dnum"];
+    let allowed = if service == "LP_PA_CBND_BUBUN" {
+        CADASTRAL
+    } else {
+        ZONING
+    };
+    let properties = value.as_object();
+    Value::Object(
+        allowed
+            .iter()
+            .filter_map(|field| {
+                let value = properties?.get(*field)?;
+                bounded_data_value(value).map(|value| ((*field).to_string(), value))
+            })
+            .collect(),
+    )
+}
+
+fn data_position(value: &Value, coordinates: &mut usize) -> Option<Value> {
+    let values = value.as_array()?;
+    if values.len() < 2 {
+        return None;
+    }
+    let x = values.first()?.as_f64()?;
+    let y = values.get(1)?.as_f64()?;
+    if !finite(x) || !finite(y) || !(-180.0..=180.0).contains(&x) || !(-90.0..=90.0).contains(&y) {
+        return None;
+    }
+    *coordinates += 1;
+    if *coordinates > MAX_DATA_COORDINATES {
+        return None;
+    }
+    Some(serde_json::json!([x, y]))
+}
+
+fn data_ring(value: &Value, coordinates: &mut usize) -> Option<Value> {
+    let positions = value.as_array()?;
+    if positions.len() < 4 {
+        return None;
+    }
+    Some(Value::Array(
+        positions
+            .iter()
+            .map(|position| data_position(position, coordinates))
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn data_polygon(value: &Value, coordinates: &mut usize) -> Option<Value> {
+    let rings = value.as_array()?;
+    if rings.is_empty() {
+        return None;
+    }
+    Some(Value::Array(
+        rings
+            .iter()
+            .map(|ring| data_ring(ring, coordinates))
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn data_geometry(value: &Value, coordinates: &mut usize) -> Option<Value> {
+    let geometry = value.as_object()?;
+    let geometry_type = geometry.get("type")?.as_str()?;
+    let raw_coordinates = geometry.get("coordinates")?;
+    let sanitized = match geometry_type {
+        "Polygon" => data_polygon(raw_coordinates, coordinates)?,
+        "MultiPolygon" => {
+            let polygons = raw_coordinates.as_array()?;
+            if polygons.is_empty() {
+                return None;
+            }
+            Value::Array(
+                polygons
+                    .iter()
+                    .map(|polygon| data_polygon(polygon, coordinates))
+                    .collect::<Option<Vec<_>>>()?,
+            )
+        }
+        _ => return None,
+    };
+    Some(serde_json::json!({
+        "type": geometry_type,
+        "coordinates": sanitized,
+    }))
+}
+
+fn data_feature(value: &Value, service: &str, coordinates: &mut usize) -> Option<Value> {
+    let feature = value.as_object()?;
+    if feature.get("type")?.as_str()? != "Feature" {
+        return None;
+    }
+    let geometry = data_geometry(feature.get("geometry")?, coordinates)?;
+    let mut output = serde_json::Map::from_iter([
+        ("type".into(), Value::String("Feature".into())),
+        ("geometry".into(), geometry),
+        (
+            "properties".into(),
+            data_properties(feature.get("properties").unwrap_or(&Value::Null), service),
+        ),
+    ]);
+    if let Some(id) = feature.get("id").and_then(bounded_data_value) {
+        output.insert("id".into(), id);
+    }
+    Some(Value::Object(output))
+}
+
+fn data_response_dto(value: Value, service: &str) -> Result<VWorldResponse, String> {
+    let response = value.get("response").unwrap_or(&value);
+    let status = response
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("ERROR");
+    if status != "OK" {
+        return Ok(VWorldResponse {
+            status: if status == "NOT_FOUND" {
+                "NOT_FOUND".into()
+            } else {
+                "ERROR".into()
+            },
+            record: None,
+            page: None,
+            result: None,
+        });
+    }
+    let feature_collection = response
+        .get("result")
+        .and_then(|result| result.get("featureCollection"))
+        .and_then(Value::as_object)
+        .ok_or_else(|| ERR_RESPONSE.to_string())?;
+    if feature_collection.get("type").and_then(Value::as_str) != Some("FeatureCollection") {
+        return Err(ERR_RESPONSE.into());
+    }
+    let features = feature_collection
+        .get("features")
+        .and_then(Value::as_array)
+        .ok_or_else(|| ERR_RESPONSE.to_string())?;
+    if features.len() > MAX_DATA_FEATURES {
+        return Err(ERR_RESPONSE.into());
+    }
+    let mut coordinates = 0;
+    let features: Vec<Value> = features
+        .iter()
+        .filter_map(|feature| data_feature(feature, service, &mut coordinates))
+        .collect();
+    if coordinates > MAX_DATA_COORDINATES {
+        return Err(ERR_RESPONSE.into());
+    }
+    Ok(VWorldResponse {
+        status: "OK".into(),
+        record: response.get("record").map(sanitize_value),
+        page: response.get("page").map(sanitize_value),
+        result: Some(serde_json::json!({
+            "featureCollection": {
+                "type": "FeatureCollection",
+                "features": features,
+            }
+        })),
+    })
 }
 
 #[tauri::command]
@@ -562,53 +785,13 @@ pub async fn vworld_get_features(
     request_id: String,
     request: FeatureRequest,
 ) -> Result<VWorldResponse, String> {
-    if !matches!(
-        request.service.as_str(),
-        "LP_PA_CBND_BUBUN" | "LT_C_UQ111" | "LT_C_UQ112" | "LT_C_UQ113" | "LT_C_UQ114"
-    ) {
+    if !valid_feature_request_shape(&request) {
         return invalid();
     }
     let size = page_size(request.size)?;
     let page = page_number(request.page)?;
-    if let Some(pnu) = request.pnu.as_deref() {
-        if pnu.len() != 19 || !pnu.bytes().all(|b| b.is_ascii_digit()) {
-            return invalid();
-        }
-    }
-    if request.pnu.is_none() && request.geometry.is_none() {
-        return invalid();
-    }
-    if request.pnu.is_some() && request.service != "LP_PA_CBND_BUBUN" {
-        return invalid();
-    }
-    if let Some(g) = request.geometry.as_ref() {
-        match g {
-            GeometryFilter::Point {
-                coordinates: [x, y],
-            } => {
-                if !finite(*x)
-                    || !finite(*y)
-                    || !(-180.0..=180.0).contains(x)
-                    || !(-90.0..=90.0).contains(y)
-                {
-                    return invalid();
-                }
-            }
-            GeometryFilter::Box { bounds } => {
-                let [min_x, min_y, max_x, max_y] = *bounds;
-                let mid_lat = (min_y + max_y) / 2.0;
-                let area_km2 = (max_x - min_x).abs()
-                    * 111.32
-                    * mid_lat.to_radians().cos().abs()
-                    * (max_y - min_y).abs()
-                    * 110.57;
-                if !valid_bbox(*bounds) || area_km2 > 2.0 {
-                    return invalid();
-                }
-            }
-        }
-    }
     let (key, client) = with_credential(credential_key, |key| Ok((key, client()?)))?;
+    let service = request.service.clone();
     let mut params = vec![
         ("key", key),
         ("service", "data".into()),
@@ -635,13 +818,13 @@ pub async fn vworld_get_features(
         };
         params.push(("geomFilter", text));
     }
-    execute_json(
+    let value = execute_json(
         &state,
         &request_id,
         client.get(endpoint_url(DATA_PATH)).query(&params),
     )
-    .await
-    .map(response_dto)
+    .await?;
+    data_response_dto(value, &service)
 }
 
 #[tauri::command]
@@ -784,6 +967,154 @@ mod tests {
         assert_eq!(sanitized["item"][0]["road"], "도로");
         assert_eq!(sanitized["item"][0]["parcel"], "지번");
         assert!(sanitized["item"][0].get("secret").is_none());
+    }
+    #[test]
+    fn zoning_fields_survive_allowlist_without_raw_geometry_property() {
+        let sanitized = sanitize_value(&serde_json::json!({
+            "properties": {
+                "uname": "제1종일반주거지역",
+                "sido_name": "경기도",
+                "sigg_name": "성남시",
+                "dyear": "2026",
+                "dnum": "제1호",
+                "ag_geom": "drop",
+                "unknown": "drop"
+            }
+        }));
+        assert_eq!(sanitized["properties"]["uname"], "제1종일반주거지역");
+        assert_eq!(sanitized["properties"]["sido_name"], "경기도");
+        assert_eq!(sanitized["properties"]["sigg_name"], "성남시");
+        assert_eq!(sanitized["properties"]["dyear"], "2026");
+        assert_eq!(sanitized["properties"]["dnum"], "제1호");
+        assert!(sanitized["properties"].get("ag_geom").is_none());
+        assert!(sanitized["properties"].get("unknown").is_none());
+    }
+    #[test]
+    fn data_request_shape_is_service_specific() {
+        let cadastral = |pnu: Option<&str>, geometry: Option<GeometryFilter>| FeatureRequest {
+            service: "LP_PA_CBND_BUBUN".into(),
+            size: Some(10),
+            page: Some(1),
+            pnu: pnu.map(str::to_string),
+            geometry,
+        };
+        let zoning = |pnu: Option<&str>, geometry: Option<GeometryFilter>| FeatureRequest {
+            service: "LT_C_UQ111".into(),
+            size: Some(100),
+            page: Some(1),
+            pnu: pnu.map(str::to_string),
+            geometry,
+        };
+        let point = || GeometryFilter::Point {
+            coordinates: [127.1, 37.4],
+        };
+
+        assert!(valid_feature_request_shape(&cadastral(
+            Some("1111010100100020001"),
+            None
+        )));
+        assert!(!valid_feature_request_shape(&cadastral(None, None)));
+        assert!(!valid_feature_request_shape(&cadastral(
+            None,
+            Some(point())
+        )));
+        assert!(!valid_feature_request_shape(&cadastral(
+            Some("1111010100100020001"),
+            Some(point())
+        )));
+        assert!(valid_feature_request_shape(&zoning(None, Some(point()))));
+        assert!(!valid_feature_request_shape(&zoning(None, None)));
+        assert!(!valid_feature_request_shape(&zoning(
+            Some("1111010100100020001"),
+            Some(point())
+        )));
+    }
+    #[test]
+    fn native_data_dto_enforces_geometry_limits_and_service_properties() {
+        let response = serde_json::json!({
+            "response": {
+                "status": "OK",
+                "result": {
+                    "featureCollection": {
+                        "type": "FeatureCollection",
+                        "features": [
+                            {
+                                "type": "Feature",
+                                "id": "zone-1",
+                                "geometry": {
+                                    "type": "Polygon",
+                                    "coordinates": [[[127.1, 37.4], [127.11, 37.4], [127.11, 37.41], [127.1, 37.4]]]
+                                },
+                                "properties": {
+                                    "uname": "제1종일반주거지역",
+                                    "sido_name": "경기도",
+                                    "sigg_name": "성남시",
+                                    "dyear": "2026",
+                                    "dnum": "제1호",
+                                    "pnu": "must-drop",
+                                    "ag_geom": "must-drop",
+                                    "unknown": "must-drop"
+                                }
+                            },
+                            {
+                                "type": "Feature",
+                                "geometry": { "type": "Point", "coordinates": [127.1, 37.4] },
+                                "properties": { "uname": "must-drop-with-invalid-geometry" }
+                            }
+                        ]
+                    }
+                }
+            }
+        });
+        let dto = data_response_dto(response, "LT_C_UQ111").unwrap();
+        let features = dto.result.unwrap()["featureCollection"]["features"]
+            .as_array()
+            .unwrap()
+            .clone();
+        assert_eq!(features.len(), 1);
+        assert_eq!(features[0]["geometry"]["type"], "Polygon");
+        assert_eq!(features[0]["properties"]["uname"], "제1종일반주거지역");
+        assert!(features[0]["properties"].get("pnu").is_none());
+        assert!(features[0]["properties"].get("ag_geom").is_none());
+        assert!(features[0]["properties"].get("unknown").is_none());
+
+        let error_payload = serde_json::json!({
+            "response": {
+                "status": "ERROR",
+                "record": { "features": vec!["x".repeat(MAX_DATA_STRING_CHARS * 2); MAX_DATA_FEATURES + 1] },
+                "page": { "features": vec![Value::Null; MAX_DATA_FEATURES + 1] },
+                "result": { "featureCollection": { "features": vec![Value::Null; MAX_DATA_FEATURES + 1] } }
+            }
+        });
+        let error_dto = data_response_dto(error_payload, "LT_C_UQ111").unwrap();
+        assert_eq!(error_dto.status, "ERROR");
+        assert!(error_dto.record.is_none());
+        assert!(error_dto.page.is_none());
+        assert!(error_dto.result.is_none());
+
+        let malformed = serde_json::json!({ "response": { "status": "OK", "result": {} } });
+        assert_eq!(
+            data_response_dto(malformed, "LT_C_UQ111").unwrap_err(),
+            ERR_RESPONSE
+        );
+        let oversized = serde_json::json!({
+            "response": {
+                "status": "OK",
+                "result": {
+                    "featureCollection": {
+                        "type": "FeatureCollection",
+                        "features": vec![Value::Null; MAX_DATA_FEATURES + 1]
+                    }
+                }
+            }
+        });
+        assert_eq!(
+            data_response_dto(oversized, "LT_C_UQ111").unwrap_err(),
+            ERR_RESPONSE
+        );
+        let mut coordinate_budget = MAX_DATA_COORDINATES;
+        assert!(data_position(&serde_json::json!([127.1, 37.4]), &mut coordinate_budget).is_none());
+        assert_eq!(coordinate_budget, MAX_DATA_COORDINATES + 1);
     }
     #[test]
     fn geocoder_daily_limit_is_memory_only_and_resets_on_utc_day_change() {

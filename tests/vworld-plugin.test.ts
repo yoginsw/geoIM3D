@@ -45,7 +45,7 @@ class FakeMap implements VWorldMapLike {
   }
 }
 
-function setup(desktop: boolean, withSearch = false) {
+function setup(desktop: boolean, withSearch = false, withData = false) {
   resetVWorldProtocolForTests();
   const map = new FakeMap();
   const maps: VWorldMapLike[] = [map];
@@ -90,6 +90,14 @@ function setup(desktop: boolean, withSearch = false) {
   } as unknown as GeoLibreAppAPI;
   const plugin = createVWorld2DPlugin({
     desktop,
+    dataClient: withData
+      ? {
+          getFeatures: async () => ({
+            status: "OK",
+            result: { featureCollection: { type: "FeatureCollection", features: [] } },
+          }),
+        }
+      : undefined,
     getMaps: () => maps,
     protocol,
     searchClient: withSearch
@@ -156,8 +164,8 @@ function setup(desktop: boolean, withSearch = false) {
 }
 
 describe("VWorld 2D built-in plugin", () => {
-  it("refuses activation on Web/PWA without registering UI or protocol", () => {
-    const subject = setup(false);
+  it("refuses activation on Web/PWA without registering UI, data layers, or protocol", () => {
+    const subject = setup(false, true, true);
     assert.equal(subject.plugin.activate(subject.app), false);
     assert.equal(subject.menu, null);
     assert.equal(subject.handlers.size, 0);
@@ -247,5 +255,37 @@ describe("VWorld 2D built-in plugin", () => {
     subject.plugin.deactivate(subject.app);
     assert.equal(subject.floatingPanel, null);
     assert.equal(subject.floatingPanelDisposed, 1);
+  });
+
+  it("registers and cleans the desktop-only cadastral/zoning panel and map controller", () => {
+    const subject = setup(true, false, true);
+    subject.plugin.activate(subject.app);
+    assert.equal(subject.floatingPanel?.id, "geoim3d-vworld-data-panel");
+    const data = subject.menu?.items.find((item) => item.id === "data-layers");
+    assert.ok(data && "onSelect" in data);
+    data.onSelect();
+    assert.equal(subject.floatingPanelOpened, 1);
+    assert.equal(subject.map.listeners.get("styledata")?.size, 1);
+
+    subject.plugin.deactivate(subject.app);
+    assert.equal(subject.floatingPanel, null);
+    assert.equal(subject.floatingPanelDisposed, 1);
+    assert.equal(subject.map.listeners.get("styledata")?.size, 0);
+  });
+
+  it("reconciles data controllers across dynamically added and removed MapLibre panes", () => {
+    const subject = setup(true, false, true);
+    subject.plugin.activate(subject.app);
+    const secondary = new FakeMap();
+    subject.addMap(secondary);
+    assert.equal(subject.map.listeners.get("styledata")?.size, 1);
+    assert.equal(secondary.listeners.get("styledata")?.size, 1);
+
+    subject.removeMap(subject.map);
+    assert.equal(subject.map.listeners.get("styledata")?.size, 0);
+    assert.equal(secondary.listeners.get("styledata")?.size, 1);
+
+    subject.plugin.deactivate(subject.app);
+    assert.equal(secondary.listeners.get("styledata")?.size, 0);
   });
 });
