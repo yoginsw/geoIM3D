@@ -15,12 +15,10 @@ import {
   Info,
   Keyboard,
   MessageSquare,
-  RefreshCw,
   Search,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDesktopSettingsStore } from "../../../hooks/useDesktopSettings";
-import { IS_STORE_BUILD } from "../../../lib/updates";
 import { isMenuItemVisible } from "../../../lib/ui-profile";
 import {
   FEEDBACK_URL,
@@ -36,28 +34,21 @@ interface HelpMenuProps {
   onOpenCommandPalette: () => void;
   onOpenShortcuts: () => void;
   onOpenDiagnostics: () => void;
-  onCheckForUpdates: () => void;
   onAbout: () => void;
 }
 
-/** The Help menu: command palette, shortcuts, diagnostics, feedback, updates, about. */
+/** The Help menu: command palette, shortcuts, diagnostics, feedback, and about. */
 export function HelpMenu({
   chrome,
   diagnosticsErrorCount,
   onOpenCommandPalette,
   onOpenShortcuts,
   onOpenDiagnostics,
-  onCheckForUpdates,
   onAbout,
 }: HelpMenuProps) {
   const { t } = useTranslation();
   const uiProfile = useDesktopSettingsStore((s) => s.desktopSettings.uiProfile);
-  // The Microsoft Store build strips the "Check for updates" item entirely so the
-  // app only updates through the Store (policy 10.2.5); other builds keep it.
-  const show = (id: string) =>
-    id === "help.checkForUpdates" && IS_STORE_BUILD
-      ? false
-      : isMenuItemVisible(uiProfile, id);
+  const show = (id: string) => isMenuItemVisible(uiProfile, id);
 
   return (
     <DropdownMenu>
@@ -105,7 +96,6 @@ export function HelpMenu({
         {(show("help.website") || show("help.github")) &&
           (show("help.diagnostics") ||
             show("help.feedback") ||
-            show("help.checkForUpdates") ||
             show("help.about")) && <DropdownMenuSeparator />}
         {show("help.diagnostics") && (
           <DropdownMenuItem onSelect={onOpenDiagnostics}>
@@ -122,12 +112,6 @@ export function HelpMenu({
           <DropdownMenuItem onSelect={() => void openExternalLink(FEEDBACK_URL)}>
             <MessageSquare className="me-2 h-3.5 w-3.5" />
             {t("toolbar.command.giveFeedback")}
-          </DropdownMenuItem>
-        )}
-        {show("help.checkForUpdates") && (
-          <DropdownMenuItem onSelect={onCheckForUpdates}>
-            <RefreshCw className="me-2 h-3.5 w-3.5" />
-            {t("toolbar.command.checkForUpdates")}
           </DropdownMenuItem>
         )}
         {show("help.about") && (

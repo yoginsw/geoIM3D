@@ -2,7 +2,6 @@
 
 GeoLibre opens to a single workspace that is the same on desktop and in the browser. This page is a tour of that workspace so the rest of the User Guide can refer to its parts by name.
 
-![GeoLibre interface overview](https://data.geolibre.app/images/geolibre-interface-overview.webp)
 
 ## The top toolbar
 

@@ -1,23 +1,23 @@
 # Sharing & Embedding
 
-Once you have a map you like, you can publish it as a public link and embed it in any web page. This tutorial covers both. See [Embedding & Sharing](../user-guide/embedding.md) for the full reference.
+geoIM3D has no approved public Share or Viewer deployment. This tutorial is a local development exercise using loopback services; do not treat these URLs as production endpoints. See [Embedding & Sharing](../user-guide/embedding.md) for the full reference.
 
 ## 1. Set your share token
 
-Sharing uploads to `share.geolibre.app` using a personal API token.
+Sharing uploads to `administrator-configured Share service` using a personal API token.
 
 1. Open **Settings → Environment Variables**.
-2. Paste your token into the **Share.GeoLibre API token** field. Create one under Settings → API tokens at [share.geolibre.app/settings](https://share.geolibre.app/settings).
+2. Paste your token into the **Share API token** field. For loopback development, create one under Settings → API tokens at the [administrator-configured Share service settings](http://localhost:8788/settings).
 
-You only need to do this once.
+On Web/PWA the token is memory-only and must be entered again after reload. Windows stores it in the per-user credential store.
 
 ## 2. Share the project
 
 1. Build your map: add layers, style them, and set the map view you want viewers to land on.
 2. Open **Project → Share...**.
-3. Confirm the project title and upload. GeoLibre returns a public URL to a `.geolibre.json` file, for example:
+3. Confirm the project title and upload. GeoLibre returns a public URL to a `.geoim3d.json` file, for example:
    ```text
-   https://share.geolibre.app/you/my-map.geolibre.json
+   http://localhost:8788/you/my-map.geoim3d.json
    ```
 
 The shared file captures the same layers, styles, plugin state, and map view as a local save.
@@ -27,7 +27,7 @@ The shared file captures the same layers, styles, plugin state, and map view as 
 Anyone can open the shared project in the live viewer by passing it as the `url` parameter:
 
 ```text
-https://web.geolibre.app/?url=https://share.geolibre.app/you/my-map.geolibre.json
+http://localhost:4173/?url=http://localhost:8788/you/my-map.geoim3d.json
 ```
 
 ## 4. Embed it in a page
@@ -36,7 +36,7 @@ Use an `<iframe>` and the embed parameters to control the chrome. For a clean, m
 
 ```html
 <iframe
-  src="https://web.geolibre.app/?url=https://share.geolibre.app/you/my-map.geolibre.json&amp;maponly"
+  src="http://localhost:4173/?url=http://localhost:8788/you/my-map.geoim3d.json&amp;maponly"
   title="GeoLibre map"
   width="100%"
   height="600"

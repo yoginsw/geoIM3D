@@ -64,7 +64,6 @@ import {
   MessageSquare,
   Moon,
   Printer,
-  RefreshCw,
   Save,
   Sparkles,
   Sun,
@@ -100,7 +99,7 @@ import { KeyboardShortcutsDialog } from "../command/KeyboardShortcutsDialog";
 import { useGlobalShortcuts } from "../../hooks/useGlobalShortcuts";
 import { useViewportHistory } from "../../hooks/useViewportHistory";
 import type { Command } from "../../lib/commands";
-import { IS_STORE_BUILD } from "../../lib/updates";
+import { resolveShareBaseUrl } from "../../lib/share-geolibre";
 import { AddDataDialog, type AddDataKind } from "./AddDataDialog";
 import {
   OPEN_ADD_DATA_EVENT,
@@ -514,7 +513,6 @@ export function TopToolbar({
   const [setViewOpen, setSetViewOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [checkForUpdatesRequest, setCheckForUpdatesRequest] = useState(0);
 
   const resetRuntimeControlsForNewProject = () => {
     closeMaplibreComponentControls(appApi);
@@ -616,13 +614,17 @@ export function TopToolbar({
       shortcut: { key: "s", mod: true, shift: true },
       run: () => void projectFiles.handleSaveAs(),
     },
-    {
-      id: "project.share",
-      title: t("toolbar.command.projectShare"),
-      group: t("toolbar.commandGroup.project"),
-      icon: Share2,
-      run: () => setShareDialogOpen(true),
-    },
+    ...(resolveShareBaseUrl()
+      ? [
+          {
+            id: "project.share",
+            title: t("toolbar.command.projectShare"),
+            group: t("toolbar.commandGroup.project"),
+            icon: Share2,
+            run: () => setShareDialogOpen(true),
+          },
+        ]
+      : []),
     // Only surfaced when live collaboration is configured (env flag).
     ...(collaboration.enabled
       ? [
@@ -1003,7 +1005,7 @@ export function TopToolbar({
       id: "help.website",
       title: t("toolbar.command.website"),
       group: t("toolbar.commandGroup.help"),
-      keywords: "home page site geolibre.app",
+      keywords: "home page site JBT geoIM3D",
       icon: Globe,
       run: () => void openExternalLink(WEBSITE_URL),
     },
@@ -1029,22 +1031,6 @@ export function TopToolbar({
       icon: MessageSquare,
       run: () => void openExternalLink(FEEDBACK_URL),
     },
-    // The Microsoft Store build omits the "Check for updates" command so the app
-    // updates only through the Store (policy 10.2.5).
-    ...(IS_STORE_BUILD
-      ? []
-      : [
-          {
-            id: "help.updates",
-            title: t("toolbar.command.checkForUpdates"),
-            group: t("toolbar.commandGroup.help"),
-            icon: RefreshCw,
-            run: () => {
-              setAboutOpen(true);
-              setCheckForUpdatesRequest((value) => value + 1);
-            },
-          },
-        ]),
     {
       id: "help.about",
       title: t("toolbar.command.about"),
@@ -1364,10 +1350,6 @@ export function TopToolbar({
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onOpenDiagnostics={onOpenDiagnostics}
-          onCheckForUpdates={() => {
-            setAboutOpen(true);
-            setCheckForUpdatesRequest((value) => value + 1);
-          }}
           onAbout={() => setAboutOpen(true)}
         />
       )}
@@ -1396,7 +1378,6 @@ export function TopToolbar({
       <ConsentNoticeDialogs consent={consent} />
       <OsmPbfDialogs osmPbf={osmPbf} />
       <AboutDialog
-        checkForUpdatesRequest={checkForUpdatesRequest}
         open={aboutOpen}
         renderTrigger={false}
         onOpenChange={setAboutOpen}

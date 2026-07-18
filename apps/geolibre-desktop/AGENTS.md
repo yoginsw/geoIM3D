@@ -49,4 +49,4 @@ npm run test:frontend:coverage
 npm run test:e2e
 ```
 
-Windows Identity, File Association, Credential, Offline 기능 변경은 실제 Windows Desktop Smoke가 필요하다.
+Windows Identity, Startup Project Open, Credential, Offline 및 OS Association 부재 정책 변경은 실제 Windows Desktop Smoke가 필요하다.

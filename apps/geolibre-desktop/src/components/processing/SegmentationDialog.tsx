@@ -36,10 +36,10 @@ import {
   type ReactElement,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { BRAND } from "../../config/brand";
 import { isTauri, openLocalDataFileWithFallback } from "../../lib/tauri-io";
 import { reprojectFeatureCollectionToWgs84 } from "../../lib/duckdb-vector-loader";
 import { startGeoLibreSidecar } from "../../lib/sidecar";
-import { UPDATE_URL } from "../../lib/updates";
 import {
   SidecarHelpBanner,
   SIDECAR_PORT,
@@ -248,7 +248,7 @@ export function SegmentationDialog({
   // drop with no explicit fetch timeout) never leaves them without an action.
   const downloadDesktopButton = (
     <Button asChild variant="outline" className="gap-2">
-      <a href={UPDATE_URL} target="_blank" rel="noopener noreferrer">
+      <a href={BRAND.website} target="_blank" rel="noopener noreferrer">
         <Download className="h-4 w-4" />
         {t("segmentation.downloadDesktop")}
       </a>

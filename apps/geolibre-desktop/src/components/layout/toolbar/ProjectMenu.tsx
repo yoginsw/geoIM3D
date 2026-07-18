@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDesktopSettingsStore } from "../../../hooks/useDesktopSettings";
+import { resolveViewerBaseUrl } from "../../../lib/html-export";
+import { resolveShareBaseUrl } from "../../../lib/share-geolibre";
 import { isMenuItemVisible } from "../../../lib/ui-profile";
 import { formatRecentProjectTime, type ToolbarChrome } from "./constants";
 
@@ -76,13 +78,15 @@ export function ProjectMenu({
   const setStorymapPanelOpen = useAppStore((s) => s.setStorymapPanelOpen);
   const uiProfile = useDesktopSettingsStore((s) => s.desktopSettings.uiProfile);
   const show = (id: string) => isMenuItemVisible(uiProfile, id);
+  const shareConfigured = Boolean(resolveShareBaseUrl());
+  const viewerConfigured = Boolean(resolveViewerBaseUrl());
   // Group-visibility flags so the separators between groups aren't left orphaned
   // when a whole group is hidden by the active profile.
   const showSaveGroup =
     show("project.save") ||
     show("project.saveAs") ||
-    show("project.share") ||
-    show("project.exportHtml") ||
+    (shareConfigured && show("project.share")) ||
+    (viewerConfigured && show("project.exportHtml")) ||
     (collaborationEnabled && show("project.collaborate"));
   const showPrintGroup =
     show("project.printLayout") || show("project.offlineRegion");
@@ -124,10 +128,12 @@ export function ProjectMenu({
                 <Link2 className="me-2 h-3.5 w-3.5" />
                 {t("toolbar.item.urlEllipsis")}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onOpenGallery}>
-                <LayoutGrid className="me-2 h-3.5 w-3.5" />
-                {t("toolbar.item.galleryEllipsis")}
-              </DropdownMenuItem>
+              {shareConfigured ? (
+                <DropdownMenuItem onSelect={onOpenGallery}>
+                  <LayoutGrid className="me-2 h-3.5 w-3.5" />
+                  {t("toolbar.item.galleryEllipsis")}
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
@@ -215,13 +221,13 @@ export function ProjectMenu({
             {t("toolbar.item.saveAsEllipsis")}
           </DropdownMenuItem>
         )}
-        {show("project.share") && (
+        {shareConfigured && show("project.share") && (
           <DropdownMenuItem onSelect={onShare}>
             <Share2 className="me-2 h-3.5 w-3.5" />
             {t("toolbar.item.shareEllipsis")}
           </DropdownMenuItem>
         )}
-        {show("project.exportHtml") && (
+        {viewerConfigured && show("project.exportHtml") && (
           <DropdownMenuItem onSelect={onExportHtml}>
             <FileCode2 className="me-2 h-3.5 w-3.5" />
             {t("toolbar.item.exportHtmlEllipsis")}

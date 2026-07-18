@@ -1,4 +1,5 @@
-// collab.geolibre.app
+// Optional collaboration relay. geoIM3D registers no public route until JBT
+// approves an exact deployment hostname.
 //
 // Relay for GeoLibre live-collaboration sessions. A thin router in front of the
 // CollabSession Durable Object:

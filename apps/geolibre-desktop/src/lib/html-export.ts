@@ -3,8 +3,10 @@
 
 import type { GeoLibreProject } from "@geolibre/core";
 
-// Hosted viewer used as the default embed target (matches Python's default).
-export const DEFAULT_VIEWER_BASE_URL = "https://web.geolibre.app/";
+// Empty until an approved viewer URL is injected by deployment configuration.
+export const DEFAULT_VIEWER_BASE_URL = "";
+// No public Viewer deployment has been approved for geoIM3D yet.
+const APPROVED_VIEWER_HOSTS: ReadonlySet<string> = new Set();
 
 // Excludes the structural CSS chars ("{};:") so a width/height can't close the
 // <style> rule and inject CSS; "/" is allowed so calc() divisions pass (extends
@@ -21,7 +23,7 @@ export function resolveViewerBaseUrl(
     try {
       const url = new URL(trimmed);
       if (
-        url.protocol === "https:" ||
+        (url.protocol === "https:" && APPROVED_VIEWER_HOSTS.has(url.hostname)) ||
         (url.protocol === "http:" &&
           (url.hostname === "localhost" || url.hostname === "127.0.0.1"))
       ) {
@@ -98,6 +100,9 @@ export function buildProjectHtml(options: BuildProjectHtmlOptions): string {
   }
   if (!CSS_DIMENSION_RE.test(height)) {
     throw new Error(`Invalid CSS height value: ${height}`);
+  }
+  if (!appUrl) {
+    throw new Error("Viewer URL is not configured for this deployment.");
   }
   const iframeSrc = withViewerFlags(appUrl);
   // Escape "<" so a property value can't break out of the JSON <script> block.

@@ -67,8 +67,8 @@ not use the optional online features listed above.
 
 ## Changes to this policy
 
-We may update this policy from time to time. The current version is always
-available at <https://geolibre.app/privacy/>.
+We may update this policy from time to time. The version tracked in this
+repository is the applicable development reference.
 
 ## Contact
 

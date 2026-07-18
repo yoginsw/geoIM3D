@@ -1,188 +1,58 @@
-# Downloads
+# geoIM3D Downloads
 
-GeoLibre desktop installers are published from GitHub Releases.
+> geoIM3D 1.0 공식 Download URL은 Phase 8 Release Gate에서 Code signing,
+> Checksum, Clean-machine Runtime 검증을 통과한 뒤 게시합니다.
 
-[View releases](https://github.com/opengeos/GeoLibre/releases){ .md-button .md-button--primary }
-[Launch GeoLibre Web](https://web.geolibre.app/){ .md-button }
+## Windows x64
 
-## Release assets
+승인 대상 Artifact는 다음 두 가지입니다.
 
-Release builds are produced for:
+| 형식 | 파일명 | 특성 |
+|---|---|---|
+| NSIS Installer | `geoIM3D_1.0.0_x64-setup.exe` | 사용자별 설치; OS File Association 없음 |
+| Portable ZIP | `geoIM3D-1.0.0-x64-portable.zip` | Registry 변경 없이 압축 해제 후 실행 |
 
-- Linux x64: Debian package, RPM package, and AppImage
-- Windows x64: unsigned desktop binary
-- macOS Apple Silicon: Developer ID signed and notarized DMG and app bundle (v1.4.1+)
-- macOS Intel: Developer ID signed and notarized DMG and app bundle (v1.4.1+)
+geoIM3D에는 In-app Automatic Updater가 없습니다. 새 버전은 승인된 Installer를
+통해 수동으로 설치합니다.
 
-The Windows GitHub Release build is unsigned and may require a platform-specific
-trust prompt; the [Microsoft Store](#windows-installation) build is signed and
-auto-updating. Check each release note for the exact assets and platform
-guidance.
+`.geoim3d.json`은 유일한 프로젝트 저장 포맷입니다. Windows가 복합 확장자를
+최종 `.json`으로 판정하므로 Installer/MSIX/Portable은 Explorer 기본 연결을
+등록하지 않습니다. 프로젝트는 앱 내부 열기, 드래그앤드롭 또는 검증된 Startup
+Argument 경로로 엽니다. `.json` 전체 기본 앱을 geoIM3D로 변경하지 마십시오.
 
-## Windows installation
+### Runtime requirement
 
-### Microsoft Store (recommended)
+Windows 11 및 최신 Windows 10에 기본 포함된 Microsoft Edge WebView2 Runtime이
+필요합니다. 실행되지 않으면 Microsoft의
+[Evergreen WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)을
+설치합니다.
 
-GeoLibre is available on the
-[Microsoft Store](https://apps.microsoft.com/detail/9nwt67rv531x). The Store
-build is signed and updates automatically, so it installs and launches without
-a trust prompt:
+### MSIX / Microsoft Store
 
-[Get GeoLibre from the Microsoft Store](https://apps.microsoft.com/detail/9nwt67rv531x){ .md-button .md-button--primary }
+현재 공개 geoIM3D Microsoft Store 또는 Winget Package는 없습니다.
+`.github/workflows/msix-store.yml`은 승인된 Partner Center Identity를 입력해
+**서명되지 않은 Store 제출용 MSIX**를 만드는 Maintainer Workflow입니다.
+이 Artifact는 일반 Sideload 설치본이나 GitHub Release Asset으로 배포하지 않습니다.
+Enterprise Sideload에는 Publisher와 일치하는 Certificate 서명 및 별도 설치 검증이
+필요합니다.
 
-### winget
+## Web / PWA
 
-The [Windows Package Manager](https://learn.microsoft.com/windows/package-manager/)
-distributes GeoLibre as `OpenGeos.GeoLibre` (the GitHub Release build):
-
-```powershell
-winget install OpenGeos.GeoLibre
-```
-
-### Manual installation
-
-Download the Windows installer (`.msi` or `.exe`) from the latest
-[release](https://github.com/opengeos/GeoLibre/releases) and run it. This build
-is unsigned, so Windows SmartScreen may warn you; choose **More info → Run
-anyway** to proceed.
-
-### Portable (no install)
-
-Prefer not to install? Download the `*-x64-portable.zip` asset from the latest
-[release](https://github.com/opengeos/GeoLibre/releases), unzip it anywhere
-(including a USB drive), and run `geolibre-desktop.exe`. No installer, admin
-rights, or registry changes are involved, and the build does not auto-update, so
-download a newer zip to upgrade.
-
-The portable build relies on the Microsoft Edge WebView2 Runtime, which is
-preinstalled on Windows 11 and current Windows 10. If the app does not start,
-install the
-[Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
-The optional Python sidecar tools (Whitebox, raster, conversion) need Python
-available just as in the installed build; everything else runs without it.
-
-## macOS installation
-
-Signing and notarization apply to **v1.4.1 and later**. For v1.4.0 and earlier
-(ad-hoc signed), remove the quarantine attribute after installing, repeating it
-after each upgrade:
+Web Build는 `npm run build`로 생성하며 `apps/geolibre-desktop/dist/`를 정적
+Hosting하거나 Docker Image로 배포합니다.
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/GeoLibre Desktop.app"
+docker build -t geoim3d.docker .
+docker run --rm -p 8080:80 geoim3d.docker
 ```
 
-### Homebrew (recommended)
+첫 방문 후 App Shell은 Offline으로 실행됩니다. Pyodide, PGlite/PostGIS,
+CereusDB와 원격 지도 자료는 각 Asset을 Online에서 처음 사용한 뒤 Runtime Cache가
+채워져야 Offline에서 재사용할 수 있습니다.
 
-GeoLibre is available as an official
-[Homebrew Cask](https://github.com/Homebrew/homebrew-cask/blob/main/Casks/g/geolibre.rb),
-so no tap or trust step is needed — just install:
+## Source and upstream attribution
 
-```bash
-brew install --cask geolibre
-```
-
-The macOS DMGs are signed with an Apple Developer ID certificate and notarized
-by Apple, so Gatekeeper allows the app to launch normally with no quarantine
-workaround. Upgrade later with:
-
-```bash
-brew upgrade --cask geolibre
-```
-
-To remove it:
-
-```bash
-brew uninstall --cask geolibre
-```
-
-### Manual installation
-
-The macOS builds are signed with an Apple Developer ID certificate and notarized
-by Apple, so Gatekeeper allows them to open without any extra steps:
-
-1. Download the DMG for your Mac (`aarch64` for Apple Silicon, `x64` for
-   Intel).
-2. Open the DMG and drag **GeoLibre Desktop** into **Applications**.
-3. Launch GeoLibre Desktop from Applications.
-
-## Linux installation
-
-GeoLibre offers several Linux install options. The AUR, COPR, and Flatpak
-packages auto-update (through your system package manager or `flatpak update`);
-the direct `.deb`, `.rpm`, and AppImage downloads are updated by re-downloading
-the new release.
-
-### Arch Linux / Manjaro (AUR)
-
-GeoLibre is on the [AUR](https://aur.archlinux.org/packages/geolibre-bin) as
-`geolibre-bin`, a binary package that repackages the official release (no source
-build needed):
-
-```bash
-yay -S geolibre-bin      # or: paru -S geolibre-bin
-```
-
-### Fedora / RHEL (COPR)
-
-```bash
-sudo dnf copr enable giswqs/geolibre
-sudo dnf install geolibre
-```
-
-On RHEL and derivatives, enable the COPR plugin first with
-`sudo dnf install dnf-plugins-core`.
-
-### Flatpak (via [FlatPark](https://flatpark.org/apps/app.geolibre.GeoLibre/))
-
-Works on any distribution with Flatpak. Add the remote once, then install:
-
-```bash
-flatpak remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo
-flatpak install flatpark app.geolibre.GeoLibre
-```
-
-### Debian / Ubuntu (.deb)
-
-Download the `.deb` from the latest release and install it (apt resolves the
-dependencies):
-
-```bash
-sudo apt install ./GeoLibre.Desktop_<version>_amd64.deb
-```
-
-### Other RPM distributions (.rpm)
-
-```bash
-sudo dnf install ./GeoLibre.Desktop-<version>-1.x86_64.rpm
-```
-
-Use `yum` on older RHEL/CentOS, or `sudo zypper install --allow-unsigned-rpm ./...rpm`
-on openSUSE.
-
-### AppImage (any distribution)
-
-Download it, mark it executable, and run it:
-
-```bash
-chmod +x GeoLibre.Desktop_<version>_amd64.AppImage
-./GeoLibre.Desktop_<version>_amd64.AppImage
-```
-
-AppImages need FUSE. On distros that no longer ship it by default, install
-`libfuse2` (for example `sudo apt install libfuse2`) or run with
-`--appimage-extract-and-run`.
-
-## Build from source
-
-```bash
-git clone https://github.com/opengeos/GeoLibre.git
-cd GeoLibre
-npm install
-npm run tauri:build
-```
-
-The default desktop build keeps the Linux binary small and uses DuckDB-WASM for
-DuckDB-backed browser features. To build a larger desktop binary with the native
-`duckdb-rs` vector loader enabled, run `npm run tauri:build:native-duckdb`.
-
-Desktop builds require the Rust toolchain and Tauri platform prerequisites.
+geoIM3D는 MIT License의
+[GeoLibre](https://github.com/opengeos/GeoLibre)를 기반으로 한 JBT 제품 특화 Fork입니다.
+원본 GeoLibre의 Store, Winget, Homebrew, Linux/macOS Download는 geoIM3D 배포 채널이
+아니며 원본 Project에서 별도로 관리됩니다.

@@ -2,7 +2,6 @@
 
 The **Style panel** on the right edits the appearance of the layer selected in the [Layers panel](layers.md). Vector and raster layers each get their own set of controls.
 
-![Style panel showing categorized styling](https://data.geolibre.app/images/geolibre-styling.webp)
 
 ## Vector styling
 

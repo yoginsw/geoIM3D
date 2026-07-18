@@ -19,13 +19,13 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "My Map",
-      appUrl: "https://web.geolibre.app/",
+      appUrl: "http://127.0.0.1:4173/",
     });
     assert.match(html, /<title>My Map<\/title>/);
     // "&" is HTML-escaped to "&amp;" in the attribute (decoded back by browsers).
     assert.match(
       html,
-      /<iframe id="geolibre-frame" src="https:\/\/web\.geolibre\.app\/\?embed=1&amp;welcome=0"/,
+      /<iframe id="geolibre-frame" src="http:\/\/127\.0\.0\.1:4173\/\?embed=1&amp;welcome=0"/,
     );
     // The project rides in a JSON <script> block and is replayed over the bridge.
     assert.match(html, /id="geolibre-project"/);
@@ -41,9 +41,11 @@ describe("buildProjectHtml", () => {
     assert.deepEqual(JSON.parse(json[1]), PROJECT);
   });
 
-  it("defaults the app URL to the hosted viewer", () => {
-    const html = buildProjectHtml({ project: PROJECT, title: "T" });
-    assert.match(html, /src="https:\/\/web\.geolibre\.app\/\?embed=1&amp;welcome=0"/);
+  it("requires deployment configuration when no app URL is supplied", () => {
+    assert.throws(
+      () => buildProjectHtml({ project: PROJECT, title: "T" }),
+      /Viewer URL is not configured/,
+    );
   });
 
   it("escapes '<' in the inlined JSON so a value cannot break out", () => {
@@ -52,7 +54,11 @@ describe("buildProjectHtml", () => {
       name: "x</script><img>",
       layers: [],
     } as unknown as GeoLibreProject;
-    const html = buildProjectHtml({ project, title: "T" });
+    const html = buildProjectHtml({
+      project,
+      title: "T",
+      appUrl: "http://127.0.0.1:4173/",
+    });
     assert.ok(!html.includes("x</script>"));
     // Only "<" is escaped (">" is harmless inside a script element).
     assert.ok(html.includes("x\\u003c/script>\\u003cimg>"));
@@ -62,6 +68,7 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "<b>hi</b> & \"q\"",
+      appUrl: "http://127.0.0.1:4173/",
     });
     assert.match(html, /<title>&lt;b&gt;hi&lt;\/b&gt; &amp; &quot;q&quot;<\/title>/);
     assert.ok(!html.includes("<b>hi</b>"));
@@ -71,33 +78,35 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "T",
-      appUrl: "https://example.com/app?lang=fr",
+      appUrl: "http://127.0.0.1:4173/app?lang=fr",
     });
     // "&" is HTML-escaped to "&amp;" in the attribute (decoded back by browsers).
     assert.match(
       html,
-      /src="https:\/\/example\.com\/app\?lang=fr&amp;embed=1&amp;welcome=0"/,
+      /src="http:\/\/127\.0\.0\.1:4173\/app\?lang=fr&amp;embed=1&amp;welcome=0"/,
     );
   });
 
-  it("falls back to the default viewer for an unsafe appUrl", () => {
-    const html = buildProjectHtml({
-      project: PROJECT,
-      title: "T",
-      // eslint-disable-next-line no-script-url
-      appUrl: "javascript:alert(1)",
-    });
-    assert.ok(!html.includes("javascript:alert(1)"));
-    assert.match(html, /src="https:\/\/web\.geolibre\.app\/\?embed=1&amp;welcome=0"/);
+  it("rejects an unsafe appUrl when no approved default is configured", () => {
+    assert.throws(
+      () =>
+        buildProjectHtml({
+          project: PROJECT,
+          title: "T",
+          // eslint-disable-next-line no-script-url
+          appUrl: "javascript:alert(1)",
+        }),
+      /Viewer URL is not configured/,
+    );
   });
 
   it("does not append embed=1 twice when the app URL already has it", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "T",
-      appUrl: "https://web.geolibre.app/?embed=1",
+      appUrl: "http://127.0.0.1:4173/?embed=1",
     });
-    assert.match(html, /src="https:\/\/web\.geolibre\.app\/\?embed=1&amp;welcome=0"/);
+    assert.match(html, /src="http:\/\/127\.0\.0\.1:4173\/\?embed=1&amp;welcome=0"/);
     assert.ok(!html.includes("embed=1&amp;embed=1"));
   });
 
@@ -105,9 +114,9 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "T",
-      appUrl: "https://web.geolibre.app/?welcome=off",
+      appUrl: "http://127.0.0.1:4173/?welcome=off",
     });
-    assert.match(html, /src="https:\/\/web\.geolibre\.app\/\?welcome=off&amp;embed=1"/);
+    assert.match(html, /src="http:\/\/127\.0\.0\.1:4173\/\?welcome=off&amp;embed=1"/);
     assert.ok(!html.includes("welcome=off&amp;welcome=0"));
   });
 
@@ -117,7 +126,11 @@ describe("buildProjectHtml", () => {
       name: "a > b",
       layers: [],
     } as unknown as GeoLibreProject;
-    const html = buildProjectHtml({ project, title: "T" });
+    const html = buildProjectHtml({
+      project,
+      title: "T",
+      appUrl: "http://127.0.0.1:4173/",
+    });
     assert.match(html, /"name":"a > b"/);
   });
 
@@ -125,11 +138,11 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "T",
-      appUrl: "https://example.com/app#/view",
+      appUrl: "http://127.0.0.1:4173/app#/view",
     });
     assert.match(
       html,
-      /src="https:\/\/example\.com\/app\?embed=1&amp;welcome=0#\/view"/,
+      /src="http:\/\/127\.0\.0\.1:4173\/app\?embed=1&amp;welcome=0#\/view"/,
     );
   });
 
@@ -137,6 +150,7 @@ describe("buildProjectHtml", () => {
     const html = buildProjectHtml({
       project: PROJECT,
       title: "T",
+      appUrl: "http://127.0.0.1:4173/",
       width: "calc(100% / 2)",
       height: "calc(100vh - 2rem)",
     });
@@ -157,15 +171,15 @@ describe("buildProjectHtml", () => {
 });
 
 describe("resolveViewerBaseUrl", () => {
-  it("falls back to the production viewer with no override", () => {
+  it("keeps the viewer disabled with no approved override", () => {
     assert.equal(resolveViewerBaseUrl(undefined), DEFAULT_VIEWER_BASE_URL);
     assert.equal(resolveViewerBaseUrl(""), DEFAULT_VIEWER_BASE_URL);
   });
 
-  it("accepts an HTTPS override", () => {
+  it("rejects an unapproved public HTTPS override", () => {
     assert.equal(
       resolveViewerBaseUrl("https://my.example.com/app/"),
-      "https://my.example.com/app/",
+      DEFAULT_VIEWER_BASE_URL,
     );
   });
 

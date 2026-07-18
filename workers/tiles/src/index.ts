@@ -1,6 +1,7 @@
-// tiles.geolibre.app
+// Local development tile worker. No public hostname or deployment route is
+// approved for geoIM3D.
 //
-// A CORS-adding, edge-caching tile service for GeoLibre's planetary basemaps.
+// A CORS-adding tile service inherited for planetary basemap development.
 // It does two jobs, both keyed to a tight allowlist so it is never an open proxy:
 //
 //   1. `/opm/<dataset>/<z>/<x>/<y>.png` — a plain reverse proxy for the
@@ -420,10 +421,9 @@ interface Env {}
  * offline basemaps, so an `isAllowedOamOrigin`-style check would break them. The
  * abuse surface is instead bounded by (a) the per-request range cap above — a
  * single request can't transfer more than a directory/tile-sized chunk — and
- * (b) Cloudflare's platform abuse detection plus any zone rate-limiting rule in
- * front of tiles.geolibre.app (the same defence the OAM route relies on for
- * per-client throttling). The upstream is public and unauthenticated, so this is
- * a Worker-egress cost concern, not an access-control bypass.
+ * (b) this worker is restricted to local development with no public route.
+ * The upstream is public and unauthenticated, so any future deployment requires
+ * a separately approved rate limit and egress-cost review.
  */
 async function handlePmtilesRange(
   request: Request,
@@ -544,8 +544,8 @@ export default {
       // restrict it to GeoLibre's own origins (see isAllowedOamOrigin) — every
       // cross-origin `fetch()` from the app carries an Origin header. This stops
       // a third-party site from driving arbitrary OAM queries through the
-      // Worker. It is not a rate limiter — per-client throttling belongs in a
-      // Cloudflare rate-limiting rule in front of tiles.geolibre.app.
+      // Worker. It is not a rate limiter; public deployment is not approved and
+      // no production throttling configuration is claimed here.
       if (!isAllowedOamOrigin(request.headers.get("origin"))) {
         return new Response("Forbidden", { status: 403, headers: CORS_HEADERS });
       }

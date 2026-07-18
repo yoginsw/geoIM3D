@@ -232,7 +232,7 @@ describe("project identity platform boundaries", () => {
     assert.equal(isCanonicalProjectUrl("https://example.com/site.json"), false);
   });
 
-  it("keeps dialogs and Rust reads canonical while deferring OS association", () => {
+  it("keeps dialogs and Rust reads canonical without claiming a compound OS association", () => {
     const config = JSON.parse(
       readFileSync(
         path.join(
@@ -241,7 +241,15 @@ describe("project identity platform boundaries", () => {
         ),
         "utf8",
       ),
-    ) as { bundle: { fileAssociations?: Array<{ ext: string[] }> } };
+    ) as {
+      bundle: {
+        fileAssociations?: Array<{
+          ext: string[];
+          name: string;
+          mimeType: string;
+        }>;
+      };
+    };
     assert.equal(config.bundle.fileAssociations, undefined);
 
     const io = readFileSync(

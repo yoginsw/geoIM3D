@@ -16,7 +16,8 @@
 - 자동 업데이트: 사용하지 않음
 - Offline 실행: 필수
 - File Extension: `.geoim3d.json`
-- File Association, Open With, Icon, MIME/ProgID를 함께 검증
+- 복합 확장자 OS Association/Open With/ProgID 등록 금지
+- 앱 내부 Open/Drag-and-drop 및 Canonical Startup Argument를 검증
 - API Key는 OS Credential Store 사용
 - Installer와 Portable Package의 동작을 각각 검증
 

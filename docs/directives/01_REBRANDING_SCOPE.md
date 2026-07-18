@@ -7,7 +7,7 @@
 - Window/Page Title
 - Header, Menu, Welcome, About
 - PWA Manifest, Icon, Favicon
-- Installer, Shortcut, File Association
+- Installer, Shortcut, Project Open 경계(OS File Association 제외)
 - Windows Product Name, Publisher Display
 - Docker Image/Container 안내
 - Documentation과 Screenshot

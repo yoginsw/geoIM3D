@@ -4,7 +4,7 @@ GeoLibre can hide data sources, web services, and plugins to simplify the
 interface for beginners or to standardize a deployment across a team. Hiding is
 **non-destructive** — nothing is removed, and any item can be re-enabled at any
 time. Profile preferences are stored locally in the browser/app and never travel
-inside a saved `.geolibre.json` project.
+inside a saved `.geoim3d.json` project.
 
 ## For users
 

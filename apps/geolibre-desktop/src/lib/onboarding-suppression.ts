@@ -25,7 +25,7 @@ const EMBED_ENABLED_VALUES = new Set(["1", "true"]);
 /**
  * Whether to suppress the first-launch onboarding wizard because the app is
  * opened as an embed/deep link, where the modal would just cover the map:
- *   - a project deep link (e.g. web.geolibre.app `?url=`) opens straight
+ *   - a project deep link (for example, a configured viewer's `?url=`) opens straight
  *     into a shared project,
  *   - an embed (`?embed=1`/`true`) frames the app as a map to view, not to
  *     configure, so the recipient of an exported HTML page lands straight on

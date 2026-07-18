@@ -31,7 +31,7 @@
 
 ## C. Phase 3/6 — Identity와 Packaging
 
-- `.geoim3d.json` Open/Save/File Association
+- `.geoim3d.json` Open/Save/Drop/Startup Argument (OS Association 제외)
 - Windows Bundle ID `com.ejbt.geoim3d`
 - Product/Installer/Shortcut/MSIX/Portable 이름
 - Docker Image `geoim3d.docker`

@@ -31,53 +31,9 @@
     "title": "À propos de GeoLibre",
     "description": "GeoLibre est une plateforme SIG cloud-native légère.",
     "version": "Version",
-    "checkForUpdates": "Vérifier les mises à jour",
-    "tryAgain": "Réessayer",
-    "checking": "Vérification des mises à jour",
-    "upToDate": "Vous êtes à jour ({{version}}).",
-    "upToDateNoVersion": "Vous êtes à jour.",
     "generalSectionTitle": "Général",
     "homePage": "Page d'accueil",
     "githubRepository": "Dépôt GitHub"
-  },
-  "updates": {
-    "changelogTitle": "Nouveautés",
-    "noChangelog": "Les notes de version ne sont pas disponibles. Consultez la page de téléchargements pour plus de détails.",
-    "stepsTitle": "Comment mettre à jour",
-    "download": "Télécharger la mise à jour",
-    "steps": {
-      "download": "Téléchargez l'installateur pour votre plateforme depuis la page de téléchargements.",
-      "install": "Exécutez l'installateur. Vos projets locaux, paramètres et clés API sont conservés.",
-      "reopen": "Rouvrez GeoLibre pour terminer la mise à jour."
-    },
-    "severity": {
-      "major": "Version majeure",
-      "minor": "Mise à jour de fonctionnalités",
-      "patch": "Mise à jour corrective"
-    },
-    "available": {
-      "title": "{{version}} est disponible",
-      "fallback": "Une nouvelle version",
-      "summary": "Vous utilisez actuellement {{current}}."
-    },
-    "error": {
-      "message": "Impossible de vérifier les mises à jour.",
-      "rateLimit": "Limite de taux GitHub dépassée. Veuillez réessayer plus tard.",
-      "http": "GitHub a renvoyé {{status}}.",
-      "noTag": "La dernière version ne comporte pas de tag de version.",
-      "network": "Impossible de joindre GitHub. Vérifiez votre connexion et réessayez.",
-      "viewDownloads": "Voir les téléchargements",
-      "viewDownloadsHint": "Ouvre la page de téléchargements de GeoLibre dans votre navigateur afin que vous puissiez vérifier manuellement la dernière version."
-    },
-    "startup": {
-      "title": "Mise à jour disponible",
-      "currentVersion": "Votre version actuelle",
-      "latestVersion": "Dernière version disponible",
-      "download": "Télécharger le paquet de mise à jour",
-      "remindLater": "Me le rappeler plus tard",
-      "skipVersion": "Ignorer cette version",
-      "settingsHint": "Vous pouvez modifier la vérification des mises à jour dans Paramètres → Mises à jour."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Inclure l'état complet des couches (actives, inactives et ordre des couches)",
@@ -877,12 +833,12 @@
   },
   "share": {
     "title": "Partager le projet",
-    "description": "Téléversez le projet actuel vers share.geolibre.app et obtenez un lien partageable.",
-    "setupIntro": "Connectez votre compte share.geolibre.app avant de téléverser.",
+    "description": "Téléversez le projet actuel vers service Share configuré et obtenez un lien partageable.",
+    "setupIntro": "Connectez votre compte service Share configuré avant de téléverser.",
     "step1Title": "1. Obtenir un jeton API",
-    "step1Description": "Connectez-vous à share.geolibre.app, puis créez un jeton sous Paramètres → Jetons API.",
+    "step1Description": "Connectez-vous à service Share configuré, puis créez un jeton sous Paramètres → Jetons API.",
     "getToken": "Obtenir un jeton API",
-    "step2Title": "2. Ajouter le jeton à GeoLibre",
+    "step2Title": "2. Ajouter le jeton à geoIM3D",
     "step2Description": "Collez le jeton dans Paramètres → Variables d'environnement sur cet appareil.",
     "configureToken": "Configurer le jeton local",
     "liveAt": "Votre projet est en ligne à l'adresse :",
@@ -899,12 +855,12 @@
     "shareButton": "Partager",
     "sharing": "Partage en cours…",
     "errorFallback": "Impossible de partager le projet.",
-    "usernameRequired": "Définissez un nom d'utilisateur sur votre compte share.geolibre.app avant de partager. Ouvrez les paramètres de votre compte pour en choisir un, puis réessayez.",
+    "usernameRequired": "Définissez un nom d'utilisateur sur votre compte service Share configuré avant de partager. Ouvrez les paramètres de votre compte pour en choisir un, puis réessayez.",
     "openAccountSettings": "Ouvrir les paramètres du compte"
   },
   "gallery": {
     "title": "Galerie de projets",
-    "description": "Parcourez les projets publics partagés sur share.geolibre.app et ouvrez-en un dans GeoLibre.",
+    "description": "Parcourez les projets publics partagés sur service Share configuré et ouvrez-en un dans geoIM3D.",
     "searchPlaceholder": "Filtrer les projets chargés par titre, auteur ou étiquette",
     "loading": "Chargement des projets…",
     "loadingMore": "Chargement supplémentaire…",
@@ -913,11 +869,11 @@
     "noMatches": "Aucun projet chargé ne correspond à votre filtre.",
     "errorFallback": "Impossible de charger la galerie de projets.",
     "errorTimeout": "La galerie de projets a expiré. Veuillez réessayer.",
-    "errorNetwork": "Impossible de joindre share.geolibre.app. Vérifiez votre connexion internet.",
+    "errorNetwork": "Impossible de joindre service Share configuré. Vérifiez votre connexion internet.",
     "errorHttp": "Impossible de charger la galerie (HTTP {{status}}).",
     "errorInvalidResponse": "Impossible de charger la galerie (réponse du serveur invalide).",
-    "errorUnauthorized": "Votre jeton API share.geolibre.app est invalide ou expiré. Mettez-le à jour dans Paramètres.",
-    "errorUsernameRequired": "Définissez un nom d'utilisateur sur votre compte share.geolibre.app avant de charger vos projets.",
+    "errorUnauthorized": "Votre jeton API service Share configuré est invalide ou expiré. Mettez-le à jour dans Paramètres.",
+    "errorUsernameRequired": "Définissez un nom d'utilisateur sur votre compte service Share configuré avant de charger vos projets.",
     "retry": "Réessayer",
     "open": "Ouvrir",
     "opening": "Ouverture…",
@@ -932,7 +888,7 @@
     "scopeFeatured": "En vedette",
     "scopeAll": "Tous les projets",
     "scopeMine": "Mes projets",
-    "signedOutHint": "Ajoutez un jeton API share.geolibre.app dans Paramètres pour voir vos propres projets non répertoriés et privés.",
+    "signedOutHint": "Ajoutez un jeton API service Share configuré dans Paramètres pour voir vos propres projets non répertoriés et privés.",
     "emptyFeatured": "Pas encore de projets en vedette.",
     "emptyMine": "Vous n'avez encore partagé aucun projet.",
     "visibilityUnlisted": "Non répertorié",
@@ -1253,8 +1209,7 @@
       "interface": "Interface",
       "geocoding": "Géocodage",
       "ai": "Fournisseurs d'IA",
-      "environment": "Environnement",
-      "updates": "Mises à jour"
+      "environment": "Environnement"
     },
     "menu": {
       "mapPreferences": "Préférences de carte",
@@ -1264,22 +1219,8 @@
       "geocoding": "Géocodage",
       "ai": "Fournisseurs d'IA",
       "environmentVariables": "Variables d'environnement",
-      "updates": "Paramètres de mise à jour",
       "managePlugins": "Gérer les extensions",
       "urlOverrideNote": "Les paramètres de disposition dans l'URL remplacent les paramètres enregistrés."
-    },
-    "updates": {
-      "title": "Mises à jour du logiciel",
-      "description": "Contrôlez la manière dont GeoLibre vérifie les nouvelles versions au démarrage de l'application de bureau.",
-      "checkOnStartup": "Vérifier les mises à jour au démarrage",
-      "checkOnStartupHint": "Lorsque cette option est activée, GeoLibre vérifie la présence d'une nouvelle version à chaque démarrage de l'application. Désactivez-la pour un flux de travail entièrement hors ligne.",
-      "notificationLevel": "M'informer des",
-      "notificationLevelHint": "Choisissez les types de versions qui déclenchent une notification au démarrage.",
-      "level": {
-        "all": "Toutes les versions (majeures, mineures et correctifs)",
-        "minor": "Versions majeures et mineures uniquement",
-        "major": "Versions majeures uniquement"
-      }
     },
     "map": {
       "constraintsTitle": "Contraintes de carte",
@@ -1350,9 +1291,9 @@
       "lockedNote": "Ce profil d'interface est géré par votre administrateur et ne peut pas être modifié."
     },
     "env": {
-      "tokenTitle": "Jeton API Share.GeoLibre",
-      "tokenDescription": "Projet > Partager utilise ce jeton pour téléverser vos cartes vers share.geolibre.app. Ouvrez <tokenLink>share.geolibre.app/settings</tokenLink>, créez un jeton sous Paramètres > Jetons API, puis collez-le dans le champ ci-dessous.",
-      "tokenStorageNote": "Stocké localement sur cet appareil et envoyé uniquement à share.geolibre.app pour authentifier les téléversements. Dans la version web, il partage le même stockage de navigateur que les autres données du site, alors révoquez-le sur share.geolibre.app si votre machine est compromise.",
+      "tokenTitle": "Jeton API Share",
+      "tokenDescription": "Projet > Partager utilise ce jeton pour téléverser vos cartes vers service Share configuré. Ouvrez <tokenLink>paramètres du service Share configuré</tokenLink>, créez un jeton sous Paramètres > Jetons API, puis collez-le dans le champ ci-dessous.",
+      "tokenStorageNote": "Stocké localement sur cet appareil et envoyé uniquement à service Share configuré pour authentifier les téléversements. Dans la version web, il partage le même stockage de navigateur que les autres données du site, alors révoquez-le sur service Share configuré si votre machine est compromise.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Jeton Cesium Ion",
       "cesiumTokenDescription": "Le globe 3D (un volet en vue partagée) utilise l'imagerie mondiale et le relief de Cesium Ion, qui nécessitent un jeton d'accès. Créez un compte gratuit sur <tokenLink>ion.cesium.com/tokens</tokenLink>, copiez votre jeton d'accès par défaut, puis collez-le ci-dessous. Sans jeton, le bouton du globe 3D est masqué.",
@@ -1602,7 +1543,6 @@
       "githubRepository": "Dépôt GitHub",
       "diagnostics": "Diagnostics",
       "giveFeedback": "Donner un avis",
-      "checkForUpdates": "Vérifier les mises à jour",
       "about": "À propos",
       "togglePlugin": "Basculer {{name}}",
       "managePlugins": "Gérer les extensions"

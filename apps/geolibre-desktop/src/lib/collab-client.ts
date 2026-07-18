@@ -19,6 +19,8 @@ const CREATE_TIMEOUT_MS = 15_000;
 // Reconnect backoff bounds; jittered between attempts.
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 10_000;
+// No public collaboration relay has been approved for geoIM3D yet.
+const APPROVED_COLLAB_HOSTS: ReadonlySet<string> = new Set();
 
 /**
  * Resolve the collaboration relay base from the Vite env, returning `null` when
@@ -39,7 +41,7 @@ export function resolveCollabBaseUrl(
   try {
     const url = new URL(trimmed);
     if (
-      url.protocol === "wss:" ||
+      (url.protocol === "wss:" && APPROVED_COLLAB_HOSTS.has(url.hostname)) ||
       (url.protocol === "ws:" &&
         (url.hostname === "localhost" ||
           url.hostname === "127.0.0.1" ||
@@ -77,10 +79,11 @@ export async function createSession(
   baseUrl: string | null = resolveCollabBaseUrl(),
   fetchImpl: typeof fetch = fetch,
 ): Promise<CreateSessionResult> {
-  if (!baseUrl) {
+  const approvedBase = resolveCollabBaseUrl(baseUrl);
+  if (!approvedBase) {
     throw new Error("Live collaboration is not configured.");
   }
-  const httpBase = httpBaseFromWs(baseUrl);
+  const httpBase = httpBaseFromWs(approvedBase);
   let response: Response;
   try {
     response = await fetchImpl(`${httpBase}/sessions`, {
@@ -149,7 +152,11 @@ export class CollabConnection {
     // simultaneous reconnects apart (a function of `attempt` alone would give
     // every client the identical delay).
     private readonly random: () => number = Math.random,
-  ) {}
+  ) {
+    if (!resolveCollabBaseUrl(url)) {
+      throw new Error("Live collaboration is not configured.");
+    }
+  }
 
   connect(): void {
     this.closedByUs = false;

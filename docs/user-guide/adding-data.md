@@ -2,7 +2,6 @@
 
 The **Add Data** menu is the main way to bring layers into GeoLibre. It groups sources into Files, Web services, Cloud formats, 3D layers, and Databases. You can also drag files straight onto the map.
 
-![Add Data menu](https://data.geolibre.app/images/geolibre-add-data-menu.webp)
 
 ## Files
 

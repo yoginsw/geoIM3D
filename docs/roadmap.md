@@ -1,5 +1,10 @@
 # GeoLibre Roadmap
 
+> This file preserves the historical upstream GeoLibre roadmap for attribution.
+> Upstream Store, Winget, updater, Homebrew, Linux, macOS, and deployment-host
+> entries are not geoIM3D release commitments. The current geoIM3D contract is
+> defined by `PLAN.md` and `docs/directives/`.
+
 ## v0.1: Map viewer and GeoJSON
 
 - [x] Tauri + React + MapLibre shell
@@ -63,7 +68,7 @@
 
 ## v0.8: Viewer, desktop packaging, plugins, and dynamic layers
 
-- [x] Cloudflare Worker viewer served from `web.geolibre.app`
+- [x] Cloudflare Worker viewer served from the upstream hosted viewer
 - [x] Browser demo links updated to the production viewer
 - [x] GPX drag-and-drop split into named waypoint, track, and route layers
 - [x] Vector layers reprojected to EPSG:4326 on load
@@ -120,7 +125,7 @@
 - [x] Plugin marketplace / registry design (see [Plugin marketplace and registry](#plugin-marketplace-and-registry-design))
 - [x] Plugin marketplace MVP: curated registry plus browse and install UI
 - [x] Plugin update (in-place re-fetch) and uninstall with confirmation
-- [x] Project menu Share action that uploads to share.geolibre.app using a personal API token
+- [x] Project menu Share action that uploads to the upstream Share service using a personal API token
 - [x] Python package (`geolibre`) for Jupyter notebooks: embeds the full app as an [anywidget](https://anywidget.dev) with a leafmap-style API (`add_geojson`, `add_tile_layer`, `add_cog`) and two-way `.geolibre.json` project sync
 - [x] Performance tuning and test suite
 - [x] Cross-platform installers
@@ -350,7 +355,7 @@ code.
 ### Registry
 
 - A curated, versioned index published as static JSON (for example
-  `registry.json` hosted on `geolibre.app`, or generated from a GitHub
+  `registry.json` hosted by upstream, or generated from a GitHub
   repository of submissions). No live backend is required for the MVP.
 - Each entry carries `id`, `name`, `version`, `description`, `author`,
   `homepage`, `manifestUrl`, `categories`, `minGeoLibreVersion`, and optional
@@ -399,21 +404,22 @@ code.
 
 ### Phasing
 
-1. Curated static registry plus browse and install through manifest URLs
-   (reuses the current loader; records the manifest URL in settings). **Done.**
+1. Upstream historically shipped a curated static registry plus browse/install
+   through manifest URLs. geoIM3D keeps this disabled until a deployment URL is
+   separately approved.
 2. Version checks, update and removal flows.
 3. Submission workflow for third-party authors.
 
 ### Implementation (phase 1)
 
-The MVP ships in the desktop app and, because the same frontend serves the web
-build, works in both:
+The inherited UI exists in the source tree, but geoIM3D has no default public
+registry and permits only an explicitly configured loopback development URL:
 
 - `apps/geolibre-desktop/src/lib/plugin-registry.ts` fetches and normalizes a
   registry (`{ "plugins": [...] }`), resolving each entry's `manifestUrl`
-  against the registry location. The registry URL is
-  `VITE_GEOLIBRE_PLUGIN_REGISTRY_URL` or, by default, the hosted registry at
-  `https://plugins.geolibre.app/plugin-registry.json`.
+  against the registry location. `VITE_GEOLIBRE_PLUGIN_REGISTRY_URL` is accepted
+  only for `localhost`, `127.0.0.1`, or `[::1]`; missing, invalid, and
+  non-loopback values resolve to `null` before any request.
 - `apps/geolibre-desktop/src/components/layout/ManagePluginsDialog.tsx` is a
   standalone dialog (Settings menu > Manage Plugins) with All / Installed / Not
   installed / Upgradeable / Settings sections: search, install, a confirm step
@@ -428,7 +434,7 @@ build, works in both:
   without a reload. Update re-fetches the manifest URL and re-registers the
   published version in place, fetching the new version before tearing down the
   old one so a failed update leaves the installed plugin intact.
-- The registry and plugin bundles live in the
-  [opengeos/geolibre-plugins](https://github.com/opengeos/geolibre-plugins) repo,
-  published to GitHub Pages at `plugins.geolibre.app`; it ships a `sample/`
-  template and maintainers add curated entries there.
+- The inherited plugin examples remain attributable to the
+  [opengeos/geolibre-plugins](https://github.com/opengeos/geolibre-plugins)
+  repository. That repository is not an approved geoIM3D registry or
+  distribution channel.

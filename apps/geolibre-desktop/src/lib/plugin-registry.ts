@@ -27,25 +27,26 @@ export interface PluginRegistry {
   registryUrl: string;
 }
 
-// The curated registry is hosted at plugins.geolibre.app (the geolibre-plugins
-// repo, deployed to GitHub Pages). Override per build via env for forks or
-// local testing.
-const DEFAULT_REGISTRY_URL = "https://plugins.geolibre.app/plugin-registry.json";
-
 /**
- * Resolve the registry URL. Honors VITE_GEOLIBRE_PLUGIN_REGISTRY_URL (resolved
- * against the app origin so a relative value works) and otherwise falls back to
- * the hosted default registry.
+ * Resolve an explicitly configured local development registry. geoIM3D has no
+ * approved public plugin registry; non-loopback URLs fail closed.
  */
-export function resolveRegistryUrl(): string {
+export function resolveRegistryUrl(): string | null {
   const configured = import.meta.env.VITE_GEOLIBRE_PLUGIN_REGISTRY_URL;
-  // Resolving a configured value needs window.location as its base; outside a
-  // browser (tests, SSR, Node scripts) fall back to the absolute default, the
-  // same way bundledPluginManifestUrls guards window access.
-  if (configured && configured.trim() && typeof window !== "undefined") {
-    return new URL(configured.trim(), window.location.href).href;
+  if (!configured?.trim() || typeof window === "undefined") return null;
+  try {
+    const url = new URL(configured.trim(), window.location.href);
+    const host = url.hostname.toLowerCase();
+    if (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      (host === "localhost" || host === "127.0.0.1" || host === "[::1]")
+    ) {
+      return url.href;
+    }
+  } catch {
+    // Invalid configuration is treated exactly like no configuration.
   }
-  return DEFAULT_REGISTRY_URL;
+  return null;
 }
 
 // 5 MB ceiling on the registry payload. The Content-Length check is only a
@@ -60,9 +61,12 @@ const MAX_REGISTRY_BYTES = 5 * 1024 * 1024;
  * Pass `signal` to cancel the request when the caller unmounts.
  */
 export async function fetchPluginRegistry(
-  registryUrl: string = resolveRegistryUrl(),
+  registryUrl: string | null = resolveRegistryUrl(),
   signal?: AbortSignal,
 ): Promise<PluginRegistry> {
+  if (!registryUrl) {
+    throw new Error("No approved plugin registry is configured.");
+  }
   // Bound the request so a slow or stalled registry endpoint cannot leave the
   // UI stuck in its loading state indefinitely. The timeout stays armed until
   // the body is consumed so a trickled response can't outlive the deadline.

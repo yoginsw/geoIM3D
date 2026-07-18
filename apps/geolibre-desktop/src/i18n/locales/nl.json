@@ -31,53 +31,9 @@
     "title": "Over GeoLibre",
     "description": "GeoLibre is een lichtgewicht, cloud-native GIS-platform.",
     "version": "Versie",
-    "checkForUpdates": "Controleren op updates",
-    "tryAgain": "Opnieuw proberen",
-    "checking": "Bezig met controleren op updates",
-    "upToDate": "U gebruikt de nieuwste versie ({{version}}).",
-    "upToDateNoVersion": "U gebruikt de nieuwste versie.",
     "generalSectionTitle": "Algemeen",
     "homePage": "Startpagina",
     "githubRepository": "GitHub-repository"
-  },
-  "updates": {
-    "changelogTitle": "Wat is er nieuw",
-    "noChangelog": "Release notes zijn niet beschikbaar. Zie de downloadpagina voor details.",
-    "stepsTitle": "Zo werkt bijwerken",
-    "download": "Update downloaden",
-    "steps": {
-      "download": "Download het installatieprogramma voor uw platform van de downloadpagina.",
-      "install": "Voer het installatieprogramma uit. Uw lokale projecten, instellingen en API-sleutels blijven behouden.",
-      "reopen": "Open GeoLibre opnieuw om het bijwerken te voltooien."
-    },
-    "severity": {
-      "major": "Grote release",
-      "minor": "Functie-update",
-      "patch": "Patch-update"
-    },
-    "available": {
-      "title": "{{version}} is beschikbaar",
-      "fallback": "Een nieuwe versie",
-      "summary": "U gebruikt {{current}}."
-    },
-    "error": {
-      "message": "Kan niet controleren op updates.",
-      "rateLimit": "GitHub-limiet overschreden. Probeer het later opnieuw.",
-      "http": "GitHub gaf {{status}} terug.",
-      "noTag": "De nieuwste release bevat geen versietag.",
-      "network": "Kan GitHub niet bereiken. Controleer uw verbinding en probeer het opnieuw.",
-      "viewDownloads": "Downloads bekijken",
-      "viewDownloadsHint": "Opent de GeoLibre-downloadpagina in uw browser zodat u handmatig de nieuwste versie kunt controleren."
-    },
-    "startup": {
-      "title": "Update beschikbaar",
-      "currentVersion": "Uw huidige versie",
-      "latestVersion": "Nieuwste beschikbare versie",
-      "download": "Updatepakket downloaden",
-      "remindLater": "Later herinneren",
-      "skipVersion": "Deze versie overslaan",
-      "settingsHint": "U kunt het controleren op updates wijzigen in Instellingen → Updates."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Volledige laagstatus opnemen (actief, inactief en laagvolgorde)",
@@ -877,12 +833,12 @@
   },
   "share": {
     "title": "Project delen",
-    "description": "Upload het huidige project naar share.geolibre.app en ontvang een deelbare link.",
-    "setupIntro": "Koppel uw share.geolibre.app-account voordat u uploadt.",
+    "description": "Upload het huidige project naar geconfigureerde Share-service en ontvang een deelbare link.",
+    "setupIntro": "Koppel uw geconfigureerde Share-service-account voordat u uploadt.",
     "step1Title": "1. API-token ophalen",
-    "step1Description": "Meld u aan bij share.geolibre.app en maak vervolgens een token aan onder Instellingen → API-tokens.",
+    "step1Description": "Meld u aan bij geconfigureerde Share-service en maak vervolgens een token aan onder Instellingen → API-tokens.",
     "getToken": "API-token ophalen",
-    "step2Title": "2. Token toevoegen aan GeoLibre",
+    "step2Title": "2. Token toevoegen aan geoIM3D",
     "step2Description": "Plak het token in Instellingen → Omgevingsvariabelen op dit apparaat.",
     "configureToken": "Lokaal token configureren",
     "liveAt": "Uw project is live op:",
@@ -899,12 +855,12 @@
     "shareButton": "Delen",
     "sharing": "Bezig met delen…",
     "errorFallback": "Kan het project niet delen.",
-    "usernameRequired": "Stel een gebruikersnaam in voor uw share.geolibre.app-account voordat u deelt. Open uw accountinstellingen om er een te kiezen en probeer het opnieuw.",
+    "usernameRequired": "Stel een gebruikersnaam in voor uw geconfigureerde Share-service-account voordat u deelt. Open uw accountinstellingen om er een te kiezen en probeer het opnieuw.",
     "openAccountSettings": "Accountinstellingen openen"
   },
   "gallery": {
     "title": "Projectgalerij",
-    "description": "Blader door openbare projecten die zijn gedeeld op share.geolibre.app en open er een in GeoLibre.",
+    "description": "Blader door openbare projecten die zijn gedeeld op geconfigureerde Share-service en open er een in geoIM3D.",
     "searchPlaceholder": "Filter geladen projecten op titel, auteur of label",
     "loading": "Projecten laden…",
     "loadingMore": "Meer laden…",
@@ -913,11 +869,11 @@
     "noMatches": "Geen geladen projecten komen overeen met uw filter.",
     "errorFallback": "Kan de projectgalerij niet laden.",
     "errorTimeout": "Time-out bij het laden van de projectgalerij. Probeer het opnieuw.",
-    "errorNetwork": "Kan share.geolibre.app niet bereiken. Controleer uw internetverbinding.",
+    "errorNetwork": "Kan geconfigureerde Share-service niet bereiken. Controleer uw internetverbinding.",
     "errorHttp": "Kan de galerij niet laden (HTTP {{status}}).",
     "errorInvalidResponse": "Kan de galerij niet laden (ongeldig serverantwoord).",
-    "errorUnauthorized": "Uw share.geolibre.app API-token is ongeldig of verlopen. Werk het bij in Instellingen.",
-    "errorUsernameRequired": "Stel een gebruikersnaam in voor uw share.geolibre.app-account voordat u uw projecten laadt.",
+    "errorUnauthorized": "Uw geconfigureerde Share-service API-token is ongeldig of verlopen. Werk het bij in Instellingen.",
+    "errorUsernameRequired": "Stel een gebruikersnaam in voor uw geconfigureerde Share-service-account voordat u uw projecten laadt.",
     "retry": "Opnieuw proberen",
     "open": "Openen",
     "opening": "Bezig met openen…",
@@ -932,7 +888,7 @@
     "scopeFeatured": "Uitgelicht",
     "scopeAll": "Alle projecten",
     "scopeMine": "Mijn projecten",
-    "signedOutHint": "Voeg een share.geolibre.app API-token toe in Instellingen om uw eigen niet-vermelde en privéprojecten te zien.",
+    "signedOutHint": "Voeg een geconfigureerde Share-service API-token toe in Instellingen om uw eigen niet-vermelde en privéprojecten te zien.",
     "emptyFeatured": "Nog geen uitgelichte projecten.",
     "emptyMine": "U heeft nog geen projecten gedeeld.",
     "visibilityUnlisted": "Niet vermeld",
@@ -1253,8 +1209,7 @@
       "interface": "Interface",
       "geocoding": "Geocoderen",
       "ai": "AI-providers",
-      "environment": "Omgeving",
-      "updates": "Updates"
+      "environment": "Omgeving"
     },
     "menu": {
       "mapPreferences": "Kaartvoorkeuren",
@@ -1264,22 +1219,8 @@
       "geocoding": "Geocoderen",
       "ai": "AI-providers",
       "environmentVariables": "Omgevingsvariabelen",
-      "updates": "Update-instellingen",
       "managePlugins": "Plugins beheren",
       "urlOverrideNote": "URL-lay-outparameters hebben voorrang op opgeslagen instellingen."
-    },
-    "updates": {
-      "title": "Software-updates",
-      "description": "Bepaal hoe GeoLibre controleert op nieuwe versies wanneer de desktopapp start.",
-      "checkOnStartup": "Controleren op updates bij opstarten",
-      "checkOnStartupHint": "Indien ingeschakeld, controleert GeoLibre bij elke start van de app op een nieuwere versie. Schakel dit uit voor een volledig offline workflow.",
-      "notificationLevel": "Meldingen ontvangen voor",
-      "notificationLevelHint": "Kies welke soorten releases een melding bij opstarten activeren.",
-      "level": {
-        "all": "Alle releases (major, minor en patches)",
-        "minor": "Alleen major- en minor-releases",
-        "major": "Alleen major-releases"
-      }
     },
     "map": {
       "constraintsTitle": "Kaartbeperkingen",
@@ -1350,9 +1291,9 @@
       "lockedNote": "Dit interfaceprofiel wordt beheerd door uw beheerder en kan niet worden gewijzigd."
     },
     "env": {
-      "tokenTitle": "Share.GeoLibre API-token",
-      "tokenDescription": "Project > Delen gebruikt dit token om uw kaarten te uploaden naar share.geolibre.app. Open <tokenLink>share.geolibre.app/settings</tokenLink>, maak een token aan onder Instellingen > API-tokens en plak het vervolgens in het onderstaande veld.",
-      "tokenStorageNote": "Lokaal opgeslagen op dit apparaat en alleen verzonden naar share.geolibre.app om uploads te verifiëren. In de webversie wordt dezelfde browseropslag gebruikt als voor andere sitegegevens; trek het token daarom in op share.geolibre.app als uw machine gecompromitteerd is.",
+      "tokenTitle": "Share API-token",
+      "tokenDescription": "Project > Delen gebruikt dit token om uw kaarten te uploaden naar geconfigureerde Share-service. Open <tokenLink>instellingen van de geconfigureerde Share-service</tokenLink>, maak een token aan onder Instellingen > API-tokens en plak het vervolgens in het onderstaande veld.",
+      "tokenStorageNote": "Lokaal opgeslagen op dit apparaat en alleen verzonden naar geconfigureerde Share-service om uploads te verifiëren. In de webversie wordt dezelfde browseropslag gebruikt als voor andere sitegegevens; trek het token daarom in op geconfigureerde Share-service als uw machine gecompromitteerd is.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ion-token",
       "cesiumTokenDescription": "De 3D-globe (een gesplitst weergavepaneel) gebruikt wereldbeelden en terrein van Cesium Ion, waarvoor een toegangstoken nodig is. Maak een gratis account aan op <tokenLink>ion.cesium.com/tokens</tokenLink>, kopieer uw standaard toegangstoken en plak het hieronder. Zonder token is de schakelaar voor de 3D-globe verborgen.",
@@ -1602,7 +1543,6 @@
       "githubRepository": "GitHub-repository",
       "diagnostics": "Diagnostiek",
       "giveFeedback": "Feedback geven",
-      "checkForUpdates": "Controleren op updates",
       "about": "Over",
       "togglePlugin": "{{name}} in-/uitschakelen",
       "managePlugins": "Plug-ins beheren"

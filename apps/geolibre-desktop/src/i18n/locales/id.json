@@ -31,53 +31,9 @@
     "title": "Tentang GeoLibre",
     "description": "GeoLibre adalah platform GIS berbasis cloud yang ringan.",
     "version": "Versi",
-    "checkForUpdates": "Periksa pembaruan",
-    "tryAgain": "Coba lagi",
-    "checking": "Memeriksa pembaruan",
-    "upToDate": "Anda sudah menggunakan versi terbaru ({{version}}).",
-    "upToDateNoVersion": "Anda sudah menggunakan versi terbaru.",
     "generalSectionTitle": "Umum",
     "homePage": "Halaman utama",
     "githubRepository": "Repositori GitHub"
-  },
-  "updates": {
-    "changelogTitle": "Yang baru",
-    "noChangelog": "Catatan rilis tidak tersedia. Lihat halaman unduhan untuk detailnya.",
-    "stepsTitle": "Cara memperbarui",
-    "download": "Unduh pembaruan",
-    "steps": {
-      "download": "Unduh installer untuk platform Anda dari halaman unduhan.",
-      "install": "Jalankan installer. Proyek, pengaturan, dan kunci API lokal Anda tetap tersimpan.",
-      "reopen": "Buka kembali GeoLibre untuk menyelesaikan pembaruan."
-    },
-    "severity": {
-      "major": "Rilis besar",
-      "minor": "Pembaruan fitur",
-      "patch": "Pembaruan tambal"
-    },
-    "available": {
-      "title": "{{version}} tersedia",
-      "fallback": "Versi baru",
-      "summary": "Anda menjalankan {{current}}."
-    },
-    "error": {
-      "message": "Tidak dapat memeriksa pembaruan.",
-      "rateLimit": "Batas laju GitHub terlampaui. Silakan coba lagi nanti.",
-      "http": "GitHub mengembalikan {{status}}.",
-      "noTag": "Rilis terbaru tidak menyertakan tag versi.",
-      "network": "Tidak dapat menjangkau GitHub. Periksa koneksi Anda dan coba lagi.",
-      "viewDownloads": "Lihat unduhan",
-      "viewDownloadsHint": "Membuka halaman unduhan GeoLibre di browser Anda sehingga Anda dapat memeriksa versi terbaru secara manual."
-    },
-    "startup": {
-      "title": "Pembaruan tersedia",
-      "currentVersion": "Versi Anda saat ini",
-      "latestVersion": "Versi terbaru yang tersedia",
-      "download": "Unduh paket pembaruan",
-      "remindLater": "Ingatkan saya nanti",
-      "skipVersion": "Lewati versi ini",
-      "settingsHint": "Anda dapat mengubah pemeriksaan pembaruan di Pengaturan → Pembaruan."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Sertakan status layer lengkap (aktif, tidak aktif, dan urutan layer)",
@@ -847,12 +803,12 @@
   },
   "share": {
     "title": "Bagikan proyek",
-    "description": "Unggah proyek saat ini ke share.geolibre.app dan dapatkan tautan yang dapat dibagikan.",
-    "setupIntro": "Hubungkan akun share.geolibre.app Anda sebelum mengunggah.",
+    "description": "Unggah proyek saat ini ke layanan Share yang dikonfigurasi dan dapatkan tautan yang dapat dibagikan.",
+    "setupIntro": "Hubungkan akun layanan Share yang dikonfigurasi Anda sebelum mengunggah.",
     "step1Title": "1. Dapatkan token API",
-    "step1Description": "Masuk ke share.geolibre.app, lalu buat token di Settings → API tokens.",
+    "step1Description": "Masuk ke layanan Share yang dikonfigurasi, lalu buat token di Settings → API tokens.",
     "getToken": "Dapatkan token API",
-    "step2Title": "2. Tambahkan token ke GeoLibre",
+    "step2Title": "2. Tambahkan token ke geoIM3D",
     "step2Description": "Tempel token ke Settings → Environment Variables pada perangkat ini.",
     "configureToken": "Konfigurasi token lokal",
     "liveAt": "Proyek Anda aktif di:",
@@ -869,12 +825,12 @@
     "shareButton": "Bagikan",
     "sharing": "Membagikan…",
     "errorFallback": "Tidak dapat membagikan proyek.",
-    "usernameRequired": "Atur nama pengguna pada akun share.geolibre.app Anda sebelum membagikan. Buka pengaturan akun Anda untuk memilihnya, lalu coba lagi.",
+    "usernameRequired": "Atur nama pengguna pada akun layanan Share yang dikonfigurasi Anda sebelum membagikan. Buka pengaturan akun Anda untuk memilihnya, lalu coba lagi.",
     "openAccountSettings": "Buka pengaturan akun"
   },
   "gallery": {
     "title": "Galeri proyek",
-    "description": "Jelajahi proyek publik yang dibagikan di share.geolibre.app dan buka salah satunya di GeoLibre.",
+    "description": "Jelajahi proyek publik yang dibagikan di layanan Share yang dikonfigurasi dan buka salah satunya di geoIM3D.",
     "searchPlaceholder": "Filter proyek yang dimuat berdasarkan judul, penulis, atau tag",
     "loading": "Memuat proyek…",
     "loadingMore": "Memuat lebih banyak…",
@@ -883,11 +839,11 @@
     "noMatches": "Tidak ada proyek yang dimuat sesuai dengan filter Anda.",
     "errorFallback": "Tidak dapat memuat galeri proyek.",
     "errorTimeout": "Galeri proyek habis waktu. Silakan coba lagi.",
-    "errorNetwork": "Tidak dapat menjangkau share.geolibre.app. Periksa koneksi internet Anda.",
+    "errorNetwork": "Tidak dapat menjangkau layanan Share yang dikonfigurasi. Periksa koneksi internet Anda.",
     "errorHttp": "Tidak dapat memuat galeri (HTTP {{status}}).",
     "errorInvalidResponse": "Tidak dapat memuat galeri (respons server tidak valid).",
-    "errorUnauthorized": "Token API share.geolibre.app Anda tidak valid atau telah kedaluwarsa. Perbarui di Pengaturan.",
-    "errorUsernameRequired": "Atur nama pengguna pada akun share.geolibre.app Anda sebelum memuat proyek Anda.",
+    "errorUnauthorized": "Token API layanan Share yang dikonfigurasi Anda tidak valid atau telah kedaluwarsa. Perbarui di Pengaturan.",
+    "errorUsernameRequired": "Atur nama pengguna pada akun layanan Share yang dikonfigurasi Anda sebelum memuat proyek Anda.",
     "retry": "Coba lagi",
     "open": "Buka",
     "opening": "Membuka…",
@@ -901,7 +857,7 @@
     "scopeFeatured": "Unggulan",
     "scopeAll": "Semua proyek",
     "scopeMine": "Proyek saya",
-    "signedOutHint": "Tambahkan token API share.geolibre.app di Pengaturan untuk melihat proyek tidak terdaftar dan privat milik Anda.",
+    "signedOutHint": "Tambahkan token API layanan Share yang dikonfigurasi di Pengaturan untuk melihat proyek tidak terdaftar dan privat milik Anda.",
     "emptyFeatured": "Belum ada proyek unggulan.",
     "emptyMine": "Anda belum membagikan proyek apa pun.",
     "visibilityUnlisted": "Tidak terdaftar",
@@ -1221,8 +1177,7 @@
       "interface": "Antarmuka",
       "geocoding": "Geocoding",
       "ai": "Penyedia AI",
-      "environment": "Lingkungan",
-      "updates": "Pembaruan"
+      "environment": "Lingkungan"
     },
     "menu": {
       "mapPreferences": "Preferensi Peta",
@@ -1232,22 +1187,8 @@
       "geocoding": "Geocoding",
       "ai": "Penyedia AI",
       "environmentVariables": "Variabel Lingkungan",
-      "updates": "Pengaturan Pembaruan",
       "managePlugins": "Kelola Plugin",
       "urlOverrideNote": "Parameter tata letak URL menimpa pengaturan yang tersimpan."
-    },
-    "updates": {
-      "title": "Pembaruan Perangkat Lunak",
-      "description": "Kontrol bagaimana GeoLibre memeriksa versi baru saat aplikasi desktop dimulai.",
-      "checkOnStartup": "Periksa pembaruan saat memulai",
-      "checkOnStartupHint": "Jika diaktifkan, GeoLibre memeriksa versi lebih baru setiap kali aplikasi dimulai. Nonaktifkan ini untuk alur kerja yang sepenuhnya offline.",
-      "notificationLevel": "Beri tahu saya tentang",
-      "notificationLevelHint": "Pilih jenis rilis mana yang memicu notifikasi saat memulai.",
-      "level": {
-        "all": "Semua rilis (besar, kecil, dan tambal)",
-        "minor": "Hanya rilis besar dan kecil",
-        "major": "Hanya rilis besar"
-      }
     },
     "map": {
       "constraintsTitle": "Batasan peta",
@@ -1318,9 +1259,9 @@
       "lockedNote": "Profil antarmuka ini dikelola oleh administrator Anda dan tidak dapat diubah."
     },
     "env": {
-      "tokenTitle": "Token API Share.GeoLibre",
-      "tokenDescription": "Project > Share menggunakan token ini untuk mengunggah peta Anda ke share.geolibre.app. Buka <tokenLink>share.geolibre.app/settings</tokenLink>, buat token di Settings > API tokens, lalu tempelkan ke bidang di bawah.",
-      "tokenStorageNote": "Disimpan secara lokal di perangkat ini dan hanya dikirim ke share.geolibre.app untuk mengautentikasi unggahan. Pada build web, token ini berbagi penyimpanan browser yang sama dengan data situs lainnya, jadi cabut aksesnya di share.geolibre.app jika perangkat Anda disusupi.",
+      "tokenTitle": "Token API Share",
+      "tokenDescription": "Project > Share menggunakan token ini untuk mengunggah peta Anda ke layanan Share yang dikonfigurasi. Buka <tokenLink>pengaturan layanan Share yang dikonfigurasi</tokenLink>, buat token di Settings > API tokens, lalu tempelkan ke bidang di bawah.",
+      "tokenStorageNote": "Disimpan secara lokal di perangkat ini dan hanya dikirim ke layanan Share yang dikonfigurasi untuk mengautentikasi unggahan. Pada build web, token ini berbagi penyimpanan browser yang sama dengan data situs lainnya, jadi cabut aksesnya di layanan Share yang dikonfigurasi jika perangkat Anda disusupi.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Token Cesium Ion",
       "cesiumTokenDescription": "Bola dunia 3D (panel tampilan terpisah) menggunakan citra dan medan dunia Cesium Ion, yang memerlukan token akses. Buat akun gratis di <tokenLink>ion.cesium.com/tokens</tokenLink>, salin token akses default Anda, dan tempelkan di bawah. Tanpa token, tombol bola dunia 3D disembunyikan.",
@@ -1569,7 +1510,6 @@
       "githubRepository": "Repositori GitHub",
       "diagnostics": "Diagnostik",
       "giveFeedback": "Beri Masukan",
-      "checkForUpdates": "Periksa Pembaruan",
       "about": "Tentang",
       "togglePlugin": "Alihkan {{name}}",
       "managePlugins": "Kelola Plugin"

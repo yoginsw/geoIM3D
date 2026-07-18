@@ -2,12 +2,8 @@ name = "geolibre-collab"
 main = "src/index.ts"
 compatibility_date = "2025-03-01"
 
-# Binds the custom domain on deploy. Because geolibre.app is managed in this
-# Cloudflare account, the DNS record and TLS certificate are provisioned
-# automatically on the first deploy.
-[[routes]]
-pattern = "collab.geolibre.app"
-custom_domain = true
+# Local `wrangler dev` only; do not create a public workers.dev endpoint.
+workers_dev = false
 
 # Each live session is one Durable Object instance (addressed by its session
 # code via idFromName), so all participants' sockets land on the same actor and

@@ -2,7 +2,8 @@ param(
   [string] $AppDir = "apps/geolibre-desktop",
   [string] $Configuration = "release",
   [ValidateSet("x64", "x86", "arm64")]
-  [string] $Architecture = "x64"
+  [string] $Architecture = "x64",
+  [string] $CargoTargetDir = $env:CARGO_TARGET_DIR
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,13 +15,21 @@ if (-not $IsWindows) {
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $appRoot = Resolve-Path (Join-Path $repoRoot $AppDir)
 $tauriDir = Join-Path $appRoot "src-tauri"
-$targetDir = Join-Path $tauriDir "target\$Configuration"
+$targetRoot = if ([string]::IsNullOrWhiteSpace($CargoTargetDir)) {
+  Join-Path $tauriDir "target"
+} elseif ([IO.Path]::IsPathRooted($CargoTargetDir)) {
+  $CargoTargetDir
+} else {
+  Join-Path $repoRoot $CargoTargetDir
+}
+$targetDir = Join-Path ([IO.Path]::GetFullPath($targetRoot)) $Configuration
 $bundleDir = Join-Path $targetDir "bundle\portable"
 $configPath = Join-Path $tauriDir "tauri.conf.json"
 $cargoPath = Join-Path $tauriDir "Cargo.toml"
 $backendDir = Join-Path $repoRoot "backend\geolibre_server"
 
 $config = Get-Content -Raw $configPath | ConvertFrom-Json
+$productName = [string] $config.productName
 $version = [string] $config.version
 
 $cargo = Get-Content -Raw $cargoPath
@@ -42,9 +51,9 @@ if (-not (Test-Path $binaryPath)) {
 # the executable's own directory for an unbundled (portable) run, so this
 # layout works without an installer.
 $stagingDir = Join-Path $targetDir "portable-package"
-$payloadDir = Join-Path $stagingDir "$binaryName-$version-$Architecture"
+$payloadDir = Join-Path $stagingDir "$productName-$version-$Architecture"
 $backendPackageDir = Join-Path $payloadDir "backend\geolibre_server"
-$zipName = "$binaryName-$version-${Architecture}-portable.zip"
+$zipName = "$productName-$version-${Architecture}-portable.zip"
 $zipPath = Join-Path $bundleDir $zipName
 
 Remove-Item -Recurse -Force $stagingDir -ErrorAction SilentlyContinue
@@ -59,13 +68,16 @@ Get-ChildItem -Recurse -Path $backendPackageDir -Include "__pycache__", "*.pyc",
 # Strip developer-only artifacts so a locally built zip can never leak secrets
 # or balloon with a checked-out venv. None of these exist in a clean CI
 # checkout; the risk surface is `npm run portable:build` on a dev machine.
-$devArtifacts = @(".env", ".env.*", "venv", ".venv", "env", "*.egg-info", "dist", "build")
+$devArtifacts = @(
+    ".env", ".env.*", "venv", ".venv", "env", "*.egg-info", "dist", "build",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".coverage", "coverage.xml", "htmlcov", "AGENTS.md"
+)
 Get-ChildItem -Recurse -Force -Path $backendPackageDir -Include $devArtifacts |
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 # Drop a short note alongside the binary so the zip is self-documenting.
 $readme = @"
-GeoLibre Desktop $version (portable, $Architecture)
+geoIM3D $version (portable, $Architecture)
 
 Unzip this folder anywhere and run $binaryName.exe. No installation or admin
 rights are required.
@@ -78,7 +90,7 @@ Requirements:
     needs Python available on your system, exactly as in the installed build.
     Vector tools and everything else run without it.
 
-This portable build does not auto-update; download a newer zip to upgrade.
+geoIM3D does not use an in-app updater. Download an approved newer package to upgrade.
 "@
 Set-Content -Path (Join-Path $payloadDir "README.txt") -Value $readme -Encoding utf8
 

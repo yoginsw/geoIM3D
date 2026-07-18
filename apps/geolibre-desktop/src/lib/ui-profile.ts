@@ -309,7 +309,6 @@ export const MENU_ITEM_CATALOG: readonly MenuItemCatalogEntry[] = [
   { id: "help.github", menuId: "help", labelKey: "toolbar.command.githubRepository", tier: "basic" },
   { id: "help.diagnostics", menuId: "help", labelKey: "toolbar.command.diagnostics", tier: "advanced" },
   { id: "help.feedback", menuId: "help", labelKey: "toolbar.command.giveFeedback", tier: "intermediate" },
-  { id: "help.checkForUpdates", menuId: "help", labelKey: "toolbar.command.checkForUpdates", tier: "intermediate" },
   { id: "help.about", menuId: "help", labelKey: "toolbar.command.about", tier: "basic" },
 ];
 

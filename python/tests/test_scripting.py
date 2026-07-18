@@ -294,7 +294,7 @@ def test_get_drawn_features_as_gdf(m, monkeypatch):
 
 
 def test_to_html_returns_string_with_project(m):
-    html = m.to_html()
+    html = m.to_html(app_url="http://127.0.0.1:4173/")
     assert "<iframe" in html
     assert "embed=1" in html
     assert "geolibre:load-project" in html
@@ -304,28 +304,41 @@ def test_to_html_returns_string_with_project(m):
 
 def test_to_html_writes_path(m, tmp_path):
     out = tmp_path / "nested" / "map.html"
-    assert m.to_html(str(out)) is None
+    assert m.to_html(str(out), app_url="http://127.0.0.1:4173/") is None
     text = out.read_text(encoding="utf-8")
     assert "<iframe" in text
+
+
+def test_to_html_requires_explicit_viewer_url(m):
+    with pytest.raises(ValueError, match="viewer URL is not configured"):
+        m.to_html()
 
 
 def test_to_html_app_url_query_separator(m):
     # An app_url that already carries a query string must keep parsing, so the
     # embed flag is appended with "&", not a second "?".
-    html = m.to_html(app_url="https://example.com/app?foo=bar")
-    assert "https://example.com/app?foo=bar&amp;embed=1" in html
+    html = m.to_html(app_url="http://127.0.0.1:4173/app?foo=bar")
+    assert "http://127.0.0.1:4173/app?foo=bar&amp;embed=1" in html
 
 
 def test_to_html_inserts_embed_before_fragment(m):
     # embed=1 must land in the query string, before any "#fragment", or the
     # browser folds it into the fragment and the iframe never sees the flag.
-    html = m.to_html(app_url="https://example.com/app#section")
-    assert "https://example.com/app?embed=1#section" in html
+    html = m.to_html(app_url="http://127.0.0.1:4173/app#section")
+    assert "http://127.0.0.1:4173/app?embed=1#section" in html
+
+
+def test_to_html_rejects_unapproved_public_viewer(m):
+    with pytest.raises(ValueError, match="viewer URL host is not approved"):
+        m.to_html(app_url="https://viewer.example.com/")
 
 
 def test_to_html_rejects_css_injection_dimensions(m):
     with pytest.raises(ValueError, match="invalid CSS width"):
-        m.to_html(width="100%; } body { background: red; }")
+        m.to_html(
+            width="100%; } body { background: red; }",
+            app_url="http://127.0.0.1:4173/",
+        )
 
 
 def test_to_image_decodes_base64(m, monkeypatch):

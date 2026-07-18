@@ -9,7 +9,7 @@ import {
   shareAuthorizedFetch,
 } from "../apps/geolibre-desktop/src/lib/share-gallery";
 
-const BASE = "https://share.geolibre.app";
+const BASE = "http://127.0.0.1:8787";
 
 function rawProject(overrides: Record<string, unknown> = {}) {
   return {
@@ -27,9 +27,9 @@ function rawProject(overrides: Record<string, unknown> = {}) {
     createdAt: "2026-06-23T15:48:15.000Z",
     updatedAt: "2026-06-23T15:48:15.000Z",
     tags: ["water", "ocean"],
-    rawJsonUrl: `${BASE}/giswqs/my-map.geolibre.json`,
+    rawJsonUrl: `${BASE}/giswqs/my-map.geoim3d.json`,
     projectUrl: `${BASE}/giswqs/my-map`,
-    viewerUrl: `https://web.geolibre.app/?url=${BASE}/giswqs/my-map.geolibre.json`,
+    viewerUrl: `http://127.0.0.1:4173/?url=${BASE}/giswqs/my-map.geoim3d.json`,
     ...overrides,
   };
 }
@@ -297,7 +297,7 @@ describe("shareAuthorizedFetch", () => {
     }) as unknown as typeof fetch;
     try {
       const authed = shareAuthorizedFetch("glb_tok", BASE);
-      await authed(`${BASE}/giswqs/secret.geolibre.json`);
+      await authed(`${BASE}/giswqs/secret.geoim3d.json`);
       await authed("https://tiles.example.com/data.json");
       assert.equal(seen[0].auth, "Bearer glb_tok");
       assert.equal(seen[1].auth, null);
@@ -308,7 +308,7 @@ describe("shareAuthorizedFetch", () => {
 });
 
 describe("projectOpenToken", () => {
-  // Attaching Authorization to a public or unlisted raw .geolibre.json is not a
+  // Attaching Authorization to a public or unlisted raw .geoim3d.json is not a
   // harmless extra: it makes the request CORS-preflighted, and the share host
   // 404s OPTIONS on raw project paths, so the browser blocks the open. Every
   // gallery card failed to open this way.

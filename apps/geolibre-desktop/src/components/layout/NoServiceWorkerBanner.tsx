@@ -1,13 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { ExternalLink, WifiOff } from "lucide-react";
+import { resolveViewerBaseUrl } from "../../lib/html-export";
 import { openExternalLink } from "../../lib/open-external";
 
 /**
- * The hosted GeoLibre web app, where the offline-caching service worker is
- * active. Offered as the remediation link when the current build (desktop, or
- * the dev server) has no controlling service worker so downloads can't persist.
+ * Approved deployment URL, if configured. No product deployment domain is
+ * assumed while the geoIM3D Web URL remains undecided.
  */
-const OFFLINE_WEB_APP_URL = "https://web.geolibre.app";
+const OFFLINE_WEB_APP_URL = resolveViewerBaseUrl();
 
 interface NoServiceWorkerBannerProps {
   /** The build-specific warning text shown above the web-app link. */
@@ -34,19 +34,21 @@ export function NoServiceWorkerBanner({ message }: NoServiceWorkerBannerProps) {
             the browser offers open-in-new-tab; the onClick routes through
             openExternalLink because the Tauri webview ignores target="_blank"
             and needs the opener plugin. */}
-        <a
-          href={OFFLINE_WEB_APP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          onClick={(event) => {
-            event.preventDefault();
-            void openExternalLink(OFFLINE_WEB_APP_URL);
-          }}
-        >
-          {t("common.openWebApp")}
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
+        {OFFLINE_WEB_APP_URL ? (
+          <a
+            href={OFFLINE_WEB_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={(event) => {
+              event.preventDefault();
+              void openExternalLink(OFFLINE_WEB_APP_URL);
+            }}
+          >
+            {t("common.openWebApp")}
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        ) : null}
       </div>
     </div>
   );

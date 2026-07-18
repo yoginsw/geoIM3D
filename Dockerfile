@@ -23,13 +23,11 @@ COPY . .
 
 ARG GEOLIBRE_APP_BASE=/
 ARG VITE_GEE_OAUTH_CLIENT_ID=
-ARG VITE_MAPILLARY_ACCESS_TOKEN=
 # Set to 1 (or true) to disable the first-launch welcome wizard for the whole
 # deployment; visitors land straight on the map.
 ARG VITE_WELCOME_DISABLED=
 ENV GEOLIBRE_APP_BASE=${GEOLIBRE_APP_BASE}
 ENV VITE_GEE_OAUTH_CLIENT_ID=${VITE_GEE_OAUTH_CLIENT_ID}
-ENV VITE_MAPILLARY_ACCESS_TOKEN=${VITE_MAPILLARY_ACCESS_TOKEN}
 ENV VITE_WELCOME_DISABLED=${VITE_WELCOME_DISABLED}
 
 RUN npm run build
@@ -39,6 +37,10 @@ RUN npm run build
 # A glibc base (not alpine/musl) is required for the prebuilt geo wheels
 # (duckdb, rasterio/rio-cogeo, freestiler, whitebox-workflows).
 FROM python:3.12-slim-bookworm AS runtime
+
+LABEL org.opencontainers.image.title="geoIM3D" \
+      org.opencontainers.image.vendor="JBT" \
+      org.opencontainers.image.description="실감형 3D 플랫폼"
 
 # TARGETARCH is provided by BuildKit (amd64 / arm64).
 ARG TARGETARCH

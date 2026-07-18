@@ -31,53 +31,9 @@
     "title": "关于 GeoLibre",
     "description": "GeoLibre 是一款轻量级的云原生 GIS 平台。",
     "version": "版本",
-    "checkForUpdates": "检查更新",
-    "tryAgain": "重试",
-    "checking": "正在检查更新",
-    "upToDate": "已是最新版本（{{version}}）。",
-    "upToDateNoVersion": "已是最新版本。",
     "generalSectionTitle": "常规",
     "homePage": "主页",
     "githubRepository": "GitHub 仓库"
-  },
-  "updates": {
-    "changelogTitle": "更新内容",
-    "noChangelog": "暂无发行说明。请查看下载页面了解详情。",
-    "stepsTitle": "如何更新",
-    "download": "下载更新",
-    "steps": {
-      "download": "从下载页面下载适用于您平台的安装程序。",
-      "install": "运行安装程序。您的本地项目、设置和 API 密钥将被保留。",
-      "reopen": "重新打开 GeoLibre 以完成更新。"
-    },
-    "severity": {
-      "major": "主要版本",
-      "minor": "功能更新",
-      "patch": "补丁更新"
-    },
-    "available": {
-      "title": "{{version}} 现已推出",
-      "fallback": "新版本",
-      "summary": "您当前运行的是 {{current}}。"
-    },
-    "error": {
-      "message": "无法检查更新。",
-      "rateLimit": "已超出 GitHub 速率限制，请稍后重试。",
-      "http": "GitHub 返回了 {{status}}。",
-      "noTag": "最新发行版未包含版本标签。",
-      "network": "无法连接到 GitHub。请检查您的网络连接并重试。",
-      "viewDownloads": "查看下载页面",
-      "viewDownloadsHint": "在浏览器中打开 GeoLibre 下载页面，以便手动检查最新版本。"
-    },
-    "startup": {
-      "title": "有可用更新",
-      "currentVersion": "当前版本",
-      "latestVersion": "最新可用版本",
-      "download": "下载更新包",
-      "remindLater": "稍后提醒我",
-      "skipVersion": "跳过此版本",
-      "settingsHint": "您可以在“设置 → 更新”中更改更新检查设置。"
-    }
   },
   "bookmark": {
     "captureStateLabel": "包含完整图层状态（激活、未激活及图层顺序）",
@@ -877,12 +833,12 @@
   },
   "share": {
     "title": "共享项目",
-    "description": "将当前项目上传到 share.geolibre.app 并获取可分享的链接。",
-    "setupIntro": "在上传前，请先连接您的 share.geolibre.app 账户。",
+    "description": "将当前项目上传到 已配置的 Share 服务 并获取可分享的链接。",
+    "setupIntro": "在上传前，请先连接您的 已配置的 Share 服务 账户。",
     "step1Title": "1. 获取 API 令牌",
-    "step1Description": "登录 share.geolibre.app，然后在“设置 → API 令牌”下创建一个令牌。",
+    "step1Description": "登录 已配置的 Share 服务，然后在“设置 → API 令牌”下创建一个令牌。",
     "getToken": "获取 API 令牌",
-    "step2Title": "2. 将令牌添加到 GeoLibre",
+    "step2Title": "2. 将令牌添加到 geoIM3D",
     "step2Description": "将令牌粘贴到本设备上的“设置 → 环境变量”中。",
     "configureToken": "配置本地令牌",
     "liveAt": "您的项目已发布在：",
@@ -899,12 +855,12 @@
     "shareButton": "共享",
     "sharing": "正在共享…",
     "errorFallback": "无法共享该项目。",
-    "usernameRequired": "共享前请在您的 share.geolibre.app 账户上设置用户名。请打开账户设置进行选择，然后重试。",
+    "usernameRequired": "共享前请在您的 已配置的 Share 服务 账户上设置用户名。请打开账户设置进行选择，然后重试。",
     "openAccountSettings": "打开账户设置"
   },
   "gallery": {
     "title": "项目图库",
-    "description": "浏览在 share.geolibre.app 上共享的公开项目，并在 GeoLibre 中打开其中一个。",
+    "description": "浏览在 已配置的 Share 服务 上共享的公开项目，并在 geoIM3D 中打开其中一个。",
     "searchPlaceholder": "按标题、作者或标签筛选已加载的项目",
     "loading": "正在加载项目…",
     "loadingMore": "正在加载更多…",
@@ -913,11 +869,11 @@
     "noMatches": "没有已加载的项目匹配您的筛选条件。",
     "errorFallback": "无法加载项目图库。",
     "errorTimeout": "项目图库加载超时。请重试。",
-    "errorNetwork": "无法连接到 share.geolibre.app。请检查您的网络连接。",
+    "errorNetwork": "无法连接到 已配置的 Share 服务。请检查您的网络连接。",
     "errorHttp": "无法加载图库（HTTP {{status}}）。",
     "errorInvalidResponse": "无法加载图库（服务器响应无效）。",
-    "errorUnauthorized": "您的 share.geolibre.app API 令牌无效或已过期。请在设置中更新它。",
-    "errorUsernameRequired": "在加载您的项目之前，请在您的 share.geolibre.app 账户上设置用户名。",
+    "errorUnauthorized": "您的 已配置的 Share 服务 API 令牌无效或已过期。请在设置中更新它。",
+    "errorUsernameRequired": "在加载您的项目之前，请在您的 已配置的 Share 服务 账户上设置用户名。",
     "retry": "重试",
     "open": "打开",
     "opening": "正在打开…",
@@ -931,7 +887,7 @@
     "scopeFeatured": "精选",
     "scopeAll": "全部项目",
     "scopeMine": "我的项目",
-    "signedOutHint": "在设置中添加 share.geolibre.app API 令牌，即可查看您自己的不公开列出及私有项目。",
+    "signedOutHint": "在设置中添加 已配置的 Share 服务 API 令牌，即可查看您自己的不公开列出及私有项目。",
     "emptyFeatured": "暂无精选项目。",
     "emptyMine": "您尚未共享任何项目。",
     "visibilityUnlisted": "不公开列出",
@@ -1252,8 +1208,7 @@
       "interface": "界面",
       "geocoding": "地理编码",
       "ai": "AI 提供方",
-      "environment": "环境",
-      "updates": "更新"
+      "environment": "环境"
     },
     "menu": {
       "mapPreferences": "地图首选项",
@@ -1263,22 +1218,8 @@
       "geocoding": "地理编码",
       "ai": "AI 提供方",
       "environmentVariables": "环境变量",
-      "updates": "更新设置",
       "managePlugins": "管理插件",
       "urlOverrideNote": "URL 布局参数会覆盖已保存的设置。"
-    },
-    "updates": {
-      "title": "软件更新",
-      "description": "控制 GeoLibre 桌面应用启动时如何检查新版本。",
-      "checkOnStartup": "启动时检查更新",
-      "checkOnStartupHint": "启用后，GeoLibre 每次启动时都会检查是否有新版本。若要实现完全离线的工作流程，请关闭此选项。",
-      "notificationLevel": "通知我关于",
-      "notificationLevelHint": "选择哪些类型的发行版会触发启动通知。",
-      "level": {
-        "all": "所有发行版（主要版本、次要版本和补丁）",
-        "minor": "仅主要及次要版本",
-        "major": "仅主要版本"
-      }
     },
     "map": {
       "constraintsTitle": "地图约束",
@@ -1354,9 +1295,9 @@
       "lockedNote": "此界面配置由您的管理员管理，无法更改。"
     },
     "env": {
-      "tokenTitle": "Share.GeoLibre API 令牌",
-      "tokenDescription": "“项目 > 共享”使用此令牌将您的地图上传到 share.geolibre.app。请打开 <tokenLink>share.geolibre.app/settings</tokenLink>，在“设置 > API 令牌”下创建一个令牌，然后将其粘贴到下方字段中。",
-      "tokenStorageNote": "仅存储在本设备上，并且仅发送到 share.geolibre.app 用于验证上传。在 Web 版本中，它与其他站点数据共用同一浏览器存储，因此如果您的设备遭到入侵，请在 share.geolibre.app 上撤销该令牌。",
+      "tokenTitle": "Share API 令牌",
+      "tokenDescription": "“项目 > 共享”使用此令牌将您的地图上传到 已配置的 Share 服务。请打开 <tokenLink>已配置的 Share 服务设置</tokenLink>，在“设置 > API 令牌”下创建一个令牌，然后将其粘贴到下方字段中。",
+      "tokenStorageNote": "仅存储在本设备上，并且仅发送到 已配置的 Share 服务 用于验证上传。在 Web 版本中，它与其他站点数据共用同一浏览器存储，因此如果您的设备遭到入侵，请在 已配置的 Share 服务 上撤销该令牌。",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ion 令牌",
       "cesiumTokenDescription": "3D 地球（分屏视图窗格）使用 Cesium Ion 的世界影像和地形数据，需要访问令牌。请在 <tokenLink>ion.cesium.com/tokens</tokenLink> 创建免费账户，复制您的默认访问令牌，并粘贴到下方。若无令牌，3D 地球切换开关将被隐藏。",
@@ -1623,7 +1564,6 @@
       "githubRepository": "GitHub 仓库",
       "diagnostics": "诊断",
       "giveFeedback": "提供反馈",
-      "checkForUpdates": "检查更新",
       "about": "关于",
       "togglePlugin": "切换 {{name}}",
       "managePlugins": "管理插件",

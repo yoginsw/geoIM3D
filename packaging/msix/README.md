@@ -1,80 +1,61 @@
-# MSIX packaging (`build-msix.ps1`)
+# geoIM3D MSIX packaging (`build-msix.ps1`)
 
-[`build-msix.ps1`](build-msix.ps1) builds an MSIX package for GeoLibre Desktop
-from a finished Windows Tauri release build. It generates the `AppxManifest.xml`,
-copies the binary + Python sidecar + logo assets, and runs `MakeAppx.exe`. It
-**requires Windows** and the Windows SDK MSIX packaging tools.
+[`build-msix.ps1`](build-msix.ps1)은 완료된 Windows Tauri Release Binary에서
+**서명되지 않은 MSIX**를 생성합니다. Binary, 정리된 Python Sidecar, Logo Asset을
+Stage한 뒤 Windows SDK의 `MakeAppx.exe`를 실행합니다.
 
-There are two distinct targets, both produced by this one script:
-
-1. The **self-signed / winget MSIX** attached to each GitHub release (the
-   `release.yml` "Build MSIX package" step runs the script with its defaults:
-   `Publisher = CN=GeoLibre`, identity from the Tauri config).
-2. A **Microsoft Store** MSIX, built manually with your Partner Center identity
-   (see below). The Store re-signs the package, so you do not sign it yourself.
-
-## Build (defaults, for winget / direct download)
-
-```powershell
-npm run msix:build
-# or: pwsh ./packaging/msix/build-msix.ps1
-```
-
-## Build for the Microsoft Store
+## 용도와 제한
 
 > [!IMPORTANT]
-> The Store rejects apps that update themselves outside the Store (policy
-> 10.2.5). The in-app "Check for updates" flow (Help menu, command palette, About
-> dialog, and the automated startup check) is compiled **out** of the frontend
-> only when the `GEOLIBRE_STORE_BUILD=1` environment variable is set during the
-> Tauri build. `build-msix.ps1` repackages the *already-built* binary, so this
-> variable must be exported before `npm run tauri:build`, not passed to this
-> script. The [`msix-store.yml`](../../.github/workflows/msix-store.yml) workflow
-> sets it automatically; when building a Store package locally, set it yourself:
->
-> ```powershell
-> $env:GEOLIBRE_STORE_BUILD = "1"
-> npm run tauri:build -- --no-sign
-> ```
->
-> Leave it unset for the winget / sideload MSIX (`release.yml`) — those keep the
-> updater and are never submitted to the Store.
+> 생성된 MSIX는 공개 Release 또는 일반 Sideload 설치본이 아닙니다.
+> Microsoft Store가 재서명하는 Partner Center 제출 Package의 입력물입니다.
 
-The Store validates the package identity against the values reserved for the app
-in Partner Center (**Product management -> Product Identity**). Pass them as
-parameters; the Store-required fields differ from the defaults:
+- NSIS Installer와 Portable ZIP도 Phase 8 승인 전에는 공개 게시하지 않습니다.
+- MSIX는 `.github/workflows/msix-store.yml`의 Manual Workflow로만 생성합니다.
+- Workflow 실행 시 Partner Center의 Package Identity Name과 Publisher ID를 반드시
+  입력해야 합니다.
+- Artifact 이름은 `geoim3d-store-unsigned-msix`이며 7일 후 삭제됩니다.
+- Enterprise Sideload 배포에는 Publisher와 정확히 일치하는 Code-signing Certificate로
+  `SignTool.exe` 서명 후 설치·제거·Registry 검증이 필요합니다. 현재 Script는
+  의도적으로 서명하지 않습니다.
+
+## Prerequisites
+
+- Windows
+- Windows SDK (`MakeAppx.exe`)
+- 완료된 `npm run tauri:build -- --no-sign`
+- Store 제출 시 승인된 JBT Partner Center Identity
+
+## Local package build
 
 ```powershell
 pwsh ./packaging/msix/build-msix.ps1 `
-  -Name "OpenGeospatialSolutions.GeoLibre" `        # Package/Identity/Name
-  -Publisher "CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" `  # Package/Identity/Publisher (your seller GUID)
-  -PublisherDisplayName "Open Geospatial Solutions" `     # your publisher display name
-  -DisplayName "GeoLibre"                            # a name reserved in Partner Center
+  -Name "<Partner Center Package Identity Name>" `
+  -Publisher "CN=<Partner Center Publisher ID>" `
+  -PublisherDisplayName "JBT" `
+  -DisplayName "geoIM3D"
 ```
 
-The defaults are the opengeos Partner Center identity, so a bare
-`./build-msix.ps1` produces a Store-ready package. Override them for a
-self-signed sideload build or a different publisher.
+기본 표시 Metadata는 다음과 같습니다. `Name`과 `Publisher` 기본값은 개발용이며
+Store 제출에는 사용하지 않습니다.
 
-| Parameter | Default (Store identity) | Notes |
-| --- | --- | --- |
-| `-Name` | `OpenGeospatialSolutions.GeoLibre` | Reserved `Package/Identity/Name`; the Store rejects the Tauri identifier. Pass `""` to fall back to `org.geolibre.desktop` for a non-Store build |
-| `-Publisher` | `CN=E6AE8172-DC4F-4F79-844B-9D84204BF95A` | Seller `CN=<GUID>` from Partner Center; must match the account publisher ID |
-| `-PublisherDisplayName` | `Open Geospatial Solutions` | Must match your publisher display name exactly; the Store does not remap it |
-| `-DisplayName` | `GeoLibre` | Reserved `Properties/DisplayName`; differs from the Tauri `productName` (`GeoLibre Desktop`). Pass `""` to fall back to the productName |
-| `-Language` | `en-us` | Every MSIX must declare a language |
+| 항목 | 값 |
+|---|---|
+| Bundle identifier | `com.ejbt.geoim3d` |
+| Product/Display name | `geoIM3D` |
+| Product version | `1.0.0` |
+| Development publisher | `CN=JBT` |
+| Publisher display name | `JBT` |
+| Language | `ko-KR` |
+| Project format | `.geoim3d.json` (OS association intentionally omitted) |
 
-The package family name is derived automatically from `-Name` + `-Publisher`, so
-it matches (`OpenGeospatialSolutions.GeoLibre_wby2ff7ejknn4`) once those are correct.
+결과:
 
-`-DisplayName` sets only the package display name (`Properties/DisplayName`, used
-for the Store listing). The Start-menu / taskbar name
-(`Applications/.../VisualElements/@DisplayName`) deliberately stays the Tauri
-product name ("GeoLibre Desktop"); the two are allowed to differ, and a Store
-submission with this split passed validation.
+```text
+apps/geolibre-desktop/src-tauri/target/release/bundle/msix/
+  geoIM3D-1.0.0-x64.msix
+```
 
-## `runFullTrust`
-
-The manifest declares the `runFullTrust` restricted capability, which a packaged
-Win32 (Tauri) desktop app requires. The Store flags it as a **warning**, not an
-error; it is reviewed and granted during certification. Do not remove it.
+Backend의 `.env*`, Virtual Environment, Test, Cache, Coverage, Build Artifact,
+`AGENTS.md`는 Package Stage에서 제거됩니다. geoIM3D에는 In-app Automatic
+Updater가 없으며 Store Update는 Store 배포 채널이 담당합니다.

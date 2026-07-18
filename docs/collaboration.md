@@ -4,7 +4,7 @@
 > Disabled unless `VITE_GEOLIBRE_COLLAB_URL` is configured.
 
 GeoLibre's project sharing is otherwise snapshot-based (upload to
-share.geolibre.app). This feature adds a **live** mode: several people open the
+administrator-configured Share service). This feature adds a **live** mode: several people open the
 same session and see each other's layer/style/view edits in real time, with
 presence cursors and viewport indicators. It targets classrooms, workshops, and
 small teams.
@@ -197,38 +197,25 @@ ephemeral and never written to a project file.
 ## Feature flag
 
 Set `VITE_GEOLIBRE_COLLAB_URL` to the relay base (e.g.
-`wss://collab.geolibre.app`, or `ws://127.0.0.1:8787` for `wrangler dev`). When
+`ws://localhost:8787`, or `ws://127.0.0.1:8787` for `wrangler dev`). When
 unset, the hook is inert and all collaboration UI is hidden, so production builds
 ship the feature dark. The Tauri CSP `connect-src` must list the wss host (the
 existing `https:` directive does **not** authorize `wss:`).
 
-> **Self-hosting note:** the desktop CSP pins `wss://collab.geolibre.app` (plus
+> **Self-hosting note:** the desktop CSP pins `ws://localhost:8787` (plus
 > `ws://localhost`/`127.0.0.1` for dev). Pointing the desktop build at a
 > different relay means updating `connect-src` in
 > `apps/geolibre-desktop/src-tauri/tauri.conf.json` and rebuilding — the CSP and
 > the `VITE_GEOLIBRE_COLLAB_URL` flag are independent knobs. The web build
 > inherits the page's CSP instead, so it only needs the env var.
 
-## Deploying the relay (`collab.geolibre.app`)
+## Deployment status
 
-The relay deploys to Cloudflare Workers the same way as `workers/viewer`:
-
-- **CI:** `.github/workflows/deploy-collab.yml` deploys on any push to `main`
-  that touches `workers/collab/**` (or via manual `workflow_dispatch`). It reuses
-  the existing `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` repo secrets — the
-  token needs the **Workers Scripts Write** permission (Cloudflare's "Edit
-  Cloudflare Workers" template includes it). Deploying the Durable Object is part
-  of the same script upload, so no separate Durable Objects permission is needed.
-- **Manual:** `cd workers/collab && npx wrangler deploy`.
-
-`wrangler.toml` already declares the `collab.geolibre.app` custom-domain route and
-the SQLite Durable Object migration, so the first deploy provisions DNS, TLS, and
-the DO class automatically — no manual Cloudflare dashboard steps. SQLite-backed
-Durable Objects are available on the free Workers plan.
-
-Once the relay is live, point the app at it by setting
-`VITE_GEOLIBRE_COLLAB_URL=wss://collab.geolibre.app` in the web/Pages build
-environment. Until that env var is set, the feature stays dark.
+No public geoIM3D collaboration relay is approved. Automatic deployment workflows
+and custom-domain routes are intentionally absent. Local development may use
+`ws://localhost:8787` or `ws://127.0.0.1:8787`; the client rejects public WSS
+hosts until an exact hostname, CSP, abuse controls, authentication, and release
+process are approved by JBT.
 
 ## Limitations / v2
 
@@ -240,7 +227,7 @@ environment. Until that env var is set, the feature stays dark.
   a clear error (share via URL instead). v2: diff / chunked layer sync.
 - **Undo**: a remote apply clears local undo (see above).
 - v2 directions: per-action mutation or CRDT transport, coalesced remote-apply
-  history, richer permission/identity (tie to share.geolibre.app accounts).
+  history, richer permission/identity (tie to administrator-configured Share service accounts).
 
 ## Testing
 

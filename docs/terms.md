@@ -92,7 +92,7 @@ GeoLibre, even if advised of the possibility of such damages.
 
 GeoLibre is under active development, and features may be added, changed, or
 removed at any time. We may also update these Terms from time to time. The
-current version is always available at <https://geolibre.app/terms/>. Your
+version tracked in this repository is the applicable development reference. Your
 continued use of the app after changes take effect constitutes acceptance of the
 revised Terms.
 

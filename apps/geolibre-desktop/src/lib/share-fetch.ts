@@ -1,14 +1,11 @@
-// The fetch used by the share.geolibre.app client: project upload
-// (`share-geolibre.ts`) and the gallery reads (`share-gallery.ts`).
+// Fetch boundary used by the administrator-configured Share service.
 //
 // Defaults to the WebView's browser `fetch`. The desktop build swaps in a
 // native-HTTP-backed fetch (`installNativeShareFetch`) that bypasses the
 // WebView's CORS enforcement for the share host — the share server's CORS
 // policy allows the web origin but not the Tauri WebView origin
 // (`tauri://localhost` / `http://tauri.localhost`), so a plain browser `fetch`
-// from the desktop app throws a `TypeError` that surfaces to the user as
-// "Could not reach share.geolibre.app." This mirrors the geocoding fix in
-// `geocoding-fetch.ts`.
+// from the desktop app throws a `TypeError`. This mirrors the geocoding fix.
 
 import { resolveShareBaseUrl } from "./share-geolibre";
 
@@ -57,9 +54,8 @@ function requestHost(input: RequestInfo | URL): string | null {
  * client stays scoped to the single share host — which must also be listed in
  * the `http:default` capability scope (`src-tauri/capabilities/default.json`).
  *
- * The host is resolved from {@link resolveShareBaseUrl} (the configured or
- * production share URL) at install time, so a `VITE_GEOLIBRE_SHARE_URL` override
- * is honored.
+ * The host is resolved from {@link resolveShareBaseUrl} at install time, so an
+ * approved `VITE_GEOLIBRE_SHARE_URL` override is honored.
  *
  * Loaded lazily and only in the desktop build so the web/embedded bundles never
  * pull in `@tauri-apps/plugin-http`.

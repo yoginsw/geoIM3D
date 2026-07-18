@@ -1,6 +1,5 @@
-// Lists publicly shared projects from share.geolibre.app's `GET /api/projects`
-// endpoint so the Project Gallery can browse and open them. This is the read
-// counterpart to share-geolibre.ts (which uploads via `POST /api/projects`).
+// Lists projects from the administrator-configured Share service. No host is assumed until
+// deployment configuration provides one.
 //
 // `fetchSharedProjects` reads the public listing (`GET /api/projects`, no
 // token) with `limit` + `offset` pagination. `fetchMyProjects` authenticates
@@ -40,7 +39,7 @@ export class GalleryError extends Error {
   }
 }
 
-/** A public project as returned by share.geolibre.app's listing endpoint. */
+/** A public project as returned by the administrator-configured Share service. */
 export interface SharedProject {
   id: string;
   username: string;
@@ -176,7 +175,7 @@ function normalizeProject(
 }
 
 /**
- * Fetch a page of public projects from share.geolibre.app.
+ * Fetch a page of public projects from the administrator-configured Share service.
  *
  * @param options - Pagination (`limit`/`offset`), an optional host override, an
  *   abort `signal`, and an injectable `fetchImpl` for testing.
@@ -190,7 +189,8 @@ function normalizeProject(
 export async function fetchSharedProjects(
   options: FetchSharedProjectsOptions = {},
 ): Promise<FetchSharedProjectsResult> {
-  const base = (options.baseUrl ?? resolveShareBaseUrl()).replace(/\/+$/, "");
+  const base = resolveShareBaseUrl(options.baseUrl);
+  if (!base) throw new GalleryError("network");
   // See share-fetch.ts: on desktop this routes the share host through Tauri's
   // native HTTP client so the gallery listing isn't blocked by WebView CORS.
   const fetchImpl = options.fetchImpl ?? getShareFetch();
@@ -328,7 +328,8 @@ export function shareAuthorizedFetch(
 export async function fetchMyProjects(
   options: FetchMyProjectsOptions,
 ): Promise<SharedProject[]> {
-  const base = (options.baseUrl ?? resolveShareBaseUrl()).replace(/\/+$/, "");
+  const base = resolveShareBaseUrl(options.baseUrl);
+  if (!base) throw new GalleryError("network");
   // One auth path for both production and tests: the injected fetch (or the
   // share fetch, which the desktop build routes natively to bypass CORS — see
   // share-fetch.ts) flows through the same same-origin token gating.

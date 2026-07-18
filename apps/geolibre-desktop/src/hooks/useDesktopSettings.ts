@@ -11,17 +11,10 @@ import {
   isThemeScheme,
   type ThemeScheme,
 } from "../lib/theme-schemes";
-import type { UpdateNotificationLevel } from "../lib/updates";
 
 const E2E_EXPOSES_ALL_LOCALES =
   import.meta.env?.VITE_E2E_EXPOSE_ALL_LOCALES === "true";
 
-/** Notification-granularity options, in order. Single source of truth. */
-export const UPDATE_NOTIFICATION_LEVELS: readonly UpdateNotificationLevel[] = [
-  "all",
-  "minor",
-  "major",
-];
 
 export interface DesktopSettings {
   additionalPluginDirectories: string[];
@@ -46,11 +39,6 @@ export interface DesktopSettings {
    * and an admin lock. See `src/lib/ui-profile.ts` and `docs/ui-profiles.md`.
    */
   uiProfile: UiProfileSettings;
-  /**
-   * Automated software-update preferences. The startup check only runs in the
-   * desktop (Tauri) build; on the web these settings are inert.
-   */
-  updates: UpdateSettings;
 }
 
 export interface ThemeSettings {
@@ -58,13 +46,6 @@ export interface ThemeSettings {
   scheme: ThemeScheme;
   /** Hex color backing the "custom" scheme (ignored by the presets). */
   customColor: string;
-}
-
-export interface UpdateSettings {
-  /** Whether to check for a newer version each time the desktop app starts. */
-  checkOnStartup: boolean;
-  /** Which kinds of releases raise a startup notification. */
-  notificationLevel: UpdateNotificationLevel;
 }
 
 export interface DesktopLayoutSettings {
@@ -134,11 +115,6 @@ export const DEFAULT_UI_PROFILE_SETTINGS: UiProfileSettings = {
   hiddenMenuItems: [...PRODUCT_PROFILE.hiddenMenuItems],
 };
 
-export const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
-  checkOnStartup: true,
-  notificationLevel: "all",
-};
-
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   scheme: DEFAULT_THEME_SCHEME,
   customColor: DEFAULT_CUSTOM_COLOR,
@@ -152,7 +128,6 @@ const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
 
   theme: DEFAULT_THEME_SETTINGS,
   uiProfile: DEFAULT_UI_PROFILE_SETTINGS,
-  updates: DEFAULT_UPDATE_SETTINGS,
 };
 
 /** The experience-level presets, in order. Single source of truth. */
@@ -185,10 +160,8 @@ export function normalizeDesktopSettings(settings: unknown): DesktopSettings {
 
     theme: normalizeThemeSettings(candidate.theme),
     uiProfile: normalizeUiProfileSettings(candidate.uiProfile),
-    updates: normalizeUpdateSettings(candidate.updates),
   };
 }
-
 
 function normalizeThemeSettings(theme: unknown): ThemeSettings {
   if (!theme || typeof theme !== "object") {
@@ -208,29 +181,6 @@ function normalizeThemeSettings(theme: unknown): ThemeSettings {
     customColor: isHexColor(candidate.customColor)
       ? candidate.customColor.trim().toLowerCase()
       : DEFAULT_THEME_SETTINGS.customColor,
-  };
-}
-
-function normalizeUpdateSettings(updates: unknown): UpdateSettings {
-  if (!updates || typeof updates !== "object") {
-    return DEFAULT_UPDATE_SETTINGS;
-  }
-
-  // Require a strict boolean and a known level so tampered localStorage values
-  // cannot smuggle non-boolean / unknown values into the update settings.
-  const candidate = updates as Partial<UpdateSettings>;
-  return {
-    checkOnStartup:
-      typeof candidate.checkOnStartup === "boolean"
-        ? candidate.checkOnStartup
-        : DEFAULT_UPDATE_SETTINGS.checkOnStartup,
-    notificationLevel:
-      typeof candidate.notificationLevel === "string" &&
-      UPDATE_NOTIFICATION_LEVELS.includes(
-        candidate.notificationLevel as UpdateNotificationLevel,
-      )
-        ? (candidate.notificationLevel as UpdateNotificationLevel)
-        : DEFAULT_UPDATE_SETTINGS.notificationLevel,
   };
 }
 

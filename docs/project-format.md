@@ -1,6 +1,6 @@
 # GeoLibre Project Format
 
-Projects are saved as **`.geolibre.json`** files.
+Projects are saved as **`.geoim3d.json`** files.
 
 ## Schema
 

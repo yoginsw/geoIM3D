@@ -90,7 +90,7 @@ function galleryErrorMessage(error: unknown, t: TFunction): string {
 }
 
 /**
- * Browse public projects shared on share.geolibre.app and open one in GeoLibre.
+ * Browse public projects shared on administrator-configured Share service and open one in GeoLibre.
  *
  * The listing endpoint only paginates (no server-side search), so this loads
  * pages on demand via "Load more" and filters the already-loaded set in the

@@ -31,53 +31,9 @@
     "title": "GeoLibre Hakkında",
     "description": "GeoLibre, hafif, bulut yerel bir CBS platformudur.",
     "version": "Sürüm",
-    "checkForUpdates": "Güncellemeleri kontrol et",
-    "tryAgain": "Yeniden dene",
-    "checking": "Güncellemeler kontrol ediliyor",
-    "upToDate": "Güncelsiniz ({{version}}).",
-    "upToDateNoVersion": "Güncelsiniz.",
     "generalSectionTitle": "Genel",
     "homePage": "Ana sayfa",
     "githubRepository": "GitHub deposu"
-  },
-  "updates": {
-    "changelogTitle": "Yenilikler",
-    "noChangelog": "Sürüm notları mevcut değil. Ayrıntılar için indirmeler sayfasına bakın.",
-    "stepsTitle": "Nasıl güncellenir",
-    "download": "Güncellemeyi indir",
-    "steps": {
-      "download": "Platformunuz için kurulum dosyasını indirmeler sayfasından indirin.",
-      "install": "Kurulumu çalıştırın. Yerel projeleriniz, ayarlarınız ve API anahtarlarınız korunur.",
-      "reopen": "Güncellemeyi tamamlamak için GeoLibre'yi yeniden açın."
-    },
-    "severity": {
-      "major": "Büyük sürüm",
-      "minor": "Özellik güncellemesi",
-      "patch": "Yama güncellemesi"
-    },
-    "available": {
-      "title": "{{version}} kullanılabilir",
-      "fallback": "Yeni bir sürüm",
-      "summary": "Şu anda {{current}} sürümünü kullanıyorsunuz."
-    },
-    "error": {
-      "message": "Güncellemeler kontrol edilemedi.",
-      "rateLimit": "GitHub hız sınırı aşıldı. Lütfen daha sonra tekrar deneyin.",
-      "http": "GitHub {{status}} döndürdü.",
-      "noTag": "En son sürüm bir sürüm etiketi içermiyor.",
-      "network": "GitHub'a ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
-      "viewDownloads": "İndirmeleri görüntüle",
-      "viewDownloadsHint": "En son sürümü elle kontrol edebilmeniz için GeoLibre indirmeler sayfasını tarayıcınızda açar."
-    },
-    "startup": {
-      "title": "Güncelleme mevcut",
-      "currentVersion": "Mevcut sürümünüz",
-      "latestVersion": "Kullanılabilir en son sürüm",
-      "download": "Güncelleme paketini indir",
-      "remindLater": "Daha sonra hatırlat",
-      "skipVersion": "Bu sürümü atla",
-      "settingsHint": "Güncelleme kontrollerini Ayarlar → Güncellemeler bölümünden değiştirebilirsiniz."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Tam katman durumunu dahil et (etkin, etkin olmayan ve katman sırası)",
@@ -877,12 +833,12 @@
   },
   "share": {
     "title": "Projeyi paylaş",
-    "description": "Mevcut projeyi paylaşmak için share.geolibre.app adresine yükleyin ve paylaşılabilir bir bağlantı alın.",
-    "setupIntro": "Yüklemeden önce share.geolibre.app hesabınızı bağlayın.",
+    "description": "Mevcut projeyi paylaşmak için yapılandırılmış Share hizmeti adresine yükleyin ve paylaşılabilir bir bağlantı alın.",
+    "setupIntro": "Yüklemeden önce yapılandırılmış Share hizmeti hesabınızı bağlayın.",
     "step1Title": "1. Bir API belirteci alın",
-    "step1Description": "share.geolibre.app adresinde oturum açın, ardından Ayarlar → API belirteçleri altında bir belirteç oluşturun.",
+    "step1Description": "yapılandırılmış Share hizmeti adresinde oturum açın, ardından Ayarlar → API belirteçleri altında bir belirteç oluşturun.",
     "getToken": "API belirteci al",
-    "step2Title": "2. Belirteci GeoLibre'ye ekleyin",
+    "step2Title": "2. Belirteci geoIM3D'ye ekleyin",
     "step2Description": "Belirteci bu cihazda Ayarlar → Ortam Değişkenleri kısmına yapıştırın.",
     "configureToken": "Yerel belirteci yapılandır",
     "liveAt": "Projeniz şu adreste yayında:",
@@ -899,12 +855,12 @@
     "shareButton": "Paylaş",
     "sharing": "Paylaşılıyor…",
     "errorFallback": "Proje paylaşılamadı.",
-    "usernameRequired": "Paylaşmadan önce share.geolibre.app hesabınızda bir kullanıcı adı belirleyin. Bir tane seçmek için hesap ayarlarınızı açın, ardından tekrar deneyin.",
+    "usernameRequired": "Paylaşmadan önce yapılandırılmış Share hizmeti hesabınızda bir kullanıcı adı belirleyin. Bir tane seçmek için hesap ayarlarınızı açın, ardından tekrar deneyin.",
     "openAccountSettings": "Hesap ayarlarını aç"
   },
   "gallery": {
     "title": "Proje galerisi",
-    "description": "share.geolibre.app üzerinde paylaşılan genel projelere göz atın ve birini GeoLibre'de açın.",
+    "description": "yapılandırılmış Share hizmeti üzerinde paylaşılan genel projelere göz atın ve birini geoIM3D'de açın.",
     "searchPlaceholder": "Yüklenen projeleri başlığa, yazara veya etikete göre filtrele",
     "loading": "Projeler yükleniyor…",
     "loadingMore": "Daha fazla yükleniyor…",
@@ -913,11 +869,11 @@
     "noMatches": "Filtrenizle eşleşen yüklenmiş proje yok.",
     "errorFallback": "Proje galerisi yüklenemedi.",
     "errorTimeout": "Proje galerisinde zaman aşımı oluştu. Lütfen tekrar deneyin.",
-    "errorNetwork": "share.geolibre.app adresine ulaşılamadı. İnternet bağlantınızı kontrol edin.",
+    "errorNetwork": "yapılandırılmış Share hizmeti adresine ulaşılamadı. İnternet bağlantınızı kontrol edin.",
     "errorHttp": "Galeri yüklenemedi (HTTP {{status}}).",
     "errorInvalidResponse": "Galeri yüklenemedi (geçersiz sunucu yanıtı).",
-    "errorUnauthorized": "share.geolibre.app API belirteciniz geçersiz veya süresi dolmuş. Ayarlar'da güncelleyin.",
-    "errorUsernameRequired": "Projelerinizi yüklemeden önce share.geolibre.app hesabınızda bir kullanıcı adı belirleyin.",
+    "errorUnauthorized": "yapılandırılmış Share hizmeti API belirteciniz geçersiz veya süresi dolmuş. Ayarlar'da güncelleyin.",
+    "errorUsernameRequired": "Projelerinizi yüklemeden önce yapılandırılmış Share hizmeti hesabınızda bir kullanıcı adı belirleyin.",
     "retry": "Yeniden dene",
     "open": "Aç",
     "opening": "Açılıyor…",
@@ -932,7 +888,7 @@
     "scopeFeatured": "Öne çıkanlar",
     "scopeAll": "Tüm projeler",
     "scopeMine": "Projelerim",
-    "signedOutHint": "Listelenmemiş ve özel projelerinizi görmek için Ayarlar'a bir share.geolibre.app API belirteci ekleyin.",
+    "signedOutHint": "Listelenmemiş ve özel projelerinizi görmek için Ayarlar'a bir yapılandırılmış Share hizmeti API belirteci ekleyin.",
     "emptyFeatured": "Henüz öne çıkan proje yok.",
     "emptyMine": "Henüz hiçbir proje paylaşmadınız.",
     "visibilityUnlisted": "Listelenmemiş",
@@ -1253,8 +1209,7 @@
       "interface": "Arayüz",
       "geocoding": "Coğrafi kodlama",
       "ai": "AI Sağlayıcıları",
-      "environment": "Ortam",
-      "updates": "Güncellemeler"
+      "environment": "Ortam"
     },
     "menu": {
       "mapPreferences": "Harita Tercihleri",
@@ -1264,22 +1219,8 @@
       "geocoding": "Coğrafi kodlama",
       "ai": "AI Sağlayıcıları",
       "environmentVariables": "Ortam Değişkenleri",
-      "updates": "Güncelleme Ayarları",
       "managePlugins": "Eklentileri Yönet",
       "urlOverrideNote": "URL düzen parametreleri kayıtlı ayarları geçersiz kılar."
-    },
-    "updates": {
-      "title": "Yazılım Güncellemeleri",
-      "description": "Masaüstü uygulaması başladığında GeoLibre'nin yeni sürümleri nasıl kontrol edeceğini yönetin.",
-      "checkOnStartup": "Başlangıçta güncellemeleri kontrol et",
-      "checkOnStartupHint": "Etkinleştirildiğinde, GeoLibre uygulama her başladığında daha yeni bir sürüm olup olmadığını kontrol eder. Tamamen çevrimdışı bir iş akışı için bunu kapatın.",
-      "notificationLevel": "Şunlar hakkında beni bilgilendir",
-      "notificationLevelHint": "Hangi tür sürümlerin başlangıç bildirimini tetikleyeceğini seçin.",
-      "level": {
-        "all": "Tüm sürümler (büyük, küçük ve yamalar)",
-        "minor": "Yalnızca büyük ve küçük sürümler",
-        "major": "Yalnızca büyük sürümler"
-      }
     },
     "map": {
       "constraintsTitle": "Harita kısıtlamaları",
@@ -1350,9 +1291,9 @@
       "lockedNote": "Bu arayüz profili yöneticiniz tarafından yönetilmektedir ve değiştirilemez."
     },
     "env": {
-      "tokenTitle": "Share.GeoLibre API belirteci",
-      "tokenDescription": "Proje > Paylaş, haritalarınızı share.geolibre.app adresine yüklemek için bu belirteci kullanır. <tokenLink>share.geolibre.app/settings</tokenLink> adresini açın, Ayarlar > API belirteçleri altında bir belirteç oluşturun, ardından aşağıdaki alana yapıştırın.",
-      "tokenStorageNote": "Bu cihazda yerel olarak saklanır ve yalnızca yüklemeleri doğrulamak için share.geolibre.app adresine gönderilir. Web derlemesinde diğer site verileriyle aynı tarayıcı deposunu paylaşır; dolayısıyla makinenizin güvenliği ihlal edilirse share.geolibre.app üzerinden iptal edin.",
+      "tokenTitle": "Share API belirteci",
+      "tokenDescription": "Proje > Paylaş, haritalarınızı yapılandırılmış Share hizmeti adresine yüklemek için bu belirteci kullanır. <tokenLink>yapılandırılmış Share hizmeti ayarları</tokenLink> adresini açın, Ayarlar > API belirteçleri altında bir belirteç oluşturun, ardından aşağıdaki alana yapıştırın.",
+      "tokenStorageNote": "Bu cihazda yerel olarak saklanır ve yalnızca yüklemeleri doğrulamak için yapılandırılmış Share hizmeti adresine gönderilir. Web derlemesinde diğer site verileriyle aynı tarayıcı deposunu paylaşır; dolayısıyla makinenizin güvenliği ihlal edilirse yapılandırılmış Share hizmeti üzerinden iptal edin.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ion belirteci",
       "cesiumTokenDescription": "3B küre (bölünmüş görünümlü bir bölme) Cesium Ion dünya görüntüleri ve arazisini kullanır; bunlar bir erişim belirteci gerektirir. <tokenLink>ion.cesium.com/tokens</tokenLink> adresinde ücretsiz bir hesap oluşturun, varsayılan erişim belirtecinizi kopyalayın ve aşağıya yapıştırın. Belirteç olmadan 3B küre anahtarı gizlenir.",
@@ -1602,7 +1543,6 @@
       "githubRepository": "GitHub deposu",
       "diagnostics": "Tanılama",
       "giveFeedback": "Geri Bildirim Ver",
-      "checkForUpdates": "Güncellemeleri Kontrol Et",
       "about": "Hakkında",
       "togglePlugin": "{{name}} Eklentisini Aç/Kapat",
       "managePlugins": "Eklentileri Yönet"

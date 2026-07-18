@@ -31,54 +31,10 @@
     "title": "geoIM3D 정보",
     "description": "geoIM3D는 건축·토목·부동산·환경·안전 분야를 위한 JBT의 실감형 3D 공간 플랫폼입니다.",
     "version": "버전",
-    "checkForUpdates": "업데이트 확인",
-    "tryAgain": "다시 시도",
-    "checking": "업데이트를 확인하는 중",
-    "upToDate": "최신 버전입니다 ({{version}}).",
-    "upToDateNoVersion": "최신 버전입니다.",
     "generalSectionTitle": "일반",
     "homePage": "JBT 홈페이지",
     "githubRepository": "원본 GeoLibre 프로젝트",
     "upstreamNotice": "{{name}} 기반 · {{license}} 라이선스"
-  },
-  "updates": {
-    "changelogTitle": "새로운 기능",
-    "noChangelog": "릴리스 노트를 사용할 수 없습니다. 자세한 내용은 다운로드 페이지를 참조하세요.",
-    "stepsTitle": "업데이트 방법",
-    "download": "업데이트 다운로드",
-    "steps": {
-      "download": "다운로드 페이지에서 사용 중인 플랫폼에 맞는 설치 프로그램을 다운로드하세요.",
-      "install": "설치 프로그램을 실행하세요. 로컬 프로젝트, 설정, API 키는 유지됩니다.",
-      "reopen": "geoIM3D를 다시 열어 업데이트를 완료하세요."
-    },
-    "severity": {
-      "major": "주요 릴리스",
-      "minor": "기능 업데이트",
-      "patch": "패치 업데이트"
-    },
-    "available": {
-      "title": "{{version}} 버전을 사용할 수 있습니다",
-      "fallback": "새 버전",
-      "summary": "현재 {{current}} 버전을 사용 중입니다."
-    },
-    "error": {
-      "message": "업데이트를 확인할 수 없습니다.",
-      "rateLimit": "GitHub 요청 한도를 초과했습니다. 나중에 다시 시도하세요.",
-      "http": "GitHub에서 {{status}}을(를) 반환했습니다.",
-      "noTag": "최신 릴리스에 버전 태그가 없습니다.",
-      "network": "GitHub에 연결할 수 없습니다. 연결 상태를 확인한 후 다시 시도하세요.",
-      "viewDownloads": "다운로드 보기",
-      "viewDownloadsHint": "브라우저에서 geoIM3D 다운로드 페이지를 열어 최신 버전을 직접 확인할 수 있습니다."
-    },
-    "startup": {
-      "title": "업데이트 사용 가능",
-      "currentVersion": "현재 버전",
-      "latestVersion": "최신 버전",
-      "download": "업데이트 패키지 다운로드",
-      "remindLater": "나중에 다시 알림",
-      "skipVersion": "이 버전 건너뛰기",
-      "settingsHint": "설정 → 업데이트에서 업데이트 확인 방식을 변경할 수 있습니다."
-    }
   },
   "bookmark": {
     "captureStateLabel": "전체 레이어 상태 포함(활성, 비활성, 레이어 순서)",
@@ -864,10 +820,10 @@
   },
   "share": {
     "title": "프로젝트 공유",
-    "description": "현재 프로젝트를 share.geolibre.app에 업로드하고 공유 가능한 링크를 받으세요.",
-    "setupIntro": "업로드하기 전에 share.geolibre.app 계정을 연결하세요.",
+    "description": "현재 프로젝트를 관리자가 설정한 Share 서비스에 업로드하고 공유 가능한 링크를 받으세요.",
+    "setupIntro": "업로드하기 전에 관리자가 설정한 Share 서비스 계정을 연결하세요.",
     "step1Title": "1. API 토큰 받기",
-    "step1Description": "share.geolibre.app에 로그인한 다음 설정 → API 토큰에서 토큰을 생성하세요.",
+    "step1Description": "관리자가 설정한 Share 서비스에 로그인한 다음 설정 → API 토큰에서 토큰을 생성하세요.",
     "getToken": "API 토큰 받기",
     "step2Title": "2. geoIM3D에 토큰 추가",
     "step2Description": "이 기기의 설정 → 환경 변수에 토큰을 붙여넣으세요.",
@@ -886,12 +842,12 @@
     "shareButton": "공유",
     "sharing": "공유 중…",
     "errorFallback": "프로젝트를 공유할 수 없습니다.",
-    "usernameRequired": "공유하기 전에 share.geolibre.app 계정에 사용자 이름을 설정하세요. 계정 설정을 열어 사용자 이름을 선택한 다음 다시 시도하세요.",
+    "usernameRequired": "공유하기 전에 관리자가 설정한 Share 서비스 계정에 사용자 이름을 설정하세요. 계정 설정을 열어 사용자 이름을 선택한 다음 다시 시도하세요.",
     "openAccountSettings": "계정 설정 열기"
   },
   "gallery": {
     "title": "프로젝트 갤러리",
-    "description": "share.geolibre.app에 공유된 공개 프로젝트를 둘러보고 geoIM3D에서 여세요.",
+    "description": "관리자가 설정한 Share 서비스에 공유된 공개 프로젝트를 둘러보고 geoIM3D에서 여세요.",
     "searchPlaceholder": "불러온 프로젝트를 제목, 작성자 또는 태그로 필터링",
     "loading": "프로젝트 불러오는 중…",
     "loadingMore": "더 불러오는 중…",
@@ -900,11 +856,11 @@
     "noMatches": "필터와 일치하는 불러온 프로젝트가 없습니다.",
     "errorFallback": "프로젝트 갤러리를 불러올 수 없습니다.",
     "errorTimeout": "프로젝트 갤러리 요청 시간이 초과되었습니다. 다시 시도하세요.",
-    "errorNetwork": "share.geolibre.app에 연결할 수 없습니다. 인터넷 연결을 확인하세요.",
+    "errorNetwork": "관리자가 설정한 Share 서비스에 연결할 수 없습니다. 인터넷 연결을 확인하세요.",
     "errorHttp": "갤러리를 불러올 수 없습니다(HTTP {{status}}).",
     "errorInvalidResponse": "갤러리를 불러올 수 없습니다(잘못된 서버 응답).",
-    "errorUnauthorized": "share.geolibre.app API 토큰이 유효하지 않거나 만료되었습니다. 설정에서 업데이트하세요.",
-    "errorUsernameRequired": "프로젝트를 불러오기 전에 share.geolibre.app 계정에 사용자 이름을 설정하세요.",
+    "errorUnauthorized": "관리자가 설정한 Share 서비스 API 토큰이 유효하지 않거나 만료되었습니다. 설정에서 업데이트하세요.",
+    "errorUsernameRequired": "프로젝트를 불러오기 전에 관리자가 설정한 Share 서비스 계정에 사용자 이름을 설정하세요.",
     "retry": "다시 시도",
     "open": "열기",
     "opening": "여는 중…",
@@ -918,7 +874,7 @@
     "scopeFeatured": "추천",
     "scopeAll": "모든 프로젝트",
     "scopeMine": "내 프로젝트",
-    "signedOutHint": "본인의 목록에 없는 프로젝트와 비공개 프로젝트를 보려면 설정에서 share.geolibre.app API 토큰을 추가하세요.",
+    "signedOutHint": "본인의 목록에 없는 프로젝트와 비공개 프로젝트를 보려면 설정에서 관리자가 설정한 Share 서비스 API 토큰을 추가하세요.",
     "emptyFeatured": "아직 추천 프로젝트가 없습니다.",
     "emptyMine": "아직 공유한 프로젝트가 없습니다.",
     "visibilityUnlisted": "목록에 없음",
@@ -1241,8 +1197,7 @@
       "interface": "인터페이스",
       "geocoding": "지오코딩",
       "ai": "AI 제공자",
-      "environment": "환경",
-      "updates": "업데이트"
+      "environment": "환경"
     },
     "menu": {
       "mapPreferences": "지도 환경설정",
@@ -1252,22 +1207,8 @@
       "geocoding": "지오코딩",
       "ai": "AI 제공자",
       "environmentVariables": "환경 변수",
-      "updates": "업데이트 설정",
       "managePlugins": "플러그인 관리",
       "urlOverrideNote": "URL 레이아웃 매개변수가 저장된 설정보다 우선 적용됩니다."
-    },
-    "updates": {
-      "title": "소프트웨어 업데이트",
-      "description": "데스크톱 앱이 시작될 때 geoIM3D가 새 버전을 확인하는 방식을 설정합니다.",
-      "checkOnStartup": "시작 시 업데이트 확인",
-      "checkOnStartupHint": "활성화하면 앱이 시작될 때마다 geoIM3D가 최신 버전을 확인합니다. 완전한 오프라인 작업 환경을 원하면 이 옵션을 끄세요.",
-      "notificationLevel": "알림 받을 항목",
-      "notificationLevelHint": "시작 시 알림을 표시할 릴리스 종류를 선택하세요.",
-      "level": {
-        "all": "모든 릴리스(주, 부, 패치 버전)",
-        "minor": "주 및 부 버전만",
-        "major": "주 버전만"
-      }
     },
     "map": {
       "constraintsTitle": "지도 제약 조건",
@@ -1339,8 +1280,8 @@
     },
     "env": {
       "tokenTitle": "프로젝트 공유 API 토큰",
-      "tokenDescription": "프로젝트 > 공유는 이 토큰을 사용하여 지도를 share.geolibre.app에 업로드합니다. <tokenLink>share.geolibre.app/settings</tokenLink>를 열고 설정 > API 토큰에서 토큰을 생성한 다음 아래 필드에 붙여넣으세요.",
-      "tokenStorageNote": "이 기기에 로컬로 저장되며 업로드 인증을 위해 share.geolibre.app에만 전송됩니다. 웹 빌드에서는 다른 사이트 데이터와 동일한 브라우저 저장소를 공유하므로, 기기가 침해된 경우 share.geolibre.app에서 토큰을 폐기하세요.",
+      "tokenDescription": "프로젝트 > 공유는 이 토큰을 사용하여 지도를 관리자가 설정한 Share 서비스에 업로드합니다. <tokenLink>관리자가 설정한 Share 서비스 설정</tokenLink>를 열고 설정 > API 토큰에서 토큰을 생성한 다음 아래 필드에 붙여넣으세요.",
+      "tokenStorageNote": "이 기기에 로컬로 저장되며 업로드 인증을 위해 관리자가 설정한 Share 서비스에만 전송됩니다. 웹 빌드에서는 다른 사이트 데이터와 동일한 브라우저 저장소를 공유하므로, 기기가 침해된 경우 관리자가 설정한 Share 서비스에서 토큰을 폐기하세요.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ion 토큰",
       "cesiumTokenDescription": "3D 지구본(분할 화면 패널)은 접근 토큰이 필요한 Cesium Ion 세계 영상과 지형을 사용합니다. <tokenLink>ion.cesium.com/tokens</tokenLink>에서 무료 계정을 만들고 기본 접근 토큰을 복사하여 아래에 붙여넣으세요. 토큰이 없으면 3D 지구본 전환 버튼이 숨겨집니다.",
@@ -1589,7 +1530,6 @@
       "githubRepository": "GitHub 저장소",
       "diagnostics": "진단",
       "giveFeedback": "피드백 보내기",
-      "checkForUpdates": "업데이트 확인",
       "about": "정보",
       "togglePlugin": "{{name}} 전환",
       "managePlugins": "플러그인 관리"

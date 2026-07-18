@@ -12,7 +12,6 @@ For plugins that add an on-map control, a submenu lets you **position** the cont
 
 Open **Settings → Manage Plugins** to browse the marketplace. The dialog is modeled on QGIS, with sections for **All**, **Installed**, **Not installed**, **Upgradeable**, and **Settings**.
 
-![Manage Plugins dialog](https://data.geolibre.app/images/geolibre-manage-plugins.webp)
 
 - **Search** the registry and **Install** an entry with one click. Installation records the plugin's manifest URL and registers it immediately, with no restart.
 - **Update** appears when a newer version is published; it re-fetches and re-registers the plugin in place, keeping the old version if the update fails.
@@ -26,7 +25,7 @@ Compatibility is checked against each entry's `minGeoLibreVersion`, so incompati
 
 ## Where plugins come from
 
-- **Curated registry**: the marketplace fetches a versioned JSON registry, hosted by default at `plugins.geolibre.app`. The registry and plugin bundles live in the [opengeos/geolibre-plugins](https://github.com/opengeos/geolibre-plugins) repository.
+- **Curated registry**: geoIM3D has no approved public registry. Development builds may use an explicitly configured loopback registry; non-loopback values fail closed.
 - **Manifest URL**: point the Settings section at any `plugin.json` manifest URL.
 - **Local directory**: load a plugin from a local folder (desktop app).
 - **Bundled drop-ins**: plugins placed in `public/plugins/<id>/` load automatically in a build.

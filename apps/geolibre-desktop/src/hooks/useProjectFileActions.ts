@@ -8,7 +8,7 @@ import {
 } from "@geolibre/core";
 import { materializeEmbeddableVectorLayers } from "@geolibre/plugins";
 import type { FeatureCollection } from "geojson";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPluginManager } from "./usePlugins";
 import { useDesktopSettingsStore } from "./useDesktopSettings";
@@ -23,6 +23,7 @@ import {
   saveProjectFile,
   saveProjectFileToPath,
   saveTextFileWithFallback,
+  takeStartupProjectPath,
 } from "../lib/tauri-io";
 import { buildProjectHtml } from "../lib/html-export";
 import { ensureHtmlFileName, ensureProjectFileName } from "../lib/file-names";
@@ -131,10 +132,38 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // Separate from projectUrlAbortRef so a gallery open and an Open-from-URL
   // submit can't abort each other's in-flight fetch.
   const shareUrlAbortRef = useRef<AbortController | null>(null);
+  const startupProjectOpenStartedRef = useRef(false);
   // Guards against overlapping saves: a second save started while a prompt
   // dialog is open would overwrite the pending prompt and strand the first
   // call's unresolved promise.
   const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    if (startupProjectOpenStartedRef.current || !isTauri()) return;
+    startupProjectOpenStartedRef.current = true;
+
+    void (async () => {
+      try {
+        const path = await takeStartupProjectPath();
+        if (!path) return;
+        const result = await openRecentProjectFile(path);
+        loadProject(
+          sanitizeIncomingProjectCredentials(
+            await resolveProjectXyzLayers(result.project),
+          ),
+          result.path,
+          { rememberRecent: true },
+        );
+      } catch (error) {
+        console.error("Failed to open startup project", error);
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : t("toolbar.error.couldNotOpenProject"),
+        );
+      }
+    })();
+  }, [loadProject, t]);
 
   const handleOpenFromFile = async () => {
     const result = await openProjectFile();
@@ -233,7 +262,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // rethrows on failure so the caller (the gallery dialog) can show the error
   // inline next to the card it came from.
   //
-  // When `authToken` is set (the user has a share.geolibre.app API token), the
+  // When `authToken` is set (the user has a administrator-configured Share service API token), the
   // request to the share host carries it as a Bearer token so the owner's
   // unlisted and private projects load too. The token is attached only for the
   // share host (see shareAuthorizedFetch), never to third-party hosts a project
@@ -399,7 +428,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
 
   // Builds the embed-mode layers: every local vector layer carries its own
   // features so the project is self-contained (portable to another machine or
-  // share.geolibre.app). Add Vector Layer control layers get their features
+  // administrator-configured Share service). Add Vector Layer control layers get their features
   // materialized into `metadata.embeddedGeoJSON`; plain GeoJSON layers already
   // hold their `geojson`. The `localFileReloadable` flag is cleared so the
   // embedded data — not a file path that may not exist elsewhere — is what

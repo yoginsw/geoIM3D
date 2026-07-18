@@ -15,11 +15,8 @@ import type {
 import type { CollaborationParticipant } from "@geolibre/core";
 
 describe("resolveCollabBaseUrl", () => {
-  it("accepts a wss host", () => {
-    assert.equal(
-      resolveCollabBaseUrl("wss://collab.geolibre.app"),
-      "wss://collab.geolibre.app",
-    );
+  it("rejects an unapproved public wss host", () => {
+    assert.equal(resolveCollabBaseUrl("wss://collab.geolibre.app"), null);
   });
 
   it("accepts ws on loopback for local dev", () => {
@@ -32,8 +29,8 @@ describe("resolveCollabBaseUrl", () => {
 
   it("trims a trailing slash", () => {
     assert.equal(
-      resolveCollabBaseUrl("wss://collab.geolibre.app/"),
-      "wss://collab.geolibre.app",
+      resolveCollabBaseUrl("ws://127.0.0.1:8787/"),
+      "ws://127.0.0.1:8787",
     );
   });
 
@@ -156,7 +153,7 @@ describe("createSession", () => {
   it("returns the parsed session on success", async () => {
     const result = await createSession(
       "co-edit",
-      "wss://collab.geolibre.app",
+      "ws://127.0.0.1:8787",
       ok({ sessionId: "ABCD2345", hostToken: "deadbeef", mode: "co-edit" }),
     );
     assert.deepEqual(result, {
@@ -172,7 +169,7 @@ describe("createSession", () => {
 
   it("throws on an unexpected response shape", async () => {
     await assert.rejects(
-      () => createSession("co-edit", "wss://x.example", ok({ sessionId: "x" })),
+      () => createSession("co-edit", "ws://127.0.0.1:8787", ok({ sessionId: "x" })),
       /unexpected response/,
     );
   });
@@ -181,7 +178,7 @@ describe("createSession", () => {
     const fail: typeof fetch = (async () =>
       new Response("nope", { status: 500 })) as unknown as typeof fetch;
     await assert.rejects(
-      () => createSession("co-edit", "wss://x.example", fail),
+      () => createSession("co-edit", "ws://127.0.0.1:8787", fail),
       /HTTP 500/,
     );
   });
@@ -220,7 +217,7 @@ describe("CollabConnection", () => {
     const received: ServerMessage[] = [];
     const events: string[] = [];
     const conn = new CollabConnection(
-      "wss://x.example/sessions/AB/ws",
+      "ws://127.0.0.1:8787/sessions/AB/ws",
       {
         onOpen: () => events.push("open"),
         onMessage: (m) => received.push(m),

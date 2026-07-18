@@ -11,7 +11,7 @@ standalone HTML export loads MapLibre and scrollama from a CDN.
 ## Open the builder
 
 Choose **Project → Story Map** to open the builder. The builder edits a story
-that is saved inside the `.geolibre.json` project file, so it travels with your
+that is saved inside the `.geoim3d.json` project file, so it travels with your
 project.
 
 !!! tip "Try it instantly"
@@ -49,7 +49,7 @@ To author content outside GeoLibre, use **Import** / **Export** next to **Add
 chapter**:
 
 - **Export JSON** writes the whole story (settings and chapters); **Import JSON**
-  reads it back (a full `.geolibre.json` project file also works).
+  reads it back (a full `.geoim3d.json` project file also works).
 - **Export CSV** writes one row per chapter (spreadsheet-friendly). **Import CSV**
   replaces the chapters while keeping your current story settings.
 

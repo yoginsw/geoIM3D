@@ -2,7 +2,6 @@ import { DirectionProvider } from "@geolibre/ui";
 import { useTranslation } from "react-i18next";
 import { DesktopShell } from "./components/layout/DesktopShell";
 import { OnboardingDialog } from "./components/layout/OnboardingDialog";
-import { UpdateNotificationModal } from "./components/layout/UpdateNotificationModal";
 import { useDesktopSettingsPersistence } from "./hooks/useDesktopSettings";
 import {
   useCredentialBootstrap,
@@ -13,7 +12,6 @@ import { useProjectUrlLoader } from "./hooks/useProjectUrlLoader";
 import { useBeforeUnloadGuard } from "./hooks/useBeforeUnloadGuard";
 import { useRecentProjectsPersistence } from "./hooks/useRecentProjectsPersistence";
 import { useRuntimeEnvironmentVariables } from "./hooks/useRuntimeEnvironmentVariables";
-import { useStartupUpdateCheck } from "./hooks/useStartupUpdateCheck";
 import { useThemeMode } from "./hooks/useThemeMode";
 import { useThemeScheme } from "./hooks/useThemeScheme";
 import { useUiProfileBootstrap } from "./hooks/useUiProfileBootstrap";
@@ -29,11 +27,6 @@ export default function App() {
   const { themeMode, toggleThemeMode } = useThemeMode();
   const projectUrlLoadState = useProjectUrlLoader();
   const { showOnboarding, dismissOnboarding } = useUiProfileBootstrap();
-  const {
-    pending: pendingUpdate,
-    remindLater,
-    skipVersion,
-  } = useStartupUpdateCheck();
 
   useDesktopSettingsPersistence();
   useCredentialBootstrap();
@@ -62,11 +55,6 @@ export default function App() {
         onToggleThemeMode={toggleThemeMode}
       />
       <OnboardingDialog open={showOnboarding} onClose={dismissOnboarding} />
-      <UpdateNotificationModal
-        pending={pendingUpdate}
-        onRemindLater={remindLater}
-        onSkipVersion={skipVersion}
-      />
     </DirectionProvider>
   );
 }

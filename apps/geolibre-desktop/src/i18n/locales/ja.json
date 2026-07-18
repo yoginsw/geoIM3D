@@ -31,53 +31,9 @@
     "title": "GeoLibre について",
     "description": "GeoLibreは軽量なクラウドネイティブGISプラットフォームです。",
     "version": "バージョン",
-    "checkForUpdates": "アップデートを確認",
-    "tryAgain": "再試行",
-    "checking": "アップデートを確認しています",
-    "upToDate": "最新の状態です({{version}})。",
-    "upToDateNoVersion": "最新の状態です。",
     "generalSectionTitle": "一般",
     "homePage": "ホームページ",
     "githubRepository": "GitHub リポジトリ"
-  },
-  "updates": {
-    "changelogTitle": "新機能",
-    "noChangelog": "リリースノートは利用できません。詳細はダウンロードページをご覧ください。",
-    "stepsTitle": "更新方法",
-    "download": "アップデートをダウンロード",
-    "steps": {
-      "download": "ダウンロードページからお使いのプラットフォーム用インストーラーをダウンロードしてください。",
-      "install": "インストーラーを実行します。ローカルのプロジェクト、設定、APIキーはそのまま保持されます。",
-      "reopen": "GeoLibreを再起動して更新を完了します。"
-    },
-    "severity": {
-      "major": "メジャーリリース",
-      "minor": "機能アップデート",
-      "patch": "パッチアップデート"
-    },
-    "available": {
-      "title": "{{version}} が利用可能です",
-      "fallback": "新しいバージョン",
-      "summary": "現在 {{current}} を実行中です。"
-    },
-    "error": {
-      "message": "アップデートを確認できませんでした。",
-      "rateLimit": "GitHubのレート制限を超えました。しばらくしてから再試行してください。",
-      "http": "GitHubが {{status}} を返しました。",
-      "noTag": "最新リリースにバージョンタグが含まれていません。",
-      "network": "GitHubに接続できませんでした。接続を確認して再試行してください。",
-      "viewDownloads": "ダウンロードを表示",
-      "viewDownloadsHint": "ブラウザでGeoLibreのダウンロードページを開き、最新バージョンを手動で確認できます。"
-    },
-    "startup": {
-      "title": "アップデートがあります",
-      "currentVersion": "現在のバージョン",
-      "latestVersion": "最新バージョン",
-      "download": "アップデートパッケージをダウンロード",
-      "remindLater": "後で通知",
-      "skipVersion": "このバージョンをスキップ",
-      "settingsHint": "アップデートの確認は 設定 → アップデート で変更できます。"
-    }
   },
   "bookmark": {
     "captureStateLabel": "完全なレイヤー状態を含める(有効・無効・レイヤー順序)",
@@ -847,12 +803,12 @@
   },
   "share": {
     "title": "プロジェクトを共有",
-    "description": "現在のプロジェクトを share.geolibre.app にアップロードし、共有リンクを取得します。",
-    "setupIntro": "アップロードする前に share.geolibre.app アカウントを接続してください。",
+    "description": "現在のプロジェクトを 設定済みのShareサービス にアップロードし、共有リンクを取得します。",
+    "setupIntro": "アップロードする前に 設定済みのShareサービス アカウントを接続してください。",
     "step1Title": "1. APIトークンを取得",
-    "step1Description": "share.geolibre.app にサインインし、設定 → APIトークンでトークンを作成してください。",
+    "step1Description": "設定済みのShareサービス にサインインし、設定 → APIトークンでトークンを作成してください。",
     "getToken": "APIトークンを取得",
-    "step2Title": "2. トークンをGeoLibreに追加",
+    "step2Title": "2. トークンをgeoIM3Dに追加",
     "step2Description": "このデバイスの設定 → 環境変数にトークンを貼り付けてください。",
     "configureToken": "ローカルトークンを設定",
     "liveAt": "プロジェクトは次のURLで公開されています:",
@@ -869,12 +825,12 @@
     "shareButton": "共有",
     "sharing": "共有中…",
     "errorFallback": "プロジェクトを共有できませんでした。",
-    "usernameRequired": "共有する前に share.geolibre.app アカウントでユーザー名を設定してください。アカウント設定を開いて選択し、もう一度お試しください。",
+    "usernameRequired": "共有する前に 設定済みのShareサービス アカウントでユーザー名を設定してください。アカウント設定を開いて選択し、もう一度お試しください。",
     "openAccountSettings": "アカウント設定を開く"
   },
   "gallery": {
     "title": "プロジェクトギャラリー",
-    "description": "share.geolibre.app で共有されている公開プロジェクトを閲覧し、GeoLibreで開きます。",
+    "description": "設定済みのShareサービス で共有されている公開プロジェクトを閲覧し、geoIM3Dで開きます。",
     "searchPlaceholder": "タイトル、作成者、タグで読み込み済みプロジェクトを絞り込む",
     "loading": "プロジェクトを読み込み中…",
     "loadingMore": "さらに読み込み中…",
@@ -883,11 +839,11 @@
     "noMatches": "絞り込み条件に一致する読み込み済みプロジェクトがありません。",
     "errorFallback": "プロジェクトギャラリーを読み込めませんでした。",
     "errorTimeout": "プロジェクトギャラリーがタイムアウトしました。もう一度お試しください。",
-    "errorNetwork": "share.geolibre.app に接続できませんでした。インターネット接続を確認してください。",
+    "errorNetwork": "設定済みのShareサービス に接続できませんでした。インターネット接続を確認してください。",
     "errorHttp": "ギャラリーを読み込めませんでした(HTTP {{status}})。",
     "errorInvalidResponse": "ギャラリーを読み込めませんでした(サーバーの応答が無効です)。",
-    "errorUnauthorized": "share.geolibre.app のAPIトークンが無効か期限切れです。設定で更新してください。",
-    "errorUsernameRequired": "自分のプロジェクトを読み込む前に share.geolibre.app アカウントでユーザー名を設定してください。",
+    "errorUnauthorized": "設定済みのShareサービス のAPIトークンが無効か期限切れです。設定で更新してください。",
+    "errorUsernameRequired": "自分のプロジェクトを読み込む前に 設定済みのShareサービス アカウントでユーザー名を設定してください。",
     "retry": "再試行",
     "open": "開く",
     "opening": "開いています…",
@@ -901,7 +857,7 @@
     "scopeFeatured": "注目",
     "scopeAll": "すべてのプロジェクト",
     "scopeMine": "自分のプロジェクト",
-    "signedOutHint": "自分の限定公開・非公開プロジェクトを表示するには、設定で share.geolibre.app のAPIトークンを追加してください。",
+    "signedOutHint": "自分の限定公開・非公開プロジェクトを表示するには、設定で 設定済みのShareサービス のAPIトークンを追加してください。",
     "emptyFeatured": "注目のプロジェクトはまだありません。",
     "emptyMine": "まだプロジェクトを共有していません。",
     "visibilityUnlisted": "限定公開",
@@ -1221,8 +1177,7 @@
       "interface": "インターフェース",
       "geocoding": "ジオコーディング",
       "ai": "AIプロバイダー",
-      "environment": "環境変数",
-      "updates": "アップデート"
+      "environment": "環境変数"
     },
     "menu": {
       "mapPreferences": "地図設定",
@@ -1232,22 +1187,8 @@
       "geocoding": "ジオコーディング",
       "ai": "AIプロバイダー",
       "environmentVariables": "環境変数",
-      "updates": "更新設定",
       "managePlugins": "プラグインを管理",
       "urlOverrideNote": "URLのレイアウトパラメータは保存済みの設定より優先されます。"
-    },
-    "updates": {
-      "title": "ソフトウェアアップデート",
-      "description": "デスクトップアプリ起動時のGeoLibreの新バージョン確認方法を設定します。",
-      "checkOnStartup": "起動時にアップデートを確認",
-      "checkOnStartupHint": "有効にすると、アプリの起動ごとにGeoLibreが新しいバージョンを確認します。完全にオフラインで運用する場合はオフにしてください。",
-      "notificationLevel": "通知する更新の種類",
-      "notificationLevelHint": "起動時の通知対象とするリリースの種類を選択します。",
-      "level": {
-        "all": "すべてのリリース(メジャー、マイナー、パッチ)",
-        "minor": "メジャーおよびマイナーリリースのみ",
-        "major": "メジャーリリースのみ"
-      }
     },
     "map": {
       "constraintsTitle": "地図の制約",
@@ -1318,9 +1259,9 @@
       "lockedNote": "このインターフェースプロファイルは管理者によって管理されており、変更できません。"
     },
     "env": {
-      "tokenTitle": "Share.GeoLibre APIトークン",
-      "tokenDescription": "プロジェクト > 共有では、このトークンを使用して地図をshare.geolibre.appにアップロードします。<tokenLink>share.geolibre.app/settings</tokenLink> を開き、設定 > APIトークン でトークンを作成して、下のフィールドに貼り付けてください。",
-      "tokenStorageNote": "このデバイスにローカルで保存され、アップロードの認証のためにshare.geolibre.appにのみ送信されます。Webビルドでは他のサイトデータと同じブラウザストレージを共有するため、端末が侵害された場合はshare.geolibre.appでトークンを失効させてください。",
+      "tokenTitle": "Share APIトークン",
+      "tokenDescription": "プロジェクト > 共有では、このトークンを使用して地図を設定済みのShareサービスにアップロードします。<tokenLink>設定済みShareサービスの設定</tokenLink> を開き、設定 > APIトークン でトークンを作成して、下のフィールドに貼り付けてください。",
+      "tokenStorageNote": "このデバイスにローカルで保存され、アップロードの認証のために設定済みのShareサービスにのみ送信されます。Webビルドでは他のサイトデータと同じブラウザストレージを共有するため、端末が侵害された場合は設定済みのShareサービスでトークンを失効させてください。",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ionトークン",
       "cesiumTokenDescription": "3Dグローブ(分割表示ペイン)はCesium Ionの世界衛星画像と地形データを使用しており、アクセストークンが必要です。<tokenLink>ion.cesium.com/tokens</tokenLink> で無料アカウントを作成し、デフォルトのアクセストークンをコピーして下に貼り付けてください。トークンがない場合、3Dグローブの切り替えは表示されません。",
@@ -1569,7 +1510,6 @@
       "githubRepository": "GitHubリポジトリ",
       "diagnostics": "診断",
       "giveFeedback": "フィードバックを送る",
-      "checkForUpdates": "更新を確認",
       "about": "このアプリについて",
       "togglePlugin": "{{name}}の表示切替",
       "managePlugins": "プラグインを管理"

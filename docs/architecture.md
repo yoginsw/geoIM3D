@@ -36,7 +36,7 @@ flowchart LR
 4. `MapCanvas` subscribes to `layers`, then `MapController.syncLayers` updates MapLibre sources and layers and keeps the layer control in sync.
 5. Style panel and layer panel updates change layer state, then map sync updates paint, visibility, opacity, ordering, and removal.
 6. Attribute table selections update the highlighted feature source and can zoom the map to the selected feature.
-7. Desktop save uses `projectFromStore` and writes `.geolibre.json` to disk.
+7. Desktop save uses `projectFromStore` and writes `.geoim3d.json` to disk.
 
 ## 3D globe view (CesiumJS)
 
@@ -46,7 +46,7 @@ The 2D MapLibre map can be joined by a 3D globe rendered with [CesiumJS](https:/
 - **Lazy loading.** The whole Cesium engine (~4.8 MB) is `import()`-ed only when a pane switches to the globe, kept in its own build chunk (`manualChunks`) and off the 2D boot path. A Vite plugin (`vite-plugins/copy-cesium-assets.ts`) stages Cesium's runtime Workers/Assets/Widgets into `public/cesium/` and the canvas sets `window.CESIUM_BASE_URL` so the engine finds them.
 - **Camera sync.** `packages/map/src/cesium-camera.ts` converts between MapLibre's Web-Mercator `MapViewState` (zoom, nadir-referenced pitch, bearing) and Cesium's camera (metric range, horizon-referenced pitch, heading), matched by **ground resolution** (metres per pixel) so the on-screen scale stays in step even when the panes differ in height. `CesiumCanvas` seeds its camera from the shared `mapView`, applies store changes to the globe, and writes the globe's own moves back — bidirectional, like the 2D panes — with a tolerance check that suppresses the apply→`moveEnd` echo so there is no jitter loop.
 - **Layer sync.** `CesiumLayerSync` (`packages/map/src/cesium-layer-sync.ts`) reconciles the store's `GeoLibreLayer[]` onto the globe the way `MapController.syncLayers` does for MapLibre, reusing the same per-pane visibility overrides and group effects as `SecondaryMapCanvas`. It renders the kinds where Cesium is the natural fit — GeoJSON (a draped `GeoJsonDataSource` styled from the layer's fill/stroke/opacity), XYZ/raster/WMTS and WMS (as `ImageryLayer`s), and 3D Tiles (a `Cesium3DTileset` primitive that consumes the layer's tileset URL, request headers, and altitude offset directly) — with live visibility/opacity, rebuild-on-source-change, and removal. Other layer kinds (PMTiles, MBTiles, Zarr, LiDAR, splats, deck.gl viz, …) are skipped on the globe and still render in the 2D panes; the exported `isCesiumSupportedLayerType` predicate lets the pane's layer menu tag those "2D only". COG/imagery-from-raster is a candidate for a later pass.
-- **Persistence.** A pane's `viewKind` is part of `SecondaryMapView` and round-trips through the `.geolibre.json` project format (`normalizeSecondaryMapViews`), so a project saved with a globe pane reopens as the globe — provided a token is available, otherwise it falls back to the 2D map.
+- **Persistence.** A pane's `viewKind` is part of `SecondaryMapView` and round-trips through the `.geoim3d.json` project format (`normalizeSecondaryMapViews`), so a project saved with a globe pane reopens as the globe — provided a token is available, otherwise it falls back to the 2D map.
 
 ## DuckDB-WASM
 
@@ -84,24 +84,24 @@ The standalone web build is an installable Progressive Web App. `vite-plugin-pwa
 Caching is split to keep the first visit light:
 
 - **Precache (app shell).** The HTML and the JS/CSS chunks that boot the map are precached, so the shell loads with no network after the first visit. The heavy chunks below are excluded from the precache to avoid a large first-load download.
-- **Runtime cache, CacheFirst.** The content-hashed build assets the precache skips (everything under `/assets/`) are cached on first use: the **MapLibre** bundle, **DuckDB-WASM and its spatial extension**, and the MapLibre feature-plugin chunks. Hashed filenames make CacheFirst safe — a redeploy mints new URLs, so a stale entry is never served as current. This is what makes local-file workflows (DuckDB Spatial conversion) work offline after they have run online once. Self-hosting the spatial extension via `VITE_DUCKDB_SPATIAL_EXTENSION_PATH` keeps it same-origin so it is cached too. **PGlite/PostGIS** is **not** in this list: it is fetched from the jsDelivr CDN (cross-origin) to keep it out of the build — ~25 MB raw, and ~22 MB of otherwise-incompressible weight in the Tauri binary — so the PostGIS SQL engine needs network on first use (see the Pyodide note below).
+- **Runtime cache, CacheFirst.** The content-hashed build assets excluded from precache are cached on first use, including MapLibre, DuckDB-WASM, and plugin chunks. Workbox also CacheFirst-caches the pinned jsDelivr assets used by Pyodide, PGlite/PostGIS, and CereusDB. These engines therefore work offline **after each required asset has been used once online**; they are not guaranteed on a never-before-used offline installation. A same-origin mirror remains appropriate for controlled or air-gapped deployments.
 - **Basemaps.** Tiles and styles from the CORS-friendly default hosts (OpenFreeMap, CARTO) are runtime-cached. Other remote tiles, services, and ArcGIS/WMS/WFS sources stay network-only by design and are unavailable offline.
 
-The **Pyodide** vector engine and the **PGlite/PostGIS** SQL engine are **not** offline-capable in the default configuration: both are loaded from the jsDelivr CDN (cross-origin), which the service worker does not cache. Point `VITE_PYODIDE_INDEX_URL` at a same-origin mirror to make Pyodide cacheable for offline use; build with `GEOLIBRE_PGLITE_CDN=0` to vendor PGlite/PostGIS back into the build (this re-adds ~22 MB to the Tauri binary). The same CDN dependency applies to the desktop build — it loads both from jsDelivr too.
+The verified Windows build procedure sets `GEOLIBRE_PGLITE_CDN=0` and `GEOLIBRE_CEREUS_CDN=0`, bundling those two engines directly into the Tauri application. Pyodide remains a CDN/mirror dependency on desktop, so Pyodide workflows require a previously available runtime or an approved self-hosted mirror; the app shell and bundled local workflows remain offline-capable without it.
 
 A new deploy is picked up via `registerType: "autoUpdate"`: the new service worker installs in the background and takes control (`skipWaiting` + `clientsClaim`), so its fresh precache serves subsequent requests. Workbox's default force-reload-on-activation is deliberately suppressed via `onNeedReload` in `src/main.tsx` — on the relative-base `/demo/` subpath that reload fired spuriously and discarded in-progress map state. Page recovery is delegated to `installStaleChunkReload`, which reloads on-demand only when an orphaned lazy chunk 404s (cooldown-guarded; if `sessionStorage` is blocked it skips the reload and lets the preload error surface). Precached chunks are served from cache and never 404, so the page is no longer reloaded out from under the user.
 
 ## Container image
 
-The root Dockerfile packages the browser version of the app. It uses a Node build stage to run the workspace build for `geolibre-desktop`, then copies `apps/geolibre-desktop/dist` into an nginx runtime image. The nginx config serves static assets and falls back to `index.html` for browser-entry URLs.
+The root Dockerfile packages the geoIM3D browser app together with the optional Python processing sidecar. A Node build stage produces `apps/geolibre-desktop/dist`; the runtime image installs `backend/geolibre_server`, starts uvicorn on loopback, and serves the static app through nginx. nginx reverse-proxies `/sidecar` to the loopback service and falls back to `index.html` for browser-entry routes.
 
-The `Publish Container Image` GitHub Actions workflow builds the image for pull requests and publishes it to GitHub Container Registry for pushes to `main`, version tags, and manual runs. The upstream image name is `ghcr.io/opengeos/geolibre`.
-
-The container does not run the Tauri desktop shell or the optional Python sidecar. Workflows that depend on desktop filesystem access still require the installed desktop app.
+No public container publication workflow is approved. The source image is for local/single-user development, does not run the Tauri desktop shell, and exposes its same-origin sidecar without authentication unless optional Basic Auth is configured. Container conversion access is confined to `/data` by default through `GEOLIBRE_CONVERSION_ROOTS`; do not expose the image to a shared or internet-facing network.
 
 ## Security
 
-- Tauri CSP allowlists tile and style hosts (OpenFreeMap, CARTO).
+- Tauri CSP permits outbound `https:` because users can open arbitrary OGC, tile, raster, and project data sources. This is an intentional data-source capability, not an approval mechanism for credential-bearing services.
+- Share, Viewer, and Collaboration use separate exact-host resolvers. Their public allowlists are empty until JBT approves deployment hostnames; only exact loopback hosts work for local development, and API/WebSocket boundaries revalidate direct overrides.
+- Native plugin HTTP remains separately allowlisted to approved geocoding hosts.
 - File access uses dialog-selected paths only.
 
 ### Native HTTP trust store and mutual TLS

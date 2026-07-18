@@ -32,6 +32,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Cursor, Read};
 use std::net::TcpListener;
@@ -83,6 +84,10 @@ struct MartinServerState {
 
 struct SidecarServerState {
     process: Mutex<Option<SidecarProcess>>,
+}
+
+struct StartupProjectState {
+    path: Mutex<Option<String>>,
 }
 
 struct JupyterServerState {
@@ -181,6 +186,8 @@ impl Drop for JupyterProcess {
 pub fn run() {
     configure_linux_webkit();
 
+    let startup_project_path = select_startup_project_path(env::args_os().skip(1));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -199,6 +206,9 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .manage(EarthEngineOAuthState::default())
+        .manage(StartupProjectState {
+            path: Mutex::new(startup_project_path),
+        })
         .manage(MartinServerState {
             process: Mutex::new(None),
         })
@@ -227,6 +237,7 @@ pub fn run() {
             read_env_vars,
             read_local_file,
             read_project_file,
+            take_startup_project_path,
             read_shapefile_siblings,
             resolve_url_redirect,
             read_mbtiles_metadata,
@@ -252,6 +263,26 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running GeoLibre Desktop");
+}
+
+fn select_startup_project_path<I>(args: I) -> Option<String>
+where
+    I: IntoIterator<Item = OsString>,
+{
+    args.into_iter()
+        .filter_map(|value| value.into_string().ok())
+        .find(|value| is_allowed_project_path(value))
+}
+
+#[tauri::command]
+fn take_startup_project_path(
+    state: tauri::State<'_, StartupProjectState>,
+) -> Result<Option<String>, String> {
+    state
+        .path
+        .lock()
+        .map_err(|_| "startup_project_state_unavailable".to_string())
+        .map(|mut path| path.take())
 }
 
 /// Whether `read_project_file` may read `path`: an absolute local path (POSIX
@@ -3063,8 +3094,9 @@ mod tests {
         client_cert_is_pkcs12, client_cert_password_without_path, ensure_fetchable_url,
         find_zip_manifest_path, is_allowed_local_vector_path, is_allowed_project_path,
         is_disallowed_ip, is_safe_absolute_path, plugin_archive_file_name,
-        resolve_sidecar_in_resource_dir,
+        resolve_sidecar_in_resource_dir, select_startup_project_path,
     };
+    use std::ffi::OsString;
     use std::io::{Cursor, Write};
     use std::net::IpAddr;
     use std::path::PathBuf;
@@ -3234,6 +3266,24 @@ mod tests {
             "/home/u/.config/gcloud/application_default_credentials.json"
         ));
         assert!(!is_allowed_project_path("C:\\Users\\u\\map.json"));
+    }
+
+    #[test]
+    fn startup_project_selector_keeps_only_the_first_canonical_absolute_path() {
+        let selected = select_startup_project_path([
+            OsString::from("--ignored"),
+            OsString::from("C:\\Users\\u\\map.json"),
+            OsString::from("C:\\Users\\u\\first.geoim3d.json"),
+            OsString::from("C:\\Users\\u\\second.geoim3d.json"),
+        ]);
+        assert_eq!(
+            selected.as_deref(),
+            Some("C:\\Users\\u\\first.geoim3d.json")
+        );
+        assert_eq!(
+            select_startup_project_path([OsString::from("relative.geoim3d.json")]),
+            None
+        );
     }
 
     #[test]

@@ -22,7 +22,7 @@ MapLibre / deck.gl / Cesium
 - Plugins: VWorld와 확장 기능
 - Processing: Browser/WASM/Sidecar Algorithm
 - Sidecar: 무거운 Python 처리와 제한된 로컬 파일 접근
-- Tauri: OS Credential, File Association, Packaging, Native I/O
+- Tauri: OS Credential, 검증된 Startup Project Argument, Packaging, Native I/O
 
 ## geoIM3D 전용 구현
 

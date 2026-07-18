@@ -1,6 +1,9 @@
 # Android
 
-GeoLibre runs as a native Android app built from the same React codebase via
+> **Upstream development reference only:** Android is not an approved geoIM3D
+> 1.0 distribution channel and has no verified geoIM3D Release artifact.
+
+Upstream GeoLibre can run as a native Android app built from the same React codebase via
 **Tauri v2 mobile** — no separate app. The webview UI is bundled in the APK, so
 the app shell works offline; map tiles and the heavier engines are fetched on
 demand (same as the desktop build).
@@ -93,9 +96,8 @@ keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA \
 
 ## Continuous integration
 
-`.github/workflows/android.yml` builds **signed**, per-ABI release APKs on each
-published GitHub release (and on demand via the "Run workflow" button) and
-uploads them as the `geolibre-android-release-apks` artifact. It signs with your release keystore when these repository secrets are
+The upstream `.github/workflows/android.yml` is retained as development
+reference only and does not produce an approved geoIM3D Release artifact. It signs with a configured release keystore when these repository secrets are
 set, and otherwise falls back to a throwaway debug key so the artifact is still
 installable for testing:
 

@@ -31,54 +31,10 @@
     "title": "About geoIM3D",
     "description": "geoIM3D is JBT's immersive 3D platform for architecture, civil engineering, real estate, environment, safety, and spatial analysis.",
     "version": "Version",
-    "checkForUpdates": "Check for updates",
-    "tryAgain": "Try again",
-    "checking": "Checking for updates",
-    "upToDate": "You are up to date ({{version}}).",
-    "upToDateNoVersion": "You are up to date.",
     "generalSectionTitle": "General",
     "homePage": "JBT website",
     "githubRepository": "Original GeoLibre project",
     "upstreamNotice": "Based on {{name}} · {{license}} License"
-  },
-  "updates": {
-    "changelogTitle": "What's new",
-    "noChangelog": "Release notes are not available. See the downloads page for details.",
-    "stepsTitle": "How to update",
-    "download": "Download update",
-    "steps": {
-      "download": "Download the installer for your platform from the downloads page.",
-      "install": "Run the installer. Your local projects, settings, and API keys are kept.",
-      "reopen": "Reopen GeoLibre to finish updating."
-    },
-    "severity": {
-      "major": "Major release",
-      "minor": "Feature update",
-      "patch": "Patch update"
-    },
-    "available": {
-      "title": "{{version}} is available",
-      "fallback": "A new version",
-      "summary": "You are running {{current}}."
-    },
-    "error": {
-      "message": "Could not check for updates.",
-      "rateLimit": "GitHub rate limit exceeded. Please try again later.",
-      "http": "GitHub returned {{status}}.",
-      "noTag": "The latest release does not include a version tag.",
-      "network": "Could not reach GitHub. Check your connection and try again.",
-      "viewDownloads": "View downloads",
-      "viewDownloadsHint": "Opens the GeoLibre downloads page in your browser so you can check the latest version manually."
-    },
-    "startup": {
-      "title": "Update available",
-      "currentVersion": "Your current version",
-      "latestVersion": "Latest available version",
-      "download": "Download update package",
-      "remindLater": "Remind me later",
-      "skipVersion": "Skip this version",
-      "settingsHint": "You can change update checks in Settings → Updates."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Include complete layer state (active, inactive, and layer order)",
@@ -935,12 +891,12 @@
   },
   "share": {
     "title": "Share project",
-    "description": "Upload the current project to share.geolibre.app and get a shareable link.",
-    "setupIntro": "Connect your share.geolibre.app account before uploading.",
+    "description": "Upload the current project to administrator-configured Share service and get a shareable link.",
+    "setupIntro": "Connect your administrator-configured Share service account before uploading.",
     "step1Title": "1. Get an API token",
-    "step1Description": "Sign in to share.geolibre.app, then create a token under Settings → API tokens.",
+    "step1Description": "Sign in to administrator-configured Share service, then create a token under Settings → API tokens.",
     "getToken": "Get API token",
-    "step2Title": "2. Add the token to GeoLibre",
+    "step2Title": "2. Add the token to geoIM3D",
     "step2Description": "Paste the token into Settings → Environment Variables on this device.",
     "configureToken": "Configure local token",
     "liveAt": "Your project is live at:",
@@ -957,12 +913,12 @@
     "shareButton": "Share",
     "sharing": "Sharing…",
     "errorFallback": "Could not share the project.",
-    "usernameRequired": "Set a username on your share.geolibre.app account before sharing. Open your account settings to choose one, then try again.",
+    "usernameRequired": "Set a username on your administrator-configured Share service account before sharing. Open your account settings to choose one, then try again.",
     "openAccountSettings": "Open account settings"
   },
   "gallery": {
     "title": "Project gallery",
-    "description": "Browse public projects shared on share.geolibre.app and open one in GeoLibre.",
+    "description": "Browse public projects shared on administrator-configured Share service and open one in geoIM3D.",
     "searchPlaceholder": "Filter loaded projects by title, author, or tag",
     "loading": "Loading projects…",
     "loadingMore": "Loading more…",
@@ -971,11 +927,11 @@
     "noMatches": "No loaded projects match your filter.",
     "errorFallback": "Could not load the project gallery.",
     "errorTimeout": "The project gallery timed out. Please try again.",
-    "errorNetwork": "Could not reach share.geolibre.app. Check your internet connection.",
+    "errorNetwork": "Could not reach administrator-configured Share service. Check your internet connection.",
     "errorHttp": "Could not load the gallery (HTTP {{status}}).",
     "errorInvalidResponse": "Could not load the gallery (invalid server response).",
-    "errorUnauthorized": "Your share.geolibre.app API token is invalid or expired. Update it in Settings.",
-    "errorUsernameRequired": "Set a username on your share.geolibre.app account before loading your projects.",
+    "errorUnauthorized": "Your administrator-configured Share service API token is invalid or expired. Update it in Settings.",
+    "errorUsernameRequired": "Set a username on your administrator-configured Share service account before loading your projects.",
     "retry": "Retry",
     "open": "Open",
     "opening": "Opening…",
@@ -990,7 +946,7 @@
     "scopeFeatured": "Featured",
     "scopeAll": "All projects",
     "scopeMine": "My projects",
-    "signedOutHint": "Add a share.geolibre.app API token in Settings to see your own unlisted and private projects.",
+    "signedOutHint": "Add an administrator-configured Share service API token in Settings to see your own unlisted and private projects.",
     "emptyFeatured": "No featured projects yet.",
     "emptyMine": "You have not shared any projects yet.",
     "visibilityUnlisted": "Unlisted",
@@ -1359,8 +1315,7 @@
       "interface": "Interface",
       "geocoding": "Geocoding",
       "ai": "AI Providers",
-      "environment": "Environment",
-      "updates": "Updates"
+      "environment": "Environment"
     },
     "menu": {
       "mapPreferences": "Map Preferences",
@@ -1370,22 +1325,8 @@
       "geocoding": "Geocoding",
       "ai": "AI Providers",
       "environmentVariables": "Environment Variables",
-      "updates": "Update Settings",
       "managePlugins": "Manage Plugins",
       "urlOverrideNote": "URL layout parameters override saved settings."
-    },
-    "updates": {
-      "title": "Software Updates",
-      "description": "Control how GeoLibre checks for new versions when the desktop app starts.",
-      "checkOnStartup": "Check for updates on startup",
-      "checkOnStartupHint": "When enabled, GeoLibre checks for a newer version each time the app starts. Turn this off for a fully offline workflow.",
-      "notificationLevel": "Notify me about",
-      "notificationLevelHint": "Choose which kinds of releases trigger a startup notification.",
-      "level": {
-        "all": "All releases (major, minor, and patches)",
-        "minor": "Major and minor releases only",
-        "major": "Major releases only"
-      }
     },
     "map": {
       "constraintsTitle": "Map constraints",
@@ -1461,9 +1402,9 @@
       "lockedNote": "This interface profile is managed by your administrator and cannot be changed."
     },
     "env": {
-      "tokenTitle": "Share.GeoLibre API token",
-      "tokenDescription": "Project > Share uses this token to upload your maps to share.geolibre.app. Open <tokenLink>share.geolibre.app/settings</tokenLink>, create a token under Settings > API tokens, then paste it into the field below.",
-      "tokenStorageNote": "Stored locally on this device and sent only to share.geolibre.app to authenticate uploads. On the web build it shares the same browser storage as other site data, so revoke it on share.geolibre.app if your machine is compromised.",
+      "tokenTitle": "Share API token",
+      "tokenDescription": "Project > Share uses this token to upload your maps to administrator-configured Share service. Open <tokenLink>administrator-configured Share service settings</tokenLink>, create a token under Settings > API tokens, then paste it into the field below.",
+      "tokenStorageNote": "Stored locally on this device and sent only to administrator-configured Share service to authenticate uploads. On the web build it shares the same browser storage as other site data, so revoke it on administrator-configured Share service if your machine is compromised.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Cesium Ion token",
       "cesiumTokenDescription": "The 3D globe (a split-view pane) uses Cesium Ion world imagery and terrain, which need an access token. Create a free account at <tokenLink>ion.cesium.com/tokens</tokenLink>, copy your default access token, and paste it below. Without a token the 3D globe toggle is hidden.",
@@ -1733,7 +1674,6 @@
       "githubRepository": "GitHub repository",
       "diagnostics": "Diagnostics",
       "giveFeedback": "Give Feedback",
-      "checkForUpdates": "Check for Updates",
       "about": "About",
       "togglePlugin": "Toggle {{name}}",
       "managePlugins": "Manage Plugins"

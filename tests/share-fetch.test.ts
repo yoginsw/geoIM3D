@@ -11,6 +11,8 @@ import {
   fetchSharedProjects,
 } from "../apps/geolibre-desktop/src/lib/share-gallery";
 
+const SHARE_FIXTURE_URL = "http://127.0.0.1:8787";
+
 // A minimal JSON Response for a share endpoint.
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -64,8 +66,8 @@ describe("share fetch override", () => {
       return Promise.resolve(
         jsonResponse({
           project: {
-            projectUrl: "https://share.geolibre.app/u/p",
-            rawJsonUrl: "https://share.geolibre.app/u/p.geolibre.json",
+            projectUrl: `${SHARE_FIXTURE_URL}/u/p`,
+            rawJsonUrl: `${SHARE_FIXTURE_URL}/u/p.geoim3d.json`,
           },
         }),
       );
@@ -73,11 +75,12 @@ describe("share fetch override", () => {
 
     await uploadProjectToShare({
       token: "tok",
-      filename: "p.geolibre.json",
+      filename: "p.geoim3d.json",
       content: "{}",
       visibility: "public",
+      baseUrl: SHARE_FIXTURE_URL,
     });
-    assert.equal(seen, "https://share.geolibre.app/api/projects");
+    assert.equal(seen, `${SHARE_FIXTURE_URL}/api/projects`);
   });
 
   it("fetchSharedProjects uses the installed share fetch", async () => {
@@ -87,8 +90,8 @@ describe("share fetch override", () => {
       return Promise.resolve(jsonResponse({ projects: [] }));
     }) as typeof fetch);
 
-    await fetchSharedProjects();
-    assert.equal(seen, "https://share.geolibre.app/api/projects");
+    await fetchSharedProjects({ baseUrl: SHARE_FIXTURE_URL });
+    assert.equal(seen, `${SHARE_FIXTURE_URL}/api/projects`);
   });
 
   it("fetchMyProjects uses the installed share fetch (with auth)", async () => {
@@ -104,10 +107,10 @@ describe("share fetch override", () => {
       return Promise.resolve(jsonResponse({ projects: [] }));
     }) as typeof fetch);
 
-    await fetchMyProjects({ token: "tok" });
+    await fetchMyProjects({ token: "tok", baseUrl: SHARE_FIXTURE_URL });
     assert.deepEqual(seen, [
-      "https://share.geolibre.app/api/users/me",
-      "https://share.geolibre.app/api/users/giswqs/projects",
+      `${SHARE_FIXTURE_URL}/api/users/me`,
+      `${SHARE_FIXTURE_URL}/api/users/giswqs/projects`,
     ]);
     // The share-host request carries the bearer token via shareAuthorizedFetch.
     assert.equal(auth, "Bearer tok");

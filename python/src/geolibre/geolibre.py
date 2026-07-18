@@ -14,6 +14,7 @@ import time
 import uuid
 import warnings
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 import anywidget
 import traitlets
@@ -770,16 +771,15 @@ class Map(anywidget.AnyWidget):
             return None
         return png
 
-    # Hosted GeoLibre viewer used as the default to_html() app, so an exported
-    # file is portable (loads the app over the network instead of the
-    # session-bound localhost bundle).
-    _DEFAULT_HTML_APP_URL = "https://web.geolibre.app/"
+    # geoIM3D has no approved public viewer deployment. Callers must explicitly
+    # provide an approved deployment URL or the session-bound local app URL.
+    _DEFAULT_HTML_APP_URL = ""
 
     def to_html(
         self,
         path: str | None = None,
         *,
-        title: str = "GeoLibre Map",
+        title: str = "geoIM3D Map",
         width: str = "100%",
         height: str | None = None,
         app_url: str | None = None,
@@ -800,10 +800,8 @@ class Map(anywidget.AnyWidget):
             width: CSS width of the embedded map (e.g. ``"100%"`` or ``"800px"``).
             height: CSS height of the embedded map; defaults to this map's
                 :attr:`height`.
-            app_url: Base URL of the GeoLibre app to embed. Defaults to the
-                hosted viewer so the export is portable. Pass a self-hosted
-                deployment URL to pin a specific version, or this map's live
-                ``_app_url`` to embed the session-bound localhost bundle.
+            app_url: Explicit approved geoIM3D deployment URL or this map's
+                session-bound local ``_app_url``. No public default is used.
 
         Returns:
             The HTML string, or ``None`` when written to ``path``.
@@ -815,6 +813,15 @@ class Map(anywidget.AnyWidget):
             URLs or tile sources for a fully self-contained export.
         """
         base_url = app_url or self._DEFAULT_HTML_APP_URL
+        if not base_url:
+            raise ValueError("to_html: viewer URL is not configured for this deployment")
+        parsed_url = urlparse(base_url)
+        if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname not in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }:
+            raise ValueError("to_html: viewer URL host is not approved")
         # Force the embed bridge on (isEmbedded() honours ?embed=1). Insert the
         # parameter into the query string *before* any URL fragment: a "#..."
         # fragment would otherwise swallow a trailing "?embed=1" (browsers read

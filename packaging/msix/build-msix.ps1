@@ -3,29 +3,16 @@ param(
   [string] $Configuration = "release",
   [ValidateSet("x64", "x86", "arm64", "arm", "neutral")]
   [string] $Architecture = "x64",
-  # Identity/Publisher. The Microsoft Store validates this against the account's
-  # publisher ID, so it must be the seller CN=<GUID> from Partner Center
-  # (Product Identity), not a friendly name. Override for a self-signed sideload
-  # build.
-  [string] $Publisher = "CN=E6AE8172-DC4F-4F79-844B-9D84204BF95A",
-  # Properties/PublisherDisplayName. The Microsoft Store validates this strictly
-  # against the registered publisher display name, so it must match Partner
-  # Center exactly ("Open Geospatial Solutions"). Unlike Identity Name/Publisher,
-  # the Store does not remap it on ingestion.
-  [string] $PublisherDisplayName = "Open Geospatial Solutions",
-  # Identity Name. Must be the reserved package name from Partner Center
-  # (Product Identity) for a Microsoft Store submission; the Store rejects the
-  # Tauri identifier. Pass "" to fall back to the Tauri identifier for a
-  # non-Store build.
-  [string] $Name = "OpenGeospatialSolutions.GeoLibre",
-  # Package display name (Properties/DisplayName). For a Microsoft Store
-  # submission it must be a name you reserved in Partner Center ("GeoLibre"),
-  # which differs from the Tauri productName ("GeoLibre Desktop"). Pass "" to
-  # fall back to the productName for a non-Store build.
-  [string] $DisplayName = "GeoLibre",
-  # Default package language. Required by the Store; every MSIX must declare one.
+  # Sideload identity defaults. Store builds must inject the JBT Partner Center
+  # Name/Publisher values explicitly; do not reuse the upstream GeoLibre identity.
+  [string] $Publisher = "CN=JBT",
+  [string] $PublisherDisplayName = "JBT",
+  [string] $Name = "",
+  [string] $DisplayName = "",
+  # Default package language. Every MSIX must declare one.
   [ValidatePattern('^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$')]
-  [string] $Language = "en-us"
+  [string] $Language = "ko-KR",
+  [string] $CargoTargetDir = $env:CARGO_TARGET_DIR
 )
 
 $ErrorActionPreference = "Stop"
@@ -69,7 +56,14 @@ function ConvertTo-XmlText([string] $Value) {
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $appRoot = Resolve-Path (Join-Path $repoRoot $AppDir)
 $tauriDir = Join-Path $appRoot "src-tauri"
-$targetDir = Join-Path $tauriDir "target\$Configuration"
+$targetRoot = if ([string]::IsNullOrWhiteSpace($CargoTargetDir)) {
+  Join-Path $tauriDir "target"
+} elseif ([IO.Path]::IsPathRooted($CargoTargetDir)) {
+  $CargoTargetDir
+} else {
+  Join-Path $repoRoot $CargoTargetDir
+}
+$targetDir = Join-Path ([IO.Path]::GetFullPath($targetRoot)) $Configuration
 $bundleDir = Join-Path $targetDir "bundle\msix"
 $stagingDir = Join-Path $targetDir "msix-package"
 $configPath = Join-Path $tauriDir "tauri.conf.json"
@@ -96,11 +90,11 @@ if (-not (Test-Path $binaryPath)) {
   throw "Could not find $binaryPath. Run a Windows Tauri release build before MSIX packaging."
 }
 
-$description = "Lightweight cloud-native desktop GIS"
+$description = "실감형 3D 플랫폼"
 $assetsDir = Join-Path $stagingDir "Assets"
 $backendPackageDir = Join-Path $stagingDir "backend\geolibre_server"
 $manifestPath = Join-Path $stagingDir "AppxManifest.xml"
-$packageName = "$binaryName-$($config.version)-$Architecture.msix"
+$packageName = "$productName-$($config.version)-$Architecture.msix"
 $packagePath = Join-Path $bundleDir $packageName
 
 Remove-Item -Recurse -Force $stagingDir -ErrorAction SilentlyContinue
@@ -110,6 +104,12 @@ Copy-Item -Force $binaryPath (Join-Path $stagingDir "$binaryName.exe")
 Copy-Item -Force (Join-Path $targetDir "*.dll") $stagingDir -ErrorAction SilentlyContinue
 Copy-Item -Recurse -Force (Join-Path $backendDir "*") $backendPackageDir
 Get-ChildItem -Recurse -Path $backendPackageDir -Include "__pycache__", "*.pyc", "*.pyo", "tests", "test_*.py" |
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+$devArtifacts = @(
+    ".env", ".env.*", "venv", ".venv", "env", "*.egg-info", "dist", "build",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".coverage", "coverage.xml", "htmlcov", "AGENTS.md"
+)
+Get-ChildItem -Recurse -Force -Path $backendPackageDir -Include $devArtifacts |
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 $assetNames = @(
@@ -145,13 +145,14 @@ $manifest = @"
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Applications>
-    <Application Id="GeoLibreDesktop" Executable="$(ConvertTo-XmlText "$binaryName.exe")" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="geoIM3D" Executable="$(ConvertTo-XmlText "$binaryName.exe")" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="$(ConvertTo-XmlText $productName)"
         Description="$(ConvertTo-XmlText $description)"
         BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png" />
+
     </Application>
   </Applications>
   <Capabilities>

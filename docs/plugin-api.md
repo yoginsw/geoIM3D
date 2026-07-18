@@ -264,7 +264,7 @@ Validate URL parameter values before acting on them. Anyone can craft a link to 
 For example:
 
 ```text
-https://web.geolibre.app/?url=https://example.com/project.geolibre.json&exampleGeoJson=https://example.com/data.geojson
+http://localhost:4173/?url=https://example.com/project.geoim3d.json&exampleGeoJson=https://example.com/data.geojson
 ```
 
 A URL parameter activates only an already-registered (installed) plugin that owns it; it never loads a plugin from the URL. For external plugins, include the plugin manifest URL in the project `plugins` state (so the plugin is registered) before relying on its URL handler — the matching parameter then activates and dispatches it even if it is not in the active set.
@@ -503,7 +503,7 @@ When using the template, update `geolibre-plugin/plugin.json` and `src/geolibre.
 
 The Settings menu's **Manage Plugins** entry opens a standalone dialog (modeled on QGIS's plugin manager) with **All**, **Installed**, **Not installed**, **Upgradeable**, and **Settings** sections. The first four list curated registry plugins so users can install, update, and uninstall them without hand-entering manifest URLs; the Settings section installs a plugin from a local `.zip` and manages additional local plugin directories and manual manifest URLs. Actions apply immediately (install/uninstall/update are live; uninstall asks for confirmation). It is a thin layer over the manifest-URL loader above: installing an entry records its manifest URL in the plugin manifest URL list, and the existing loader fetches and registers it. It introduces no new trust path.
 
-The registry is JSON, fetched from `VITE_GEOLIBRE_PLUGIN_REGISTRY_URL` or, by default, the hosted registry at `https://plugins.geolibre.app/plugin-registry.json` (the [opengeos/geolibre-plugins](https://github.com/opengeos/geolibre-plugins) repo, published to GitHub Pages with CORS enabled). It is an array, or an object with a `plugins` array, of entries:
+The registry is JSON. geoIM3D has no approved public registry and therefore performs no default registry request. Development builds may set `VITE_GEOLIBRE_PLUGIN_REGISTRY_URL` to an explicit loopback HTTP(S) endpoint; non-loopback values fail closed. The payload is an array, or an object with a `plugins` array, of entries:
 
 ```json
 {

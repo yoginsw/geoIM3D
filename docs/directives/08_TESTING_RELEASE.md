@@ -22,7 +22,7 @@ npm run test:backend:coverage
 | Plugin/VWorld | Mock Contract, Error/Rate Limit, Offline Test |
 | Sidecar | 전체 `test` Extra Backend Suite |
 | PWA/Offline | Service Worker Offline E2E |
-| Packaging | Install, Upgrade, Uninstall, File Association |
+| Packaging | Install, Upgrade, Uninstall, Project Argument Open, Registry 비변경 |
 
 ## Windows Phase Gate
 
@@ -41,7 +41,7 @@ npm run test:backend:coverage
 
 - 사용자 화면 금지 문자열 검사: About/License 이외 `GeoLibre` 노출 0건
 - `geoIM3D`, JBT, Version, Copyright 정확성
-- `.geoim3d.json` File Association
+- `.geoim3d.json` 앱 내부/Startup Argument Open 및 OS Association 부재
 - 한국어 UI와 Light Theme
 - 3D Globe 기본 시작
 - 숨김 Feature의 우회 노출 없음

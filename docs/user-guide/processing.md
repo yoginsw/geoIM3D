@@ -5,7 +5,6 @@ The **Processing** menu collects GeoLibre's analysis and conversion tools: vecto
 !!! note "Page order"
     This page groups the tools by theme. In the menu itself the items appear in a different order: AI Assistant (top), Whitebox, SQL Workspace, Python Console, Conversion, Vector, Raster, AI Segmentation, Planetary Computer, Earth Engine.
 
-![Vector tools dialog](https://data.geolibre.app/images/geolibre-processing-vector.webp)
 
 ## Vector
 

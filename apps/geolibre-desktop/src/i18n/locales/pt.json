@@ -31,53 +31,9 @@
     "title": "Sobre o GeoLibre",
     "description": "O GeoLibre é uma plataforma SIG leve e nativa da nuvem.",
     "version": "Versão",
-    "checkForUpdates": "Verificar atualizações",
-    "tryAgain": "Tentar novamente",
-    "checking": "Verificando atualizações",
-    "upToDate": "Você está atualizado ({{version}}).",
-    "upToDateNoVersion": "Você está atualizado.",
     "generalSectionTitle": "Geral",
     "homePage": "Página inicial",
     "githubRepository": "Repositório do GitHub"
-  },
-  "updates": {
-    "changelogTitle": "Novidades",
-    "noChangelog": "As notas de versão não estão disponíveis. Consulte a página de downloads para mais detalhes.",
-    "stepsTitle": "Como atualizar",
-    "download": "Baixar atualização",
-    "steps": {
-      "download": "Baixe o instalador para sua plataforma na página de downloads.",
-      "install": "Execute o instalador. Seus projetos locais, configurações e chaves de API são mantidos.",
-      "reopen": "Reabra o GeoLibre para concluir a atualização."
-    },
-    "severity": {
-      "major": "Versão principal",
-      "minor": "Atualização de recursos",
-      "patch": "Atualização de correção"
-    },
-    "available": {
-      "title": "A versão {{version}} está disponível",
-      "fallback": "Uma nova versão",
-      "summary": "Você está executando a versão {{current}}."
-    },
-    "error": {
-      "message": "Não foi possível verificar atualizações.",
-      "rateLimit": "Limite de taxa do GitHub excedido. Tente novamente mais tarde.",
-      "http": "O GitHub retornou {{status}}.",
-      "noTag": "A versão mais recente não inclui uma tag de versão.",
-      "network": "Não foi possível acessar o GitHub. Verifique sua conexão e tente novamente.",
-      "viewDownloads": "Ver downloads",
-      "viewDownloadsHint": "Abre a página de downloads do GeoLibre no seu navegador para que você possa verificar a versão mais recente manualmente."
-    },
-    "startup": {
-      "title": "Atualização disponível",
-      "currentVersion": "Sua versão atual",
-      "latestVersion": "Versão mais recente disponível",
-      "download": "Baixar pacote de atualização",
-      "remindLater": "Lembrar mais tarde",
-      "skipVersion": "Ignorar esta versão",
-      "settingsHint": "Você pode alterar as verificações de atualização em Configurações → Atualizações."
-    }
   },
   "bookmark": {
     "captureStateLabel": "Incluir estado completo das camadas (ativas, inativas e ordem das camadas)",
@@ -877,12 +833,12 @@
   },
   "share": {
     "title": "Compartilhar projeto",
-    "description": "Envie o projeto atual para share.geolibre.app e obtenha um link compartilhável.",
-    "setupIntro": "Conecte sua conta share.geolibre.app antes de enviar.",
+    "description": "Envie o projeto atual para serviço Share configurado e obtenha um link compartilhável.",
+    "setupIntro": "Conecte sua conta serviço Share configurado antes de enviar.",
     "step1Title": "1. Obtenha um token de API",
-    "step1Description": "Faça login em share.geolibre.app e, em seguida, crie um token em Configurações → Tokens de API.",
+    "step1Description": "Faça login em serviço Share configurado e, em seguida, crie um token em Configurações → Tokens de API.",
     "getToken": "Obter token de API",
-    "step2Title": "2. Adicione o token ao GeoLibre",
+    "step2Title": "2. Adicione o token ao geoIM3D",
     "step2Description": "Cole o token em Configurações → Variáveis de ambiente neste dispositivo.",
     "configureToken": "Configurar token local",
     "liveAt": "Seu projeto está disponível em:",
@@ -899,12 +855,12 @@
     "shareButton": "Compartilhar",
     "sharing": "Compartilhando…",
     "errorFallback": "Não foi possível compartilhar o projeto.",
-    "usernameRequired": "Defina um nome de usuário na sua conta share.geolibre.app antes de compartilhar. Abra as configurações da sua conta para escolher um e tente novamente.",
+    "usernameRequired": "Defina um nome de usuário na sua conta serviço Share configurado antes de compartilhar. Abra as configurações da sua conta para escolher um e tente novamente.",
     "openAccountSettings": "Abrir configurações da conta"
   },
   "gallery": {
     "title": "Galeria de projetos",
-    "description": "Explore projetos públicos compartilhados em share.geolibre.app e abra um no GeoLibre.",
+    "description": "Explore projetos públicos compartilhados em serviço Share configurado e abra um no geoIM3D.",
     "searchPlaceholder": "Filtrar projetos carregados por título, autor ou tag",
     "loading": "Carregando projetos…",
     "loadingMore": "Carregando mais…",
@@ -913,11 +869,11 @@
     "noMatches": "Nenhum projeto carregado corresponde ao seu filtro.",
     "errorFallback": "Não foi possível carregar a galeria de projetos.",
     "errorTimeout": "A galeria de projetos expirou. Tente novamente.",
-    "errorNetwork": "Não foi possível acessar share.geolibre.app. Verifique sua conexão com a internet.",
+    "errorNetwork": "Não foi possível acessar serviço Share configurado. Verifique sua conexão com a internet.",
     "errorHttp": "Não foi possível carregar a galeria (HTTP {{status}}).",
     "errorInvalidResponse": "Não foi possível carregar a galeria (resposta inválida do servidor).",
-    "errorUnauthorized": "Seu token de API do share.geolibre.app é inválido ou expirou. Atualize-o em Configurações.",
-    "errorUsernameRequired": "Defina um nome de usuário na sua conta share.geolibre.app antes de carregar seus projetos.",
+    "errorUnauthorized": "Seu token de API do serviço Share configurado é inválido ou expirou. Atualize-o em Configurações.",
+    "errorUsernameRequired": "Defina um nome de usuário na sua conta serviço Share configurado antes de carregar seus projetos.",
     "retry": "Tentar novamente",
     "open": "Abrir",
     "opening": "Abrindo…",
@@ -932,7 +888,7 @@
     "scopeFeatured": "Em destaque",
     "scopeAll": "Todos os projetos",
     "scopeMine": "Meus projetos",
-    "signedOutHint": "Adicione um token de API do share.geolibre.app em Configurações para ver seus próprios projetos não listados e privados.",
+    "signedOutHint": "Adicione um token de API do serviço Share configurado em Configurações para ver seus próprios projetos não listados e privados.",
     "emptyFeatured": "Ainda não há projetos em destaque.",
     "emptyMine": "Você ainda não compartilhou nenhum projeto.",
     "visibilityUnlisted": "Não listado",
@@ -1253,8 +1209,7 @@
       "interface": "Interface",
       "geocoding": "Geocodificação",
       "ai": "Provedores de IA",
-      "environment": "Ambiente",
-      "updates": "Atualizações"
+      "environment": "Ambiente"
     },
     "menu": {
       "mapPreferences": "Preferências do mapa",
@@ -1264,22 +1219,8 @@
       "geocoding": "Geocodificação",
       "ai": "Provedores de IA",
       "environmentVariables": "Variáveis de ambiente",
-      "updates": "Configurações de atualização",
       "managePlugins": "Gerenciar plugins",
       "urlOverrideNote": "Os parâmetros de layout da URL substituem as configurações salvas."
-    },
-    "updates": {
-      "title": "Atualizações de software",
-      "description": "Controle como o GeoLibre verifica novas versões quando o aplicativo desktop é iniciado.",
-      "checkOnStartup": "Verificar atualizações ao iniciar",
-      "checkOnStartupHint": "Quando ativado, o GeoLibre verifica uma versão mais recente sempre que o aplicativo é iniciado. Desative para um fluxo de trabalho totalmente offline.",
-      "notificationLevel": "Notificar-me sobre",
-      "notificationLevelHint": "Escolha quais tipos de versões acionam uma notificação de inicialização.",
-      "level": {
-        "all": "Todas as versões (principais, secundárias e correções)",
-        "minor": "Somente versões principais e secundárias",
-        "major": "Somente versões principais"
-      }
     },
     "map": {
       "constraintsTitle": "Restrições do mapa",
@@ -1350,9 +1291,9 @@
       "lockedNote": "Este perfil de interface é gerenciado pelo seu administrador e não pode ser alterado."
     },
     "env": {
-      "tokenTitle": "Token de API do Share.GeoLibre",
-      "tokenDescription": "Projeto > Compartilhar usa este token para enviar seus mapas para share.geolibre.app. Abra <tokenLink>share.geolibre.app/settings</tokenLink>, crie um token em Configurações > Tokens de API e, em seguida, cole-o no campo abaixo.",
-      "tokenStorageNote": "Armazenado localmente neste dispositivo e enviado apenas para share.geolibre.app para autenticar envios. Na versão web, ele compartilha o mesmo armazenamento do navegador que outros dados do site, então revogue-o em share.geolibre.app se sua máquina for comprometida.",
+      "tokenTitle": "Token de API do Share",
+      "tokenDescription": "Projeto > Compartilhar usa este token para enviar seus mapas para serviço Share configurado. Abra <tokenLink>configurações do serviço Share configurado</tokenLink>, crie um token em Configurações > Tokens de API e, em seguida, cole-o no campo abaixo.",
+      "tokenStorageNote": "Armazenado localmente neste dispositivo e enviado apenas para serviço Share configurado para autenticar envios. Na versão web, ele compartilha o mesmo armazenamento do navegador que outros dados do site, então revogue-o em serviço Share configurado se sua máquina for comprometida.",
       "tokenPlaceholder": "glb_…",
       "cesiumTokenTitle": "Token do Cesium Ion",
       "cesiumTokenDescription": "O globo 3D (um painel de visualização dividida) usa imagens e terreno mundiais do Cesium Ion, que precisam de um token de acesso. Crie uma conta gratuita em <tokenLink>ion.cesium.com/tokens</tokenLink>, copie seu token de acesso padrão e cole-o abaixo. Sem um token, o alternador do globo 3D fica oculto.",
@@ -1602,7 +1543,6 @@
       "githubRepository": "Repositório do GitHub",
       "diagnostics": "Diagnósticos",
       "giveFeedback": "Enviar feedback",
-      "checkForUpdates": "Verificar atualizações",
       "about": "Sobre",
       "togglePlugin": "Alternar {{name}}",
       "managePlugins": "Gerenciar plugins"

@@ -1,58 +1,15 @@
-# winget packaging (`OpenGeos.GeoLibre`)
+# geoIM3D Winget status
 
-GeoLibre is published to the [Windows Package Manager](https://learn.microsoft.com/windows/package-manager/)
-(winget) as **`OpenGeos.GeoLibre`**, so Windows users can install it with:
+geoIM3D에는 현재 승인된 Winget Package Identifier나 공개 Manifest가 없습니다.
+Upstream `OpenGeos.GeoLibre` Identity는 geoIM3D 제품에 사용하지 않습니다.
 
-```powershell
-winget install OpenGeos.GeoLibre
-```
+공식 Winget 배포를 추가하려면 Phase 8에서 다음을 먼저 확정해야 합니다.
 
-The package wraps the official Tauri-built **NSIS** installer (winget type
-`nullsoft`) from the GitHub release, x64, per-user scope (Tauri's NSIS default).
-winget hosts no binaries itself: it stores YAML manifests in the community repo
-[`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) and downloads
-the installer from the release URL.
+1. JBT 소유 Package Identifier
+2. Code-signed NSIS Installer URL 및 SHA-256
+3. Publisher/Display name/License Metadata
+4. Clean Windows 설치·실행·앱 내부 `.geoim3d.json` Open·제거 검증
+5. Independent Release Review 승인
 
-## Files
-
-The three manifests here are **reference copies** of what is submitted to
-`winget-pkgs` (under `manifests/o/OpenGeos/GeoLibre/<version>/`), validated
-against the v1.6.0 JSON schemas:
-
-- `OpenGeos.GeoLibre.yaml` (version manifest)
-- `OpenGeos.GeoLibre.installer.yaml` (installer: URL, sha256, `nullsoft`, x64)
-- `OpenGeos.GeoLibre.locale.en-US.yaml` (name, publisher, description, license)
-
-## One-time setup (maintainer)
-
-The release workflow submits new versions automatically with
-[`winget-releaser`](https://github.com/vedantmgoyal9/winget-releaser) (which uses
-[`komac`](https://github.com/russellbanks/Komac)). It needs:
-
-1. A fork of `microsoft/winget-pkgs` under your account (`giswqs/winget-pkgs`).
-2. A **classic** Personal Access Token with the `public_repo` scope, added as the
-   repo secret **`WINGET_TOKEN`** (Settings -> Secrets and variables -> Actions).
-   The action uses it to push to your fork and open the PR to `winget-pkgs`.
-   Without the secret the `winget` job skips itself, so forks are unaffected.
-
-The very first submission (a new package) is done manually; subsequent versions
-are automated by the `winget` job.
-
-## How CI keeps it current
-
-On every published, non-prerelease release, the isolated `winget` job in
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml) runs
-`winget-releaser`, which downloads the release's `*_x64-setup.exe`, regenerates
-the manifests for the new version, and opens a PR to `microsoft/winget-pkgs`. The
-job is `continue-on-error` and independent of the asset build and the other
-publish targets.
-
-## Maintenance notes
-
-- **Installer:** the `installers-regex` (`_x64-setup\.exe$`) selects the NSIS
-  setup. To switch to the MSI, change the regex and set `InstallerType: wix`.
-- **Scope:** `user` reflects Tauri's NSIS default (`currentUser`). If a future
-  build switches to per-machine, update `Scope` to `machine`.
-- **Schema:** validate edits with the official schemas, e.g.
-  `winget validate --manifest <dir>` on Windows, or against
-  `https://aka.ms/winget-manifest.installer.1.6.0.schema.json`.
+그 전에는 Winget 제출 Workflow를 두지 않으며 이
+Directory에 제출 가능한 Manifest를 두지 않습니다.

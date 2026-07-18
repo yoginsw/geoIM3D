@@ -2270,6 +2270,15 @@ function isFileMissingError(error: unknown): boolean {
   );
 }
 
+/** Consume the canonical project path passed by the Windows shell at startup. */
+export async function takeStartupProjectPath(): Promise<string | null> {
+  if (!isTauri()) return null;
+  const value = await invoke<unknown>("take_startup_project_path");
+  return typeof value === "string" && isCanonicalProjectReference(value)
+    ? value
+    : null;
+}
+
 export async function openRecentProjectFile(
   path: string,
   signal?: AbortSignal,

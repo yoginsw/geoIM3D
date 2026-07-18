@@ -13,9 +13,9 @@ import {
 const PROJECT_DTO = {
   username: "giswqs",
   slug: "my-map",
-  projectUrl: "https://share.geolibre.app/giswqs/my-map",
-  viewerUrl: "https://web.geolibre.app/?url=https://share.geolibre.app/giswqs/my-map.geolibre.json",
-  rawJsonUrl: "https://share.geolibre.app/giswqs/my-map.geolibre.json",
+  projectUrl: "http://127.0.0.1:8787/giswqs/my-map",
+  viewerUrl: "http://127.0.0.1:4173/?url=http://127.0.0.1:8787/giswqs/my-map.geoim3d.json",
+  rawJsonUrl: "http://127.0.0.1:8787/giswqs/my-map.geoim3d.json",
 };
 
 function fakeFetch(
@@ -36,10 +36,10 @@ function fakeFetch(
 
 const baseArgs = {
   token: "glb_secrettoken",
-  filename: "my-map.geolibre.json",
+  filename: "my-map.geoim3d.json",
   content: '{"version":"1.0.0"}',
   visibility: "unlisted" as const,
-  baseUrl: "https://share.geolibre.app",
+  baseUrl: "http://127.0.0.1:8787",
 };
 
 describe("isShareableTitle", () => {
@@ -70,10 +70,10 @@ describe("resolveShareBaseUrl", () => {
     assert.equal(resolveShareBaseUrl("   "), DEFAULT_SHARE_BASE_URL);
   });
 
-  it("accepts an HTTPS override and trims trailing slashes", () => {
+  it("rejects an unapproved public HTTPS override", () => {
     assert.equal(
       resolveShareBaseUrl("https://staging.geolibre.app/"),
-      "https://staging.geolibre.app",
+      DEFAULT_SHARE_BASE_URL,
     );
   });
 
@@ -124,13 +124,13 @@ describe("uploadProjectToShare", () => {
     const result = await uploadProjectToShare({ ...baseArgs, fetchImpl: fn });
 
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, "https://share.geolibre.app/api/projects");
+    assert.equal(calls[0].url, "http://127.0.0.1:8787/api/projects");
     assert.equal(calls[0].init.method, "POST");
     const headers = calls[0].init.headers as Record<string, string>;
     assert.equal(headers.Authorization, "Bearer glb_secrettoken");
     assert.equal(headers["Content-Type"], "application/json");
     assert.deepEqual(JSON.parse(calls[0].init.body as string), {
-      filename: "my-map.geolibre.json",
+      filename: "my-map.geoim3d.json",
       content: '{"version":"1.0.0"}',
       visibility: "unlisted",
     });
@@ -228,8 +228,8 @@ describe("uploadProjectToShare", () => {
   it("defaults optional fields to empty strings", async () => {
     const { fn } = fakeFetch(201, {
       project: {
-        projectUrl: "https://share.geolibre.app/user/project",
-        rawJsonUrl: "https://share.geolibre.app/user/project.geolibre.json",
+        projectUrl: "http://127.0.0.1:8787/user/project",
+        rawJsonUrl: "http://127.0.0.1:8787/user/project.geoim3d.json",
       },
     });
     const result = await uploadProjectToShare({ ...baseArgs, fetchImpl: fn });

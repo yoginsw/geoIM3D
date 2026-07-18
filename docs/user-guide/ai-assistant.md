@@ -63,7 +63,7 @@ shell profile or set in the Windows *Environment Variables* dialog. Set a
 supported variable in your OS environment, restart the app, and the matching
 provider is configured automatically: you never type the key into Settings, and
 because it is not entered there, it is **never written to the saved
-`.geolibre.json` project file**. This is the recommended way to keep API keys out
+`.geoim3d.json` project file**. This is the recommended way to keep API keys out
 of project files that you share or commit.
 
 Only the following allowlisted names are read from your environment — GeoLibre

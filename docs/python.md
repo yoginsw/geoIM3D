@@ -1,41 +1,31 @@
-# Python package (Jupyter)
+# Upstream Python/Jupyter compatibility reference
 
-[![image](https://img.shields.io/pypi/v/geolibre.svg)](https://pypi.python.org/pypi/geolibre)
-[![image](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/GeoLibre/blob/main/python/examples/getting-started.ipynb)
-[![image](https://img.shields.io/conda/vn/conda-forge/geolibre.svg)](https://anaconda.org/conda-forge/geolibre)
-[![Conda Recipe](https://img.shields.io/badge/recipe-geolibre-green.svg)](https://github.com/conda-forge/geolibre-feedstock)
+> This workspace is retained for local source compatibility and testing. It is
+> not an approved geoIM3D distribution channel. This fork does not publish it
+> to PyPI, Conda, Colab, or a hosted Jupyter service.
 
 GeoLibre ships a Python package, **`geolibre`**, that embeds the full GeoLibre
 app inside a Jupyter notebook cell as an [anywidget](https://anywidget.dev),
 with a [leafmap](https://leafmap.org)-style API.
 
 The widget loads the complete GeoLibre app (menus, panels, processing tools) in
-an iframe. State syncs both ways through a single `.geolibre.json` project, so
+an iframe. State syncs both ways through a single `.geoim3d.json` project, so
 data you add from Python appears in the UI, and edits you make in the UI
 (panning, zooming, adding layers) are readable back from Python.
 
-## Install
+## Local source setup
 
 ```bash
-pip install geolibre
-```
-
-Or with conda from [conda-forge](https://anaconda.org/conda-forge/geolibre):
-
-```bash
-conda install -c conda-forge geolibre
+uv sync --project python --extra dev
+uv run --project python pytest python/tests
 ```
 
 Optional extras for `add_geojson()` from a GeoDataFrame and for reading **local**
 vector files with `add_vector()` / `add_geoparquet()` / `add_flatgeobuf()` /
 `add_shp()` (remote URLs for those formats need no extras):
 
-```bash
-pip install "geolibre[all]"   # adds GeoPandas and Shapely
-```
-
-The optional `[all]` extra is pip-only. If you installed via conda, add it with
-`pip install "geolibre[all]"` inside the same environment.
+Use `uv sync --project python --extra all --extra dev` when local GeoPandas and
+Shapely compatibility coverage is needed.
 
 ## Quickstart
 
@@ -62,11 +52,9 @@ m.set_center(-120, 47, zoom=8)
 
 `add_raster` / `add_cog` also accept a **local** GeoTIFF path on the kernel host:
 the file is served by the bundled localhost server so the app can read it. This
-only works where the **browser can reach the kernel's localhost** (local Jupyter,
-VS Code); on remote/browser-separated setups (Colab, JupyterHub, remote servers)
-the localhost route is unreachable, so pass a hosted URL there. The served URL is
-also session-scoped, so a project saved with a local raster will not restore it
-when reopened later — pass a hosted URL for durable projects.
+is supported only when the browser and kernel share the same machine, such as
+local Jupyter or VS Code. The served URL is session-scoped, so a saved project
+does not restore that local raster in a later session.
 
 Add markers and data-driven symbology without precomputing styles:
 
@@ -111,10 +99,10 @@ proj["mapView"]["center"]              # reflects the live UI view
 Save and reload projects, fully interchangeable with the desktop and web apps:
 
 ```python
-m.save_project("my-map.geolibre.json")
+m.save_project("my-map.geoim3d.json")
 
 m2 = Map()
-m2.load_project("my-map.geolibre.json")
+m2.load_project("my-map.geoim3d.json")
 m2
 ```
 
@@ -232,8 +220,8 @@ m.on_layer_change(lambda e: print("layers", e["layerIds"]))
 | `set_center_zoom(lng, lat, zoom=None)` | Alias of `set_center` (leafmap compatibility). |
 | `remove_layer(layer_id)` / `clear_layers()` | Remove layers. |
 | `to_project()` | Return the current project as a dict. |
-| `load_project(src)` | Replace the project from a dict, JSON string, or `.geolibre.json` path. |
-| `save_project(path)` | Write the current project to a `.geolibre.json` file. |
+| `load_project(src)` | Replace the project from a dict, JSON string, or `.geoim3d.json` path. |
+| `save_project(path)` | Write the current project to a `.geoim3d.json` file. |
 
 Style keyword arguments (for example `fillColor`, `strokeColor`, `strokeWidth`,
 `circleRadius`) map to the GeoLibre [layer style fields](project-format.md).
@@ -248,32 +236,10 @@ UI edits flow back the same way.
 
 !!! note "Environment support"
 
-    The interactive widget works in **local Jupyter, VS Code, Google Colab, and
-    JupyterHub / remote servers**:
-
-    - **Local Jupyter / VS Code** - the app is served directly from localhost.
-    - **Google Colab** - routes through Colab's built-in port proxy
-      (`google.colab.kernel.proxyPort`) automatically.
-    - **JupyterHub** (including managed/shared hubs, detected at runtime via
-      `JUPYTERHUB_SERVICE_PREFIX`) - the front-end probes two same-origin routes
-      and uses whichever is live, so a host needs only **one** of them:
-        - the Jupyter Server extension bundled with `geolibre`, mounted at
-          `{base_url}geolibre/app/` on the notebook server's own origin. It is
-          enabled automatically on `pip install geolibre` and needs no
-          `jupyter-server-proxy` and no extra port, so it works on locked-down
-          hubs that block raw-port proxying -- but it only registers after the
-          Jupyter server restarts, since it loads from a startup config drop-in.
-        - `jupyter-server-proxy` at `{base_url}proxy/{port}/`, which reaches the
-          kernel's localhost bundle in the **running** server with no restart,
-          wherever `jupyter-server-proxy` is installed.
-    - **Other remote servers** (Binder, remote JupyterLab over SSH/network) -
-      pass `Map(server_proxy=True)` to use that same dual-route remote path.
-
-    Set `Map(server_proxy=False)` to force the direct localhost path. If the app
-    fails to load on a hub, either install `jupyter-server-proxy`, or confirm the
-    extension is enabled with `jupyter server extension list` (look for
-    `geolibre`; run `jupyter server extension enable geolibre` if absent) and
-    **restart** the Jupyter server so the extension loads.
+    geoIM3D validates this compatibility workspace only with same-machine local
+    Jupyter or VS Code. Hosted and remote notebook environments are inherited
+    upstream paths but are unsupported, unverified, and not geoIM3D distribution
+    channels. No remote activation or troubleshooting procedure is provided.
 
 !!! warning "URL fetching"
 
@@ -282,7 +248,7 @@ UI edits flow back the same way.
     link-local addresses such as cloud metadata endpoints). This is intended for
     single-user local notebooks, where you already control the kernel. Private
     and localhost URLs are intentionally allowed so you can load from a local
-    tile server. Do not load untrusted `.geolibre.json` projects or URLs on a
+    tile server. Do not load untrusted `.geoim3d.json` projects or URLs on a
     shared/multi-tenant kernel.
 
 ## Building from source
@@ -293,8 +259,7 @@ The bundled app is produced from the monorepo with:
 ```bash
 npm run build:embed      # builds the app and stages it into the wheel
 python -m build          # builds the wheel
-python -m twine upload dist/*  # upload to PyPI
-pip install -e python    # editable install for development
+uv sync --project python --extra dev
 ```
 
 Changes to the Python code are picked up on kernel restart. Changes to the app

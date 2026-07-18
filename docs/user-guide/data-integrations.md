@@ -2,7 +2,6 @@
 
 Beyond the [Add Data](adding-data.md) menu, GeoLibre connects to several hosted catalogs and imagery providers through dedicated panels and plugins. This page is a map of what is available and where to find it.
 
-![Planetary Computer panel](https://data.geolibre.app/images/geolibre-planetary-computer.webp)
 
 ## Cloud catalogs
 
@@ -72,7 +71,7 @@ Choose a backend in **Settings → Geocoding**. The selection, per-provider API 
 | **Mapbox** | Yes | Mapbox access token (`pk.…`). |
 | **Google** | Yes | Google Maps Geocoding API key. Google does not officially allow browser cross-origin requests to this API, so a same-origin proxy may be required. |
 
-API keys are stored in plain text in the `.geolibre.json` project file, so avoid sharing a project that carries them (the Project → Share flow can strip environment variables, but provider keys live under Geocoding settings).
+API keys are stored in plain text in the `.geoim3d.json` project file, so avoid sharing a project that carries them (the Project → Share flow can strip environment variables, but provider keys live under Geocoding settings).
 
 ### Usage policy and limits
 

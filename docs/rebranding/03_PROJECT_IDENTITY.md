@@ -141,11 +141,11 @@ npm run test:e2e
 
 Target 92건은 Canonical 이름/Open·Save 경계/Recent/Drop/Deep Link, Browser Save post-selection 검증, Share Fetch Adapter 및 Client/Relay Portable Snapshot Redaction을 포함한다. Playwright 24건에는 Browser Save→Reopen Round-trip이 포함된다.
 
-Windows Native 증거는 최종 Desktop Source의 MSVC Compile, Rust Guard, Tauri Config/Build, App 기동, 20초 생존, 3D→2D Renderer 전환과 외부 지도 로딩을 검증한다. Windows Native File Dialog를 통한 Open/Save/Recent/Drop/Deep Link 상호작용은 이번 Screenshot 증거가 검증하지 않으며, File Association/Installer File Smoke와 함께 Sprint 6A에서 수행한다.
+Windows Native 증거는 최종 Desktop Source의 MSVC Compile, Rust Guard, Tauri Config/Build, App 기동, 20초 생존, 3D→2D Renderer 전환과 외부 지도 로딩을 검증한다. Windows Native File Dialog를 통한 Open/Save/Recent/Drop/Deep Link 상호작용은 이번 Screenshot 증거가 검증하지 않으며, Installer의 앱 내부 Open/Drop 및 Startup Argument Smoke와 함께 Sprint 6A에서 수행한다.
 
 ## 의도적으로 지연한 항목
 
-`PLAN.md` Stop Gate에 따라 OS File Association/Open With/ProgID/Icon과 실제 Installer Open/Save Smoke는 Sprint 6A에서 수행한다. 이번 Tauri Release Bundle 생성은 Build 경로 검증 중 발생했지만 Release Artifact로 보관·배포하지 않았으며, 임시 Windows Tree와 함께 제거했다.
+Sprint 6A의 실제 Windows Smoke에서 복합 확장자 `.geoim3d.json`이 최종 `.json`으로 판정됨을 확인했다. 제품은 `.json` 전체 기본 앱을 탈취하지 않으며 OS File Association/Open With/ProgID를 등록하지 않는다. 앱 내부 Open/Drop과 canonical Startup Argument만 지원한다.
 
 ## 완료 판정
 

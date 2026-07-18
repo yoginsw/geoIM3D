@@ -56,7 +56,7 @@ DoD:
 
 목표:
 
-- `.geoim3d.json` Open/Save/Recent/Drag-and-drop/File Association
+- `.geoim3d.json` Open/Save/Recent/Drag-and-drop/Startup Argument
 - 내부 Schema와 Plugin 호환 유지
 
 DoD:
@@ -104,7 +104,7 @@ DoD:
 목표:
 
 - Windows `com.ejbt.geoim3d`
-- Product/Installer/Icon/File Association
+- Product/Installer/Icon 및 OS Association 부재
 - 자동 업데이트 제거
 - Docker `geoim3d.docker`
 - Offline Runtime 검증

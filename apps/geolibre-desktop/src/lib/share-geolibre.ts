@@ -1,6 +1,5 @@
-// Uploads a serialized GeoLibre project to share.geolibre.app via its
-// `POST /api/projects` endpoint, authenticated with a personal API token the
-// user created on the website. Used by the Project > Share action.
+// Uploads a serialized project to the administrator-configured Share service. No deployment
+// host is assumed until an approved URL is injected.
 
 import { DEFAULT_PROJECT_NAME } from "@geolibre/core";
 import { getShareFetch } from "./share-fetch";
@@ -11,7 +10,7 @@ export type ShareVisibility = "public" | "unlisted" | "private";
  * Machine-readable cause for an upload failure the dialog can react to. Only
  * conditions that warrant dedicated UI (beyond showing the message) get a code.
  * `username-required` means the account has no username yet, which the user must
- * set on the share.geolibre.app website before any upload can succeed.
+ * set on the configured service before any upload can succeed.
  */
 export type ShareUploadErrorCode = "username-required";
 
@@ -59,7 +58,11 @@ export interface ShareUploadOptions {
   fetchImpl?: typeof fetch;
 }
 
-export const DEFAULT_SHARE_BASE_URL = "https://share.geolibre.app";
+export const DEFAULT_SHARE_BASE_URL = "";
+// No public Share deployment has been approved for geoIM3D yet. Add exact
+// hostnames here only after product/security approval; loopback remains available
+// for local development.
+const APPROVED_SHARE_HOSTS: ReadonlySet<string> = new Set();
 
 // Upload deadline; a hung connection rejects with a TimeoutError rather than
 // spinning forever.
@@ -90,7 +93,7 @@ export function isShareableTitle(title: string): boolean {
 }
 
 /**
- * Resolve the share host from the Vite env, falling back to production. The
+ * Resolve the share host from the Vite env. The
  * `configured` value is read from the env by default but can be passed directly
  * in tests.
  */
@@ -107,14 +110,14 @@ export function resolveShareBaseUrl(
     try {
       const url = new URL(trimmed);
       if (
-        url.protocol === "https:" ||
+        (url.protocol === "https:" && APPROVED_SHARE_HOSTS.has(url.hostname)) ||
         (url.protocol === "http:" &&
           (url.hostname === "localhost" || url.hostname === "127.0.0.1"))
       ) {
         return trimmed;
       }
     } catch {
-      // Invalid URL; fall through to the production default.
+      // Invalid URL; leave the service disabled.
     }
   }
   return DEFAULT_SHARE_BASE_URL;
@@ -135,12 +138,13 @@ export async function uploadProjectToShare(
 ): Promise<ShareUploadResult> {
   const token = options.token.trim();
   if (!token) {
-    throw new Error(
-      "Add a share.geolibre.app API token in Settings before sharing.",
-    );
+    throw new Error("Add a Share service API token in Settings before sharing.");
   }
 
-  const base = (options.baseUrl ?? resolveShareBaseUrl()).replace(/\/+$/, "");
+  const base = resolveShareBaseUrl(options.baseUrl);
+  if (!base) {
+    throw new Error("Project sharing is not configured for this deployment.");
+  }
   // Defaults to the share fetch, which the desktop build routes through Tauri's
   // native HTTP client to bypass WebView CORS (see share-fetch.ts).
   const fetchImpl = options.fetchImpl ?? getShareFetch();
@@ -175,9 +179,7 @@ export async function uploadProjectToShare(
         throw new Error("Upload timed out. Please try again.");
       }
     }
-    throw new Error(
-      "Could not reach share.geolibre.app. Check your internet connection.",
-    );
+    throw new Error("Could not reach the administrator-configured Share service.");
   }
 
   if (!response.ok) {
@@ -188,7 +190,7 @@ export async function uploadProjectToShare(
   const payload = (await response.json().catch(() => ({}))) as ShareProjectResponse;
   const project = payload.project;
   if (!project?.projectUrl || !project.rawJsonUrl) {
-    throw new Error("share.geolibre.app returned an unexpected response.");
+    throw new Error("The administrator-configured Share service returned an unexpected response.");
   }
   return {
     username: project.username ?? "",
