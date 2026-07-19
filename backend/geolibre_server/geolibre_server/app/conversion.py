@@ -141,6 +141,9 @@ _CONVERSION_ROOTS = [
 
 _JOBS: dict[str, JobState] = {}
 _JOBS_LOCK = threading.Lock()
+_ACTIVE_PROCESSES: dict[str, subprocess.Popen[str]] = {}
+_ACTIVE_WORKERS: set[str] = set()
+_STARTING_JOBS: set[str] = set()
 _RUNTIME_SETUP_LOCK = threading.Lock()
 MAX_RETAINED_JOBS = 100
 
@@ -155,6 +158,12 @@ class VectorToVectorRequest(BaseModel):
 
     input_path: str
     output_path: str
+
+
+class CadReadDxfRequest(BaseModel):
+    """Read one local DXF into a bounded, unprojected GeoJSON result."""
+
+    input_path: str
 
 
 class VectorToGeoParquetRequest(BaseModel):
@@ -562,6 +571,137 @@ print(
 )
 
 
+_CAD_DXF_SCRIPT = """
+import json, math, os, sys, tempfile
+
+import duckdb
+
+params = json.loads(sys.argv[1])
+input_path = params["input_path"]
+max_features = 50000
+max_geojson_bytes = 20 * 1024 * 1024
+max_coordinates = 1000000
+max_geometry_depth = 32
+allowed_geometry_types = {
+    "Point", "MultiPoint", "LineString", "MultiLineString",
+    "Polygon", "MultiPolygon", "GeometryCollection",
+}
+coordinate_count = [0]
+
+def quote(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+def quote_ident(value):
+    return '"' + str(value).replace('"', '""') + '"'
+
+def validate_coordinates(value, depth=0):
+    if depth > max_geometry_depth:
+        raise SystemExit("DXF_GEOMETRY_DEPTH")
+    if not isinstance(value, list) or not value:
+        raise SystemExit("DXF_GEOMETRY_MALFORMED")
+    if isinstance(value[0], (int, float)) and not isinstance(value[0], bool):
+        if len(value) < 2 or any(
+            not isinstance(number, (int, float))
+            or isinstance(number, bool)
+            or not math.isfinite(number)
+            for number in value
+        ):
+            raise SystemExit("DXF_COORDINATE_INVALID")
+        coordinate_count[0] += 1
+        if coordinate_count[0] > max_coordinates:
+            raise SystemExit("DXF_COORDINATE_LIMIT")
+        return value
+    return [validate_coordinates(item, depth + 1) for item in value]
+
+def sanitize_geometry(geometry, depth=0):
+    if depth > max_geometry_depth or not isinstance(geometry, dict):
+        raise SystemExit("DXF_GEOMETRY_DEPTH")
+    geometry_type = geometry.get("type")
+    if geometry_type not in allowed_geometry_types:
+        raise SystemExit("DXF_GEOMETRY_MALFORMED")
+    if geometry_type == "GeometryCollection":
+        children = geometry.get("geometries")
+        if not isinstance(children, list) or not children:
+            raise SystemExit("DXF_GEOMETRY_MALFORMED")
+        return {
+            "type": "GeometryCollection",
+            "geometries": [
+                sanitize_geometry(child, depth + 1) for child in children
+            ],
+        }
+    return {
+        "type": geometry_type,
+        "coordinates": validate_coordinates(geometry.get("coordinates"), depth),
+    }
+
+con = duckdb.connect()
+con.execute("INSTALL spatial; LOAD spatial;")
+relation = f"ST_Read({quote(input_path)})"
+columns = con.execute(f"DESCRIBE SELECT * FROM {relation}").fetchall()
+geometry_column = next(
+    (
+        name
+        for name, column_type, *_ in columns
+        if str(column_type).upper().startswith("GEOMETRY")
+    ),
+    None,
+)
+if not geometry_column:
+    raise SystemExit("DXF_GEOMETRY_MISSING")
+
+feature_count = con.execute(f"SELECT count(*) FROM {relation}").fetchone()[0]
+if feature_count <= 0:
+    raise SystemExit("DXF_FEATURES_EMPTY")
+if feature_count > max_features:
+    raise SystemExit("DXF_FEATURE_LIMIT")
+
+handle, temp_path = tempfile.mkstemp(prefix="geoim3d-cad-", suffix=".geojson")
+os.close(handle)
+try:
+    geometry = quote_ident(geometry_column)
+    con.execute(
+        f"COPY (SELECT {geometry} AS geometry FROM {relation} "
+        f"WHERE {geometry} IS NOT NULL) "
+        f"TO {quote(temp_path)} (FORMAT GDAL, DRIVER 'GeoJSON')"
+    )
+    if os.path.getsize(temp_path) > max_geojson_bytes:
+        raise SystemExit("DXF_RESULT_SIZE_LIMIT")
+    with open(temp_path, "r", encoding="utf-8") as stream:
+        geojson = json.load(stream)
+finally:
+    try:
+        os.unlink(temp_path)
+    except OSError:
+        pass
+
+features = geojson.get("features")
+if geojson.get("type") != "FeatureCollection" or not isinstance(features, list) or not features:
+    raise SystemExit("DXF_FEATURES_EMPTY")
+if len(features) > max_features:
+    raise SystemExit("DXF_FEATURE_LIMIT")
+sanitized_features = []
+for feature in features:
+    if not isinstance(feature, dict) or feature.get("type") != "Feature":
+        raise SystemExit("DXF_FEATURE_MALFORMED")
+    sanitized_features.append(
+        {
+            "type": "Feature",
+            "geometry": sanitize_geometry(feature.get("geometry")),
+            "properties": {},
+        }
+    )
+geojson = {"type": "FeatureCollection", "features": sanitized_features}
+print(
+    "{marker}"
+    + json.dumps(
+        {"geojson": geojson, "feature_count": len(sanitized_features)},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+)
+""".replace("{marker}", _RESULT_MARKER)
+
+
 # Vector to PMTiles via freestiler (pip-installable Rust engine). The input is
 # first materialized to a temporary GeoParquet through DuckDB so any vector
 # format ST_Read understands is accepted, then freestiler tiles it.
@@ -808,15 +948,35 @@ def _is_within_roots(path: Path) -> bool:
     )
 
 
-def _validate_paths(input_path: str, output_path: str) -> tuple[str, str]:
-    """Validate conversion input/output paths and return them normalized."""
+def _validate_input_path(
+    input_path: str, allowed_extensions: set[str] | None = None
+) -> str:
+    """Validate a local input path without returning it in client-facing errors."""
     if not input_path.strip():
         raise HTTPException(status_code=400, detail="input_path is required")
     source = Path(input_path).expanduser()
     if not source.is_file():
+        raise HTTPException(status_code=400, detail="Input file was not found")
+    if not _is_within_roots(source):
         raise HTTPException(
-            status_code=400, detail=f"Input file not found: {input_path}"
+            status_code=403,
+            detail="Path is outside the allowed conversion directories",
         )
+    if allowed_extensions is not None:
+        extension = source.suffix.lower().lstrip(".")
+        normalized = {value.lower().lstrip(".") for value in allowed_extensions}
+        if extension not in normalized:
+            labels = ", ".join(value.upper() for value in sorted(normalized))
+            raise HTTPException(
+                status_code=400,
+                detail=f"Input must use one of these formats: {labels}",
+            )
+    return str(source.resolve())
+
+
+def _validate_paths(input_path: str, output_path: str) -> tuple[str, str]:
+    """Validate conversion input/output paths and return them normalized."""
+    source = Path(_validate_input_path(input_path))
     if not output_path.strip():
         raise HTTPException(status_code=400, detail="output_path is required")
     target = Path(output_path).expanduser()
@@ -853,6 +1013,18 @@ def _job_update(job_id: str, **patch: Any) -> None:
         _JOBS[job_id] = job.model_copy(update={**patch, "updated_at": _utc_now()})
 
 
+def _job_update_if_active(job_id: str, **patch: Any) -> bool:
+    """Update a job unless a concurrent cancellation already made it terminal."""
+    with _JOBS_LOCK:
+        job = _JOBS[job_id]
+        if job.status == "cancelled":
+            return False
+        _JOBS[job_id] = job.model_copy(
+            update={**patch, "updated_at": _utc_now()}
+        )
+        return True
+
+
 def _append_job_message(job_id: str, message: str) -> None:
     """Append a progress line to a job message log."""
     with _JOBS_LOCK:
@@ -865,8 +1037,9 @@ def _append_job_message(job_id: str, message: str) -> None:
 def _evict_finished_jobs_locked() -> None:
     """Drop the oldest finished jobs once the retention cap is exceeded.
 
-    The caller must hold ``_JOBS_LOCK``. Running and pending jobs are never
-    evicted; only ``succeeded``/``failed`` jobs are removed, oldest first.
+    The caller must hold ``_JOBS_LOCK``. Running and pending jobs, terminal jobs
+    whose worker finalizer is still active, and jobs whose POST response is still
+    being built are never evicted. Other terminal jobs are removed oldest first.
     """
     excess = len(_JOBS) - MAX_RETAINED_JOBS
     if excess <= 0:
@@ -877,7 +1050,9 @@ def _evict_finished_jobs_locked() -> None:
         (
             (job.created_at, job_id)
             for job_id, job in _JOBS.items()
-            if job.status in {"succeeded", "failed"}
+            if job.status in {"succeeded", "failed", "cancelled"}
+            and job_id not in _ACTIVE_WORKERS
+            and job_id not in _STARTING_JOBS
         ),
     )
     for _created_at, job_id in finished[:excess]:
@@ -893,9 +1068,19 @@ def _run_conversion_job(
     """Run a conversion script in the managed runtime and record the result."""
     process: subprocess.Popen[str] | None = None
     timed_out = threading.Event()
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+        if job is None:
+            return
+        tool_id = job.tool_id
     try:
-        _job_update(job_id, status="running")
+        if not _job_update_if_active(job_id, status="running"):
+            return
         python = _runtime_python()
+        with _JOBS_LOCK:
+            job = _JOBS.get(job_id)
+            if job is None or job.status == "cancelled":
+                return
         process = subprocess.Popen(
             [python, "-c", script, json.dumps(params)],
             stdout=subprocess.PIPE,
@@ -907,6 +1092,15 @@ def _run_conversion_job(
             bufsize=1,
             **_subprocess_startup_kwargs(),
         )
+        with _JOBS_LOCK:
+            job = _JOBS.get(job_id)
+            cancelled = job is None or job.status == "cancelled"
+            if not cancelled:
+                _ACTIVE_PROCESSES[job_id] = process
+        if cancelled:
+            process.kill()
+            process.wait()
+            return
         # A watchdog kills the subprocess if it exceeds the deadline. Reading
         # process.stdout blocks until the pipe closes, so without this a hung
         # DuckDB or cog_translate call (one that emits no further output) would
@@ -932,28 +1126,52 @@ def _run_conversion_job(
                     except json.JSONDecodeError:
                         result = line[len(_RESULT_MARKER) :]
                 else:
-                    _append_job_message(job_id, line)
+                    # GDAL/DuckDB failures can include the absolute input path.
+                    # The CAD import contract exposes only a stable error code.
+                    if tool_id != "cad-read-dxf":
+                        _append_job_message(job_id, line)
             returncode = process.wait()
         finally:
             watchdog.cancel()
+        with _JOBS_LOCK:
+            job = _JOBS.get(job_id)
+            if job is None or job.status == "cancelled":
+                return
         if timed_out.is_set():
             raise RuntimeError(
                 f"Conversion timed out after {CONVERSION_RUN_TIMEOUT_SECS} seconds"
             )
         if returncode != 0:
             with _JOBS_LOCK:
-                messages = list(_JOBS[job_id].messages)
+                job = _JOBS.get(job_id)
+                messages = list(job.messages) if job is not None else []
             raise RuntimeError(
                 messages[-1] if messages else f"Conversion exited with {returncode}"
             )
-        _job_update(
+        output_path = params.get("output_path")
+        outputs = (
+            {output_name: {"path": output_path}}
+            if output_name and output_path
+            else {}
+        )
+        _job_update_if_active(
             job_id,
             status="succeeded",
             result=result,
-            outputs={output_name: {"path": params["output_path"]}},
+            outputs=outputs,
         )
     except Exception as exc:
-        _job_update(job_id, status="failed", error=str(exc))
+        with _JOBS_LOCK:
+            job = _JOBS.get(job_id)
+            cancelled = job is None or job.status == "cancelled"
+        if cancelled:
+            return
+        error = (
+            "DXF_IMPORT_FAILED"
+            if tool_id == "cad-read-dxf"
+            else str(exc)
+        )
+        _job_update_if_active(job_id, status="failed", error=error)
         # Remove a partial output so a retry starts clean and stale bytes do not
         # confuse downstream tools.
         output_path = params.get("output_path")
@@ -963,10 +1181,34 @@ def _run_conversion_job(
             except OSError:
                 pass
     finally:
-        # Guard against leaking a still-running subprocess if an exception is
-        # raised before it exits (e.g. during streaming or a job-state update).
-        if process is not None and process.poll() is None:
-            process.kill()
+        with _JOBS_LOCK:
+            _ACTIVE_PROCESSES.pop(job_id, None)
+            job = _JOBS.get(job_id)
+            cancelled = job is not None and job.status == "cancelled"
+        try:
+            # Process cleanup and output cleanup are independent best-effort steps:
+            # a stale Windows process handle must not skip partial-file deletion.
+            if process is not None:
+                try:
+                    if process.poll() is None:
+                        process.kill()
+                except OSError:
+                    pass
+                try:
+                    process.wait()
+                except OSError:
+                    pass
+            if cancelled:
+                output_path = params.get("output_path")
+                if output_path:
+                    try:
+                        Path(output_path).unlink(missing_ok=True)
+                    except OSError:
+                        pass
+        finally:
+            with _JOBS_LOCK:
+                _ACTIVE_WORKERS.discard(job_id)
+                _evict_finished_jobs_locked()
 
 
 def _start_job(
@@ -986,17 +1228,31 @@ def _start_job(
             created_at=now,
             updated_at=now,
         )
+        _ACTIVE_WORKERS.add(job_id)
+        _STARTING_JOBS.add(job_id)
         _evict_finished_jobs_locked()
-    thread = threading.Thread(
-        target=_run_conversion_job,
-        args=(job_id, script, params, output_name),
-        daemon=True,
-    )
-    thread.start()
+    try:
+        thread = threading.Thread(
+            target=_run_conversion_job,
+            args=(job_id, script, params, output_name),
+            daemon=True,
+        )
+        thread.start()
+    except Exception:
+        with _JOBS_LOCK:
+            _ACTIVE_WORKERS.discard(job_id)
+            _STARTING_JOBS.discard(job_id)
+            _JOBS.pop(job_id, None)
+        raise
     # The worker may have already flipped the job to "running" by the time this
     # lock is re-acquired, so callers must not assume the response is "pending".
     with _JOBS_LOCK:
-        return _JOBS[job_id]
+        job = _JOBS.get(job_id)
+        _STARTING_JOBS.discard(job_id)
+        _evict_finished_jobs_locked()
+        if job is None:
+            raise RuntimeError("Conversion job registration was lost")
+        return job
 
 
 @router.get("/status")
@@ -1025,6 +1281,18 @@ def conversion_status():
             "available": False,
             "message": "Conversion runtime status check failed.",
         }
+
+
+@router.post("/cad/read-dxf")
+def cad_read_dxf(request: CadReadDxfRequest):
+    """Read a local DXF into a bounded unprojected GeoJSON job result."""
+    input_path = _validate_input_path(request.input_path, {"dxf"})
+    return _start_job(
+        "cad-read-dxf",
+        _CAD_DXF_SCRIPT,
+        {"input_path": input_path},
+        "",
+    )
 
 
 @router.post("/vector-to-vector")
@@ -1241,6 +1509,29 @@ def raster_to_cog(request: RasterToCogRequest):
         },
         "cog",
     )
+
+
+@router.delete("/jobs/{job_id}")
+def cancel_conversion_job(job_id: str):
+    """Cancel a pending/running conversion and terminate its subprocess."""
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if job.status in {"succeeded", "failed", "cancelled"}:
+            return job
+        cancelled = job.model_copy(
+            update={"status": "cancelled", "updated_at": _utc_now()}
+        )
+        _JOBS[job_id] = cancelled
+        process = _ACTIVE_PROCESSES.get(job_id)
+    if process is not None:
+        try:
+            if process.poll() is None:
+                process.kill()
+        except OSError:
+            pass
+    return cancelled
 
 
 @router.get("/jobs/{job_id}")

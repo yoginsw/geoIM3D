@@ -179,6 +179,35 @@ describe("CesiumLayerSync", () => {
     assert.equal(f.calls.dataSourcesAdded.length, 1);
   });
 
+  it("preserves CAD alignment Z values instead of clamping them to terrain", async () => {
+    const sync = newSync(f);
+    const fc = { type: "FeatureCollection", features: [{}] };
+    const base = mkLayer({ type: "geojson", geojson: fc as never });
+    sync.sync([base]);
+    await f.flush();
+    assert.equal(f.calls.geojsonLoads[0].options.clampToGround, true);
+
+    sync.sync([
+      {
+        ...base,
+        metadata: {
+          coordinateAlignment: {
+            sourceFormat: "DXF",
+            sourceCrs: "EPSG:5186",
+            method: "crs",
+            scale: 1,
+            rotationDegrees: 0,
+            rmsErrorMeters: 0,
+          },
+        },
+      },
+    ]);
+    await f.flush();
+    assert.equal(f.calls.geojsonLoads.length, 2);
+    assert.equal(f.calls.geojsonLoads[1].options.clampToGround, false);
+    assert.equal(f.calls.dataSourcesRemoved.length, 1);
+  });
+
   it("skips a geojson layer with no features", async () => {
     const sync = newSync(f);
     sync.sync([

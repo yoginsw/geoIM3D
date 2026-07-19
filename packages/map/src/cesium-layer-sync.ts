@@ -48,6 +48,16 @@ function tilesetUrl(layer: GeoLibreLayer): string | undefined {
   return str(layer.source.url) ?? str(layer.sourcePath);
 }
 
+function preservesGeoJsonAltitude(layer: GeoLibreLayer): boolean {
+  const alignment = layer.metadata.coordinateAlignment;
+  return (
+    typeof alignment === "object" &&
+    alignment !== null &&
+    "sourceFormat" in alignment &&
+    alignment.sourceFormat === "DXF"
+  );
+}
+
 /**
  * Whether the globe can render this layer *kind* at all (regardless of whether
  * its data has loaded yet). Exported so the UI can flag "2D only" layers on a
@@ -108,7 +118,8 @@ function needsRebuild(prev: GeoLibreLayer, next: GeoLibreLayer): boolean {
     case "geojson":
       return (
         prev.geojson !== next.geojson ||
-        styleSignature(prev) !== styleSignature(next)
+        styleSignature(prev) !== styleSignature(next) ||
+        preservesGeoJsonAltitude(prev) !== preservesGeoJsonAltitude(next)
       );
     case "imagery":
       return (
@@ -287,7 +298,7 @@ export class CesiumLayerSync {
         markerColor: Cesium.Color.fromCssColorString(
           style.markerColor ?? "#3b82f6"
         ),
-        clampToGround: true,
+        clampToGround: !preservesGeoJsonAltitude(layer),
       });
       if (entry.cancelled) return;
       await viewer.dataSources.add(dataSource);

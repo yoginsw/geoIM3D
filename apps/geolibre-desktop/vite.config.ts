@@ -898,6 +898,7 @@ export default defineConfig({
   define: {
     ...publicClientEnvDefines(),
     __GEOLIBRE_VERSION__: JSON.stringify(APP_VERSION),
+    __TAURI_BUILD__: JSON.stringify(IS_TAURI_BUILD),
     __PGLITE_CDN_URL__: JSON.stringify(PGLITE_CDN_URL),
     __PGLITE_POSTGIS_CDN_URL__: JSON.stringify(PGLITE_POSTGIS_CDN_URL),
     __CEREUS_WASM_CDN_URL__: JSON.stringify(CEREUS_WASM_CDN_URL),

@@ -171,6 +171,7 @@ interface TopToolbarProps {
   // Opens the Offline Basemap Extract panel, mounted in DesktopShell over the
   // map so it can stay non-modal (the map is interactive for drawing a bbox).
   onOpenBasemapExtract: () => void;
+  onOpenCadAlignment: () => void;
 }
 
 export function TopToolbar({
@@ -186,6 +187,7 @@ export function TopToolbar({
   onOpenDiagnostics,
   onToggleThemeMode,
   onOpenBasemapExtract,
+  onOpenCadAlignment,
 }: TopToolbarProps) {
   const { t } = useTranslation();
   // The reverse-geocode plugin lives in the framework-agnostic plugins package
@@ -1217,6 +1219,7 @@ export function TopToolbar({
           onOpenNetworkTool={consent.openNetworkTool}
           onOpenPlanetaryComputer={handleOpenPlanetaryComputer}
           onOpenGeoreferencer={() => setGeoreferencerOpen(true)}
+          onOpenCadAlignment={onOpenCadAlignment}
         />
       )}
       {isMenuVisible(uiProfile, "controls") && (

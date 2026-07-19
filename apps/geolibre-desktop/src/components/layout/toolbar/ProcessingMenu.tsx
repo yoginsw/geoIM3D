@@ -16,6 +16,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ToolbarPanel } from "../../../hooks/useToolbarPanels";
 import { isMobile } from "../../../lib/is-mobile";
+import { isTauri } from "../../../lib/tauri-io";
 import { useDesktopSettingsStore } from "../../../hooks/useDesktopSettings";
 import { isMenuItemVisible } from "../../../lib/ui-profile";
 import { WHITEBOX_MENU_CATALOG } from "../../../lib/whitebox-menu-catalog";
@@ -27,6 +28,7 @@ interface ProcessingMenuProps {
   onOpenNetworkTool: (kind: NetworkToolKind) => void;
   onOpenPlanetaryComputer: () => void;
   onOpenGeoreferencer: () => void;
+  onOpenCadAlignment: () => void;
 }
 
 /** The Processing menu: assistant, toolboxes, conversion/vector/network/statistics/raster submenus. */
@@ -36,6 +38,7 @@ export function ProcessingMenu({
   onOpenNetworkTool,
   onOpenPlanetaryComputer,
   onOpenGeoreferencer,
+  onOpenCadAlignment,
 }: ProcessingMenuProps) {
   const { t } = useTranslation();
   const setProcessingOpen = useAppStore((s) => s.setProcessingOpen);
@@ -65,6 +68,8 @@ export function ProcessingMenu({
   // geocode, statistics, and the assistant run client-side and stay. The user
   // agent is stable for the session, so evaluate once.
   const mobile = useMemo(() => isMobile(), []);
+  const desktop = useMemo(() => isTauri(), []);
+  const showCadAlignment = __TAURI_BUILD__ && desktop;
   const uiProfile = useDesktopSettingsStore((s) => s.desktopSettings.uiProfile);
   const show = (id: string) => isMenuItemVisible(uiProfile, id);
   // The Whitebox toolbox (and its WASI/GeoLibre tool catalog) runs entirely in
@@ -84,6 +89,7 @@ export function ProcessingMenu({
   // client tool submenus; `showGeolibreActions` are geocode/model-builder/
   // segmentation below the in-submenu divider.
   const showGeolibreTools =
+    showCadAlignment ||
     (!mobile && show("processing.conversion")) ||
     show("processing.vector") ||
     show("processing.network") ||
@@ -183,6 +189,11 @@ export function ProcessingMenu({
             {t("toolbar.item.geolibre")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
+        {showCadAlignment && (
+          <DropdownMenuItem onSelect={onOpenCadAlignment}>
+            CAD/GIS 좌표 정합
+          </DropdownMenuItem>
+        )}
         {!mobile && show("processing.conversion") && (
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>

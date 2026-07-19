@@ -74,6 +74,33 @@ def test_token_required_when_configured(monkeypatch: pytest.MonkeyPatch) -> None
         _reload_app(monkeypatch, None)
 
 
+def test_conversion_cancel_cors_allows_only_approved_origins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tauri may DELETE a job, while arbitrary browser origins stay blocked."""
+    main = _reload_app(monkeypatch, "s3cr3t")
+    try:
+        client = TestClient(main.app)
+        headers = {
+            "Origin": "http://tauri.localhost",
+            "Access-Control-Request-Method": "DELETE",
+            "Access-Control-Request-Headers": "x-geolibre-token",
+        }
+        allowed = client.options("/conversion/jobs/job", headers=headers)
+        assert allowed.status_code == 200
+        assert "DELETE" in allowed.headers["access-control-allow-methods"]
+        assert allowed.headers["access-control-allow-origin"] == "http://tauri.localhost"
+
+        blocked = client.options(
+            "/conversion/jobs/job",
+            headers={**headers, "Origin": "https://evil.example.com"},
+        )
+        assert blocked.status_code == 400
+        assert "access-control-allow-origin" not in blocked.headers
+    finally:
+        _reload_app(monkeypatch, None)
+
+
 def test_untrusted_host_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     """A non-loopback Host header is rejected (DNS-rebinding defense)."""
     main = _reload_app(monkeypatch, "s3cr3t")

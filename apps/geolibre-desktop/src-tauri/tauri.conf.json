@@ -30,6 +30,7 @@
     "targets": "all",
     "resources": [
       "../../../backend/geolibre_server/pyproject.toml",
+      "../../../backend/geolibre_server/README.md",
       "../../../backend/geolibre_server/jupyter_server_config.py",
       "../../../backend/geolibre_server/notebook_client.py",
       "../../../backend/geolibre_server/geolibre_server/**/*.py",

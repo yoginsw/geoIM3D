@@ -1,6 +1,7 @@
 import type { FeatureCollection } from "geojson";
 
 const LOCAL_SIDECAR_URL = "http://127.0.0.1:8765";
+export const SIDECAR_AUTH_HEADER = "X-GeoLibre-Token";
 
 /** Build-time override, e.g. `VITE_SIDECAR_URL=http://127.0.0.1:9000`. */
 function explicitSidecarUrl(): string | undefined {
@@ -76,7 +77,7 @@ export function setSidecarAuthToken(token: string | null | undefined): void {
 function sidecarFetch(input: string, init?: RequestInit): Promise<Response> {
   if (!sidecarAuthToken) return fetch(input, init);
   const headers = new Headers(init?.headers);
-  headers.set("X-GeoLibre-Token", sidecarAuthToken);
+  headers.set(SIDECAR_AUTH_HEADER, sidecarAuthToken);
   return fetch(input, { ...init, headers });
 }
 
@@ -668,6 +669,25 @@ export async function fetchConversionJob(
   }
   if (!res.ok) {
     throw new Error(await responseErrorMessage(res, "Could not load conversion job"));
+  }
+  return (await res.json()) as ConversionJob;
+}
+
+export async function cancelConversionJob(
+  jobId: string,
+  baseUrl = DEFAULT_SIDECAR_URL,
+): Promise<ConversionJob> {
+  let res: Response;
+  try {
+    res = await sidecarFetch(
+      `${baseUrl}/conversion/jobs/${encodeURIComponent(jobId)}`,
+      { method: "DELETE" },
+    );
+  } catch (error) {
+    throw sidecarConnectionError(baseUrl, error);
+  }
+  if (!res.ok) {
+    throw new Error(await responseErrorMessage(res, "Could not cancel conversion job"));
   }
   return (await res.json()) as ConversionJob;
 }

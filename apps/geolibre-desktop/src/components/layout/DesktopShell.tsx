@@ -218,6 +218,14 @@ const ConversionDialog = lazy(() =>
     }),
 );
 
+const CadCoordinateAlignmentDialog = __TAURI_BUILD__
+  ? lazy(() =>
+      import("../processing/CadCoordinateAlignmentDialog").then((module) => ({
+        default: module.CadCoordinateAlignmentDialog,
+      })),
+    )
+  : null;
+
 const VectorToolsDialog = lazy(() =>
   import("../processing/VectorToolsDialog")
     .then((module) => ({
@@ -591,6 +599,7 @@ export function DesktopShell({
   // map (so the map stays interactive for drawing a bbox), mounted here beside
   // the Raster Subset panel and opened from the Add Data menu in the toolbar.
   const [basemapExtractOpen, setBasemapExtractOpen] = useState(false);
+  const [cadAlignmentOpen, setCadAlignmentOpen] = useState(false);
   const dragDepthRef = useRef(0);
   const dropMessageTimeoutRef = useRef<number | null>(null);
   const materializingRef = useRef(false);
@@ -1982,6 +1991,7 @@ export function DesktopShell({
             onOpenDiagnostics={() => setDiagnosticsOpen(true)}
             onToggleThemeMode={onToggleThemeMode}
             onOpenBasemapExtract={() => setBasemapExtractOpen(true)}
+            onOpenCadAlignment={() => setCadAlignmentOpen(true)}
           />
         </SectionErrorBoundary>
       ) : null}
@@ -2343,6 +2353,15 @@ export function DesktopShell({
       <Suspense fallback={null}>
         <ConversionDialog />
       </Suspense>
+      {CadCoordinateAlignmentDialog && isTauri() ? (
+        <Suspense fallback={null}>
+          <CadCoordinateAlignmentDialog
+            open={cadAlignmentOpen}
+            onOpenChange={setCadAlignmentOpen}
+            mapControllerRef={mapControllerRef}
+          />
+        </Suspense>
+      ) : null}
       <Suspense fallback={null}>
         <VectorToolsDialog mapControllerRef={mapControllerRef} />
       </Suspense>

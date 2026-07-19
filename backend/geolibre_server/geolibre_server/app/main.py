@@ -105,7 +105,7 @@ app.add_middleware(
         r"|tauri://localhost|http://tauri\.localhost)$"
     ),
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 app.include_router(whitebox_router)

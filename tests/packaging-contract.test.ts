@@ -36,6 +36,12 @@ describe("geoIM3D Phase 6 packaging contract", () => {
       JSON.stringify(config.bundle.resources),
       /geolibre_server\/geolibre_server\/\*\*\/\*\.py/,
     );
+    assert.ok(
+      config.bundle.resources.includes(
+        "../../../backend/geolibre_server/README.md",
+      ),
+      "the bundled Hatchling project must include its declared readme",
+    );
     assert.equal(config.bundle.fileAssociations, undefined);
     assert.ok(config.bundle.icon.includes("icons/icon.ico"));
   });

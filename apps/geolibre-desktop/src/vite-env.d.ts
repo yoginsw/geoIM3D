@@ -2,6 +2,7 @@
 /// <reference types="vite-plugin-pwa/client" />
 
 declare const __GEOLIBRE_VERSION__: string;
+declare const __TAURI_BUILD__: boolean;
 
 // jsDelivr URLs for the PGlite engine and its PostGIS extension, injected by
 // vite.config.ts. Only the embed (Jupyter wheel) build reads them, from
