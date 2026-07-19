@@ -7,6 +7,7 @@ import {
 import { sanitizeIncomingProjectCredentials } from "../lib/project-file-contract";
 import { getShareFetch } from "../lib/share-fetch";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
+import { sanitizeIncomingDesktopProject } from "../lib/desktop-project-ingress";
 
 export type ProjectUrlLoadState =
   | { error: null; message: null; status: "idle" }
@@ -40,11 +41,16 @@ export function useProjectUrlLoader(): ProjectUrlLoadState {
       .then((project) =>
         resolveProjectXyzLayers(project, abortController.signal),
       )
-      .then((project) => {
+      .then(async (project) => {
         if (abortController.signal.aborted) return;
         // A `?url=` deep link is reloaded on every visit, so treat it as
         // transient rather than persisting it to the recent-projects list.
-        loadProject(sanitizeIncomingProjectCredentials(project), projectUrl, {
+        const sanitized = await sanitizeIncomingDesktopProject(
+          sanitizeIncomingProjectCredentials(project),
+          "remote",
+        );
+        if (abortController.signal.aborted) return;
+        loadProject(sanitized, projectUrl, {
           rememberRecent: false,
         });
         setState({

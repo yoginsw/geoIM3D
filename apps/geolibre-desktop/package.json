@@ -90,6 +90,7 @@
     "shpjs": "^6.2.0",
     "sql.js": "^1.14.0",
     "three": "^0.185.1",
+    "web-ifc": "0.0.77",
     "zod": "^4.4.3"
   },
   "devDependencies": {

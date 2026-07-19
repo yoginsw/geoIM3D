@@ -4,6 +4,7 @@ import {
   projectFromStore,
   serializeProject,
   useAppStore,
+  type GeoLibreProject,
   type GeoLibreLayer,
 } from "@geolibre/core";
 import { materializeEmbeddableVectorLayers } from "@geolibre/plugins";
@@ -39,6 +40,18 @@ import { shareAuthorizedFetch } from "../lib/share-gallery";
 import { normalizeProjectUrl } from "../lib/urls";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 import type { MapControllerRef } from "../components/layout/toolbar/constants";
+import {
+  sanitizeIncomingDesktopProject,
+  type DesktopProjectIngressSource,
+} from "../lib/desktop-project-ingress";
+import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
+
+async function sanitizeIncomingDesktopIfcProject(
+  project: GeoLibreProject,
+  source: DesktopProjectIngressSource = "local",
+): Promise<GeoLibreProject> {
+  return sanitizeIncomingDesktopProject(project, source);
+}
 
 
 /**
@@ -148,8 +161,10 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         if (!path) return;
         const result = await openRecentProjectFile(path);
         loadProject(
-          sanitizeIncomingProjectCredentials(
-            await resolveProjectXyzLayers(result.project),
+          await sanitizeIncomingDesktopIfcProject(
+            sanitizeIncomingProjectCredentials(
+              await resolveProjectXyzLayers(result.project),
+            ),
           ),
           result.path,
           { rememberRecent: true },
@@ -170,8 +185,10 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     if (result) {
       try {
         loadProject(
-          sanitizeIncomingProjectCredentials(
-            await resolveProjectXyzLayers(result.project),
+          await sanitizeIncomingDesktopIfcProject(
+            sanitizeIncomingProjectCredentials(
+              await resolveProjectXyzLayers(result.project),
+            ),
           ),
           result.path,
           { rememberRecent: isTauri() },
@@ -194,8 +211,10 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     try {
       const project = parseProject(await file.text());
       loadProject(
-        sanitizeIncomingProjectCredentials(
-          await resolveProjectXyzLayers(project),
+        await sanitizeIncomingDesktopIfcProject(
+          sanitizeIncomingProjectCredentials(
+            await resolveProjectXyzLayers(project),
+          ),
         ),
         null,
         {
@@ -237,7 +256,13 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      loadProject(sanitizeIncomingProjectCredentials(project), result.path);
+      loadProject(
+        await sanitizeIncomingDesktopIfcProject(
+          sanitizeIncomingProjectCredentials(project),
+          "remote",
+        ),
+        result.path,
+      );
       setProjectUrl("");
       setProjectUrlDialogOpen(false);
     } catch (error) {
@@ -303,7 +328,13 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       if (controller.signal.aborted) return;
       // Share service endpoints are compatibility APIs, not canonical local
       // file references, so never persist them as writable/recent paths.
-      loadProject(sanitizeIncomingProjectCredentials(project), null);
+      loadProject(
+        await sanitizeIncomingDesktopIfcProject(
+          sanitizeIncomingProjectCredentials(project),
+          "remote",
+        ),
+        null,
+      );
     } finally {
       if (shareUrlAbortRef.current === controller) {
         shareUrlAbortRef.current = null;
@@ -349,7 +380,13 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         controller.signal,
       );
       if (controller.signal.aborted) return null;
-      loadProject(sanitizeIncomingProjectCredentials(project), result.path);
+      loadProject(
+        await sanitizeIncomingDesktopIfcProject(
+          sanitizeIncomingProjectCredentials(project),
+          isHttpUrl(path) ? "remote" : "local",
+        ),
+        result.path,
+      );
       return null;
     } catch (error) {
       if (controller.signal.aborted) return null;
@@ -551,8 +588,13 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // original files do not exist, so it must be self-contained — never file
   // references. Used by the Share dialog.
   const buildEmbeddedProject = async (nameOverride?: string) => {
+    assertProjectSafeForExternalTransfer(
+      buildCurrentProject(nameOverride).project,
+    );
     const layers = await buildEmbeddedLayers(useAppStore.getState().layers);
-    return buildCurrentProject(nameOverride, layers);
+    const result = buildCurrentProject(nameOverride, layers);
+    assertProjectSafeForExternalTransfer(result.project);
+    return result;
   };
 
   // Ask the user to name the file. Used only when saving falls back to a browser

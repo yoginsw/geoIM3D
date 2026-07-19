@@ -29,6 +29,7 @@ interface ProcessingMenuProps {
   onOpenPlanetaryComputer: () => void;
   onOpenGeoreferencer: () => void;
   onOpenCadAlignment: () => void;
+  onOpenPrivateModelImport: () => void;
 }
 
 /** The Processing menu: assistant, toolboxes, conversion/vector/network/statistics/raster submenus. */
@@ -39,6 +40,7 @@ export function ProcessingMenu({
   onOpenPlanetaryComputer,
   onOpenGeoreferencer,
   onOpenCadAlignment,
+  onOpenPrivateModelImport,
 }: ProcessingMenuProps) {
   const { t } = useTranslation();
   const setProcessingOpen = useAppStore((s) => s.setProcessingOpen);
@@ -70,6 +72,7 @@ export function ProcessingMenu({
   const mobile = useMemo(() => isMobile(), []);
   const desktop = useMemo(() => isTauri(), []);
   const showCadAlignment = __TAURI_BUILD__ && desktop;
+  const showIfcImport = __TAURI_BUILD__ && desktop;
   const uiProfile = useDesktopSettingsStore((s) => s.desktopSettings.uiProfile);
   const show = (id: string) => isMenuItemVisible(uiProfile, id);
   // The Whitebox toolbox (and its WASI/GeoLibre tool catalog) runs entirely in
@@ -90,6 +93,7 @@ export function ProcessingMenu({
   // segmentation below the in-submenu divider.
   const showGeolibreTools =
     showCadAlignment ||
+    showIfcImport ||
     (!mobile && show("processing.conversion")) ||
     show("processing.vector") ||
     show("processing.network") ||
@@ -192,6 +196,11 @@ export function ProcessingMenu({
         {showCadAlignment && (
           <DropdownMenuItem onSelect={onOpenCadAlignment}>
             CAD/GIS 좌표 정합
+          </DropdownMenuItem>
+        )}
+        {showIfcImport && (
+          <DropdownMenuItem onSelect={onOpenPrivateModelImport}>
+            BIM/IFC 가져오기
           </DropdownMenuItem>
         )}
         {!mobile && show("processing.conversion") && (

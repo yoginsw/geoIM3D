@@ -226,6 +226,14 @@ const CadCoordinateAlignmentDialog = __TAURI_BUILD__
     )
   : null;
 
+const IfcImportDialog = __TAURI_BUILD__
+  ? lazy(() =>
+      import("../processing/IfcImportDialog").then((module) => ({
+        default: module.IfcImportDialog,
+      })),
+    )
+  : null;
+
 const VectorToolsDialog = lazy(() =>
   import("../processing/VectorToolsDialog")
     .then((module) => ({
@@ -600,6 +608,7 @@ export function DesktopShell({
   // the Raster Subset panel and opened from the Add Data menu in the toolbar.
   const [basemapExtractOpen, setBasemapExtractOpen] = useState(false);
   const [cadAlignmentOpen, setCadAlignmentOpen] = useState(false);
+  const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const dragDepthRef = useRef(0);
   const dropMessageTimeoutRef = useRef<number | null>(null);
   const materializingRef = useRef(false);
@@ -1992,6 +2001,7 @@ export function DesktopShell({
             onToggleThemeMode={onToggleThemeMode}
             onOpenBasemapExtract={() => setBasemapExtractOpen(true)}
             onOpenCadAlignment={() => setCadAlignmentOpen(true)}
+            onOpenPrivateModelImport={() => setIfcImportOpen(true)}
           />
         </SectionErrorBoundary>
       ) : null}
@@ -2358,6 +2368,15 @@ export function DesktopShell({
           <CadCoordinateAlignmentDialog
             open={cadAlignmentOpen}
             onOpenChange={setCadAlignmentOpen}
+            mapControllerRef={mapControllerRef}
+          />
+        </Suspense>
+      ) : null}
+      {IfcImportDialog && isTauri() ? (
+        <Suspense fallback={null}>
+          <IfcImportDialog
+            open={ifcImportOpen}
+            onOpenChange={setIfcImportOpen}
             mapControllerRef={mapControllerRef}
           />
         </Suspense>

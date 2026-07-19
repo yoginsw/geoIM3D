@@ -8,6 +8,8 @@ import { type RefObject, useEffect } from "react";
 import type { MapController } from "@geolibre/map";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
 import { preparePortableProject } from "../lib/project-file-contract";
+import { sanitizeIncomingDesktopProject } from "../lib/desktop-project-ingress";
+import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
 import { getEmbedHost, isEmbedded } from "./embedHost";
 
 // How long to wait after the last store change before posting a fresh project
@@ -70,6 +72,7 @@ export function useEmbedBridge(
     // correlate a snapshot with the load that triggered it.
     let lastLoadedSeq = 0;
     let lastPostedContent: string | null = null;
+    let privateContentBlocked = false;
 
     const buildProject = (): GeoLibreProject =>
       preparePortableProject(buildProjectSnapshot(mapControllerRef));
@@ -80,7 +83,24 @@ export function useEmbedBridge(
       // hostChannel.handshakeComplete); otherwise an uncooperative third-party
       // frame that never speaks would keep receiving snapshots via "*".
       if (!hostChannel.handshakeComplete) return;
-      const content = serializeProject(buildProject());
+      const project = buildProject();
+      try {
+        assertProjectSafeForExternalTransfer(project);
+        privateContentBlocked = false;
+      } catch {
+        if (!privateContentBlocked) {
+          privateContentBlocked = true;
+          host.postMessage(
+            {
+              type: "geolibre:error",
+              message: "Private model content cannot be shared or embedded.",
+            },
+            targetOrigin(),
+          );
+        }
+        return;
+      }
+      const content = serializeProject(project);
       // Many store writes (selection, hover) do not change the serialized
       // project; skip posting an identical snapshot to keep the host quiet.
       if (content === lastPostedContent) return;
@@ -111,7 +131,7 @@ export function useEmbedBridge(
       }, STATE_DEBOUNCE_MS);
     };
 
-    const applyLoad = (message: LoadProjectMessage) => {
+    const applyLoad = async (message: LoadProjectMessage) => {
       // Advance the seq before parsing so a later snapshot carries the right
       // correlation id even when the load fails. Reset (not retain) when a load
       // omits seq, so a snapshot never echoes a stale, unrelated sequence number.
@@ -124,7 +144,10 @@ export function useEmbedBridge(
           typeof message.project === "string"
             ? parseProject(message.project)
             : parseProject(JSON.stringify(message.project));
-        const project = preparePortableProject(parsedProject);
+        const project = await sanitizeIncomingDesktopProject(
+          preparePortableProject(parsedProject),
+          "remote",
+        );
         useAppStore
           .getState()
           .loadProject(project, null, { rememberRecent: false });
@@ -154,7 +177,7 @@ export function useEmbedBridge(
       const data = event.data as Partial<InboundMessage> | null;
       if (!data || typeof data !== "object") return;
       if (data.type === "geolibre:load-project") {
-        applyLoad(data as LoadProjectMessage);
+        void applyLoad(data as LoadProjectMessage);
       } else if (data.type === "geolibre:request-state") {
         // Force a snapshot regardless of the dedupe cache.
         lastPostedContent = null;

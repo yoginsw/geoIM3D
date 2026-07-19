@@ -34,7 +34,9 @@
       "../../../backend/geolibre_server/jupyter_server_config.py",
       "../../../backend/geolibre_server/notebook_client.py",
       "../../../backend/geolibre_server/geolibre_server/**/*.py",
-      "../../../backend/geolibre_server/notebook_examples/*.ipynb"
+      "../../../backend/geolibre_server/notebook_examples/*.ipynb",
+      "../../../THIRD_PARTY_NOTICES.md",
+      "../../../licenses/web-ifc-MPL-2.0.md"
     ],
     "icon": [
       "icons/icon.png",

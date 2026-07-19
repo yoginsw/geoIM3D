@@ -14,6 +14,8 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import i18n from "../i18n";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
 import { preparePortableProject } from "../lib/project-file-contract";
+import { sanitizeIncomingDesktopProject } from "../lib/desktop-project-ingress";
+import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
 import {
   CollabConnection,
   createSession,
@@ -104,6 +106,7 @@ export function useCollaboration(
   // Debounces the projectGeneration bump that drives plugin-layer restoration
   // after a burst of incremental remote edits.
   const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteApplyQueueRef = useRef<Promise<void>>(Promise.resolve());
   // Settles when the current connect attempt joins (welcome) or fatally fails,
   // so start()/join() resolve only on real success and the dialog keeps its
   // busy spinner until then.
@@ -140,6 +143,15 @@ export function useCollaboration(
     const conn = connRef.current;
     if (!conn || !canEdit() || syncPausedRef.current) return;
     const project = preparePortableProject(buildProjectSnapshot(mapControllerRef));
+    try {
+      assertProjectSafeForExternalTransfer(project);
+    } catch {
+      syncPausedRef.current = true;
+      useAppStore.getState().setCollaboration({
+        error: "Private model content cannot be sent to collaboration.",
+      });
+      return;
+    }
     const content = serializeProject(project);
     // Skip identical snapshots (selection/presence writes don't change content).
     if (content === lastContentRef.current) return;
@@ -166,13 +178,16 @@ export function useCollaboration(
   const applyRemoteSnapshot = (
     project: GeoLibreProject,
     initial: boolean,
-  ): void => {
+  ): Promise<void> => {
     // Keep each participant's own camera: replace the incoming view with the
     // local one before applying, so a peer's edit never yanks our viewport.
     // Where others are looking is conveyed by presence viewport rectangles.
     const localView =
       mapControllerRef.current?.readView() ?? useAppStore.getState().mapView;
-    const merged = preparePortableProject({ ...project, mapView: localView });
+    return sanitizeIncomingDesktopProject(
+      preparePortableProject({ ...project, mapView: localView }),
+      "remote",
+    ).then((merged) => {
     if (initial) {
       // First bootstrap (the welcome snapshot): a one-time full loadProject is
       // fine and runs the plugin/native-layer restoration so the joiner sees
@@ -205,6 +220,17 @@ export function useCollaboration(
     lastContentRef.current = serializeProject(
       preparePortableProject(buildProjectSnapshot(mapControllerRef)),
     );
+    });
+  };
+
+  const enqueueRemoteSnapshot = (project: GeoLibreProject, initial: boolean): void => {
+    remoteApplyQueueRef.current = remoteApplyQueueRef.current
+      .then(() => applyRemoteSnapshot(project, initial))
+      .catch(() => {
+        useAppStore.getState().setCollaboration({
+          error: "Remote project contains unsupported desktop model content.",
+        });
+      });
   };
 
   const handleMessage = (message: ServerMessage): void => {
@@ -241,7 +267,7 @@ export function useCollaboration(
             view: entry.view,
           });
         }
-        if (message.snapshot) applyRemoteSnapshot(message.snapshot, true);
+        if (message.snapshot) enqueueRemoteSnapshot(message.snapshot, true);
         // Resolve the connect() promise so start()/join() (and the dialog's busy
         // state) settle only once the join actually succeeds.
         const pending = pendingConnectRef.current;
@@ -251,7 +277,7 @@ export function useCollaboration(
       }
       case "snapshot":
         if (message.origin !== selfIdRef.current) {
-          applyRemoteSnapshot(message.project, false);
+          enqueueRemoteSnapshot(message.project, false);
         }
         break;
       case "presence": {
@@ -457,6 +483,9 @@ export function useCollaboration(
   // needlessly re-create them every render.
   const start = useCallback(
     async (displayName: string, color: string, mode: CollaborationMode) => {
+      assertProjectSafeForExternalTransfer(
+        preparePortableProject(buildProjectSnapshot(mapControllerRef)),
+      );
       const session = await createSession(mode, baseUrl);
       await connect(session.sessionId, displayName, color, session.hostToken);
       return session.sessionId;

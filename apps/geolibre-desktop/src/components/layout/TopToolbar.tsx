@@ -172,6 +172,7 @@ interface TopToolbarProps {
   // map so it can stay non-modal (the map is interactive for drawing a bbox).
   onOpenBasemapExtract: () => void;
   onOpenCadAlignment: () => void;
+  onOpenPrivateModelImport: () => void;
 }
 
 export function TopToolbar({
@@ -188,6 +189,7 @@ export function TopToolbar({
   onToggleThemeMode,
   onOpenBasemapExtract,
   onOpenCadAlignment,
+  onOpenPrivateModelImport,
 }: TopToolbarProps) {
   const { t } = useTranslation();
   // The reverse-geocode plugin lives in the framework-agnostic plugins package
@@ -1220,6 +1222,7 @@ export function TopToolbar({
           onOpenPlanetaryComputer={handleOpenPlanetaryComputer}
           onOpenGeoreferencer={() => setGeoreferencerOpen(true)}
           onOpenCadAlignment={onOpenCadAlignment}
+          onOpenPrivateModelImport={onOpenPrivateModelImport}
         />
       )}
       {isMenuVisible(uiProfile, "controls") && (
