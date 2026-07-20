@@ -6,6 +6,7 @@
  * export helpers rasterize {@link drawLayout} at print resolution.
  */
 import jsPDF from "jspdf";
+import { useAppStore } from "@geolibre/core";
 import { isFullViewportMapCanvas } from "./print-capture";
 import {
   drawLayout,
@@ -16,6 +17,7 @@ import {
 } from "./print-layout";
 import type { PrintExtent } from "./print-extent";
 import { saveBinaryFileWithFallback } from "./tauri-io";
+import { assertNoEarthworkPrivateContent } from "./project-private-content";
 
 export {
   applyLegendConfig,
@@ -120,6 +122,7 @@ function cropCaptureToClip(
  *   render a scale bar and north arrow.
  */
 export function captureMapImage(map: MapLike, clip?: CaptureClip | null): CapturedMap {
+  assertNoEarthworkPrivateContent(useAppStore.getState().layers);
   // Force a synchronous render first. MapLibre only paints on demand, so when
   // the Print Layout modal opens without any recent camera movement the
   // preserved drawing buffer can be stale or cleared -- which surfaced as a

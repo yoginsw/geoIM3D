@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { useTranslation } from "react-i18next";
 import {
   useAppStore,
@@ -265,7 +266,7 @@ function LogView({ log }: { log: string[] }): ReactElement {
 function BatchPanel({
   mapControllerRef,
 }: ModelBuilderDialogProps): ReactElement {
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
   const duckdb = useMemo(() => createDuckDbCapability(), []);
 
@@ -516,7 +517,7 @@ function BatchPanel({
 function ModelPanel({
   mapControllerRef,
 }: ModelBuilderDialogProps): ReactElement {
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
   const models = useAppStore((s) => s.models);
   const saveModel = useAppStore((s) => s.saveModel);

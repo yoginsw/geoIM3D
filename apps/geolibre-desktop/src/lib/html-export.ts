@@ -2,6 +2,7 @@
 // Python widget's `Map.to_html()`. See `docs/python.md` and `embedHost.ts`.
 
 import type { GeoLibreProject } from "@geolibre/core";
+import { assertProjectSafeForExternalTransfer } from "./project-private-content";
 
 // Empty until an approved viewer URL is injected by deployment configuration.
 export const DEFAULT_VIEWER_BASE_URL = "";
@@ -88,6 +89,7 @@ export interface BuildProjectHtmlOptions {
 // width/height. Mirrors the Python widget's to_html().
 export function buildProjectHtml(options: BuildProjectHtmlOptions): string {
   const { project, title } = options;
+  assertProjectSafeForExternalTransfer(project);
   // Resolve (and validate) here so an unsafe appUrl - e.g. a "javascript:" URI -
   // can never reach the iframe src; falls back to the env/default viewer.
   const appUrl = resolveViewerBaseUrl(options.appUrl);

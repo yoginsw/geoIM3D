@@ -11,6 +11,7 @@ import { SKETCHES_SOURCE_KIND } from "@geolibre/plugins";
 import type { Feature, FeatureCollection } from "geojson";
 import type { MapController } from "@geolibre/map";
 import { captureMapImage } from "../print-layout-export";
+import { assertNoEarthworkPrivateContent } from "../project-private-content";
 
 // The scripting command surface, shared by every programmatic entry point: the
 // Jupyter widget's postMessage bridge (useCommandBridge) and the in-app Python
@@ -52,6 +53,8 @@ function requireLayerId(params: Record<string, unknown>): string {
  */
 export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers {
   const { getController } = deps;
+  const assertEarthworkSafe = () =>
+    assertNoEarthworkPrivateContent(useAppStore.getState().layers);
 
   return {
     // -- view / camera ------------------------------------------------------
@@ -77,12 +80,14 @@ export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers 
 
     // -- queries ------------------------------------------------------------
     identify: (params) => {
+      assertEarthworkSafe();
       const lngLat = params.lngLat as [number, number];
       const layerId =
         typeof params.layerId === "string" ? params.layerId : undefined;
       return getController()?.identifyFeatures(lngLat, layerId) ?? [];
     },
     getLayerFeatures: (params) => {
+      assertEarthworkSafe();
       const layerId = requireLayerId(params);
       const layer = useAppStore
         .getState()
@@ -91,6 +96,7 @@ export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers 
       return layer.geojson?.features ?? [];
     },
     getSelectedFeatures: () => {
+      assertEarthworkSafe();
       // Selection is a single layer+feature pair in the store; return it as a
       // (0-or-1 element) list so the shape is forward-compatible with
       // multi-select and matches getLayerFeatures/getDrawnFeatures.
@@ -117,14 +123,16 @@ export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers 
       }
       return features;
     },
-    listLayers: () =>
-      useAppStore.getState().layers.map((layer) => ({
+    listLayers: () => {
+      assertEarthworkSafe();
+      return useAppStore.getState().layers.map((layer) => ({
         id: layer.id,
         name: layer.name,
         type: layer.type,
         visible: layer.visible,
         opacity: layer.opacity,
-      })),
+      }));
+    },
 
     // -- mutations ----------------------------------------------------------
     addGeoJsonLayer: (params) => {
@@ -198,6 +206,7 @@ export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers 
         parameters: algo.parameters,
       })),
     runAlgorithm: async (params) => {
+      assertEarthworkSafe();
       const id = params.id as string;
       const algo = allAlgorithms().find((item) => item.id === id);
       if (!algo) throw new Error(`Unknown algorithm "${id}"`);
@@ -237,6 +246,7 @@ export function createScriptingHandlers(deps: ScriptingDeps): ScriptingHandlers 
 
     // -- export -------------------------------------------------------------
     toImage: () => {
+      assertEarthworkSafe();
       const map = getController()?.getMap();
       if (!map) throw new Error("The map is not ready yet");
       // toDataURL is a synchronous PNG encode (100-400ms on a large/high-DPI

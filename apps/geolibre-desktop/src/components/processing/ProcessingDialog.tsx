@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { useAppStore, type GeoLibreLayer } from "@geolibre/core";
 import type { MapController } from "@geolibre/map";
 import {
@@ -449,7 +450,7 @@ export function ProcessingDialog({
   const setProcessingInitialTool = useAppStore(
     (s) => s.setProcessingInitialTool,
   );
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
 
   const [tools, setTools] = useState<WhiteboxTool[]>([]);

@@ -19,6 +19,7 @@ import {
   runSqlQuery,
 } from "../sql-workspace";
 import { createXyzTileUrlTemplate } from "../xyz-url";
+import { assertNoEarthworkPrivateContent } from "../project-private-content";
 import {
   findNamedTileBasemap,
   NAMED_TILE_BASEMAPS,
@@ -262,6 +263,11 @@ export function createAssistantTools(
   deps: AssistantToolDeps,
 ): InvokableTool<unknown, unknown>[] {
   const store = () => useAppStore.getState();
+  const assistantLayers = () => {
+    const layers = store().layers;
+    assertNoEarthworkPrivateContent(layers);
+    return layers;
+  };
   // Tool results are serialized to the model; the data we return is JSON-safe by
   // construction, so this asserts the shape against Strands' strict JSONValue.
   const json = (value: unknown): JSONValue => value as JSONValue;
@@ -322,7 +328,7 @@ export function createAssistantTools(
     description:
       "List the layers currently loaded in the map, with their id, type, geometry, feature count, attribute field names, and the SQL table name to use in run_sql. Call this before referring to a layer.",
     inputSchema: z.object({}),
-    callback: () => json({ layers: store().layers.map(summarizeLayer) }),
+    callback: () => json({ layers: assistantLayers().map(summarizeLayer) }),
   });
 
   const runSql = tool({
@@ -344,7 +350,7 @@ export function createAssistantTools(
       if (!isReadOnlySql(input.sql)) {
         throw new Error("Only read-only SELECT/WITH queries are allowed.");
       }
-      const result = await runSqlQuery(input.sql, store().layers);
+      const result = await runSqlQuery(input.sql, assistantLayers());
       let addedLayerId: string | null = null;
       if (input.add_as_layer && result.geojson) {
         addedLayerId = store().addGeoJsonLayer(
@@ -599,6 +605,7 @@ export function createAssistantTools(
       code: z.string().describe("Python source to execute."),
     }),
     callback: async (input) => {
+      assistantLayers();
       if (!(await approveCodeExecution("run_python", input.code))) {
         return json({
           output: "",
@@ -629,6 +636,7 @@ export function createAssistantTools(
         ),
     }),
     callback: async (input) => {
+      assistantLayers();
       if (!(await approveCodeExecution("run_maplibre_js", input.code))) {
         return json({ ok: false, error: "The user declined to run this code." });
       }

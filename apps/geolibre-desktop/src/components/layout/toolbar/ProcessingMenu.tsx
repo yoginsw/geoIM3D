@@ -30,6 +30,7 @@ interface ProcessingMenuProps {
   onOpenGeoreferencer: () => void;
   onOpenCadAlignment: () => void;
   onOpenPrivateModelImport: () => void;
+  onOpenPrivateTerrainAnalysis: () => void;
 }
 
 /** The Processing menu: assistant, toolboxes, conversion/vector/network/statistics/raster submenus. */
@@ -41,6 +42,7 @@ export function ProcessingMenu({
   onOpenGeoreferencer,
   onOpenCadAlignment,
   onOpenPrivateModelImport,
+  onOpenPrivateTerrainAnalysis,
 }: ProcessingMenuProps) {
   const { t } = useTranslation();
   const setProcessingOpen = useAppStore((s) => s.setProcessingOpen);
@@ -73,6 +75,7 @@ export function ProcessingMenu({
   const desktop = useMemo(() => isTauri(), []);
   const showCadAlignment = __TAURI_BUILD__ && desktop;
   const showIfcImport = __TAURI_BUILD__ && desktop;
+  const showEarthworkAnalysis = __TAURI_BUILD__ && desktop;
   const uiProfile = useDesktopSettingsStore((s) => s.desktopSettings.uiProfile);
   const show = (id: string) => isMenuItemVisible(uiProfile, id);
   // The Whitebox toolbox (and its WASI/GeoLibre tool catalog) runs entirely in
@@ -94,6 +97,7 @@ export function ProcessingMenu({
   const showGeolibreTools =
     showCadAlignment ||
     showIfcImport ||
+    showEarthworkAnalysis ||
     (!mobile && show("processing.conversion")) ||
     show("processing.vector") ||
     show("processing.network") ||
@@ -201,6 +205,11 @@ export function ProcessingMenu({
         {showIfcImport && (
           <DropdownMenuItem onSelect={onOpenPrivateModelImport}>
             BIM/IFC 가져오기
+          </DropdownMenuItem>
+        )}
+        {showEarthworkAnalysis && (
+          <DropdownMenuItem onSelect={onOpenPrivateTerrainAnalysis}>
+            토공량/절성토
           </DropdownMenuItem>
         )}
         {!mobile && show("processing.conversion") && (

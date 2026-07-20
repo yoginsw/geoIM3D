@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { useAppStore } from "@geolibre/core";
 import type { GeoLibreLayer } from "@geolibre/core";
 import type { MapController } from "@geolibre/map";
@@ -114,7 +115,7 @@ export function RasterToolsDialog({
   const { t } = useTranslation();
   const openTool = useAppStore((s) => s.ui.rasterToolOpen);
   const setRasterToolOpen = useAppStore((s) => s.setRasterToolOpen);
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
 
   const open = openTool !== null;
   const desktop = isTauri();

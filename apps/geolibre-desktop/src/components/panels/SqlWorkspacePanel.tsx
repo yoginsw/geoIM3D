@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { useAppStore } from "@geolibre/core";
 import {
   Button,
@@ -263,7 +264,7 @@ function formatCell(value: unknown): string {
  */
 export function SqlWorkspacePanel() {
   const setSqlWorkspaceOpen = useAppStore((s) => s.setSqlWorkspaceOpen);
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
 
   const { t } = useTranslation();

@@ -100,6 +100,7 @@ import {
   saveBinaryFileWithFallback,
   saveTextFileWithFallback,
 } from "../lib/tauri-io";
+import { assertNoEarthworkPrivateContent } from "../lib/project-private-content";
 import { useDesktopSettingsStore } from "./useDesktopSettings";
 import { ensureFileExtension, useFileNamePrompt } from "./useFileNamePrompt";
 
@@ -823,7 +824,18 @@ export function createAppAPI(
     resolvePluginAssetUrl: resolvePluginAssetUrlForLoadedPlugin,
     fitBounds: (bounds: [number, number, number, number]) =>
       mapControllerRef?.current?.fitBounds(bounds),
-    getMap: () => mapControllerRef?.current?.getMap() ?? null,
+    getMap: () => {
+      try {
+        assertNoEarthworkPrivateContent(useAppStore.getState().layers);
+      } catch {
+        // The public API already models an unavailable map as null. Returning
+        // null fail-closes third-party map inspection without letting a trusted
+        // built-in plugin's lifecycle callback crash the entire application
+        // when a canonical private-analysis project is reopened.
+        return null;
+      }
+      return mapControllerRef?.current?.getMap() ?? null;
+    },
     pickLocalDirectoryFiles,
     // Present only on desktop (filesystem access); the Vector panel keys off its
     // presence to auto-discover shapefile sidecars instead of forcing the user
@@ -837,6 +849,7 @@ export function createAppAPI(
       content: string,
       options?: GeoLibreFileDialogOptions,
     ) => {
+      assertNoEarthworkPrivateContent(content);
       const description = options?.description ?? "GeoJSON";
       const extensions = options?.extensions ?? ["geojson", "json"];
       const mimeType = options?.mimeType ?? "application/geo+json";

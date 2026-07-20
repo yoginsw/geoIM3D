@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { getRoutingConfig, useAppStore } from "@geolibre/core";
 import { detectGeometryProfile, type MapController } from "@geolibre/map";
 import {
@@ -48,7 +49,7 @@ export function NetworkToolsDialog({
   const { t } = useTranslation();
   const openTool = useAppStore((s) => s.ui.networkToolOpen);
   const setNetworkToolOpen = useAppStore((s) => s.setNetworkToolOpen);
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
 
   const open = openTool !== null;

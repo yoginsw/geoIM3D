@@ -1526,7 +1526,9 @@ export const useAppStore = create<AppState>()(
       // ui flags, mapView/camera, pointerCoords, project metadata, isDirty, ...)
       // is excluded, so changing them never creates a history entry.
       partialize: (s) => ({
-        layers: s.layers,
+        layers: s.layers.filter(
+          (layer) => layer.metadata.excludeFromHistory !== true,
+        ),
         layerGroups: s.layerGroups,
         basemapStyleUrl: s.basemapStyleUrl,
         basemapVisible: s.basemapVisible,
@@ -1592,6 +1594,14 @@ useAppStore.subscribe((state) => {
  * drop a `selectedLayerId` that no longer points at an existing layer (selection
  * is intentionally not tracked in history, so it can dangle after a restore).
  */
+function restoreHistoryExcludedLayers(layers: GeoLibreLayer[]): void {
+  if (layers.length === 0) return;
+  const restored = useAppStore.getState().layers;
+  const ids = new Set(restored.map((layer) => layer.id));
+  const missing = layers.filter((layer) => !ids.has(layer.id));
+  if (missing.length > 0) useAppStore.setState({ layers: [...restored, ...missing] });
+}
+
 function finishHistoryStep(previousBasemapStyleUrl: string): void {
   const s = useAppStore.getState();
   const selectionDangling =
@@ -1643,7 +1653,11 @@ export function undo(): void {
   if (temporal.pastStates.length === 0) return; // nothing to undo; stay clean
   cancelHistoryCoalesce(); // break any in-flight burst so the next edit records
   const previousBasemapStyleUrl = useAppStore.getState().basemapStyleUrl;
+  const excludedLayers = useAppStore
+    .getState()
+    .layers.filter((layer) => layer.metadata.excludeFromHistory === true);
   temporal.undo();
+  restoreHistoryExcludedLayers(excludedLayers);
   finishHistoryStep(previousBasemapStyleUrl);
 }
 
@@ -1653,7 +1667,11 @@ export function redo(): void {
   if (temporal.futureStates.length === 0) return; // nothing to redo; stay clean
   cancelHistoryCoalesce(); // break any in-flight burst so the next edit records
   const previousBasemapStyleUrl = useAppStore.getState().basemapStyleUrl;
+  const excludedLayers = useAppStore
+    .getState()
+    .layers.filter((layer) => layer.metadata.excludeFromHistory === true);
   temporal.redo();
+  restoreHistoryExcludedLayers(excludedLayers);
   finishHistoryStep(previousBasemapStyleUrl);
 }
 

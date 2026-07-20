@@ -29,6 +29,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { ParameterField } from "./ParameterField";
+import { isPersistedPrivateEarthwork } from "../../lib/project-private-content";
 
 interface StatisticsToolsDialogProps {
   mapControllerRef: React.RefObject<MapController | null>;
@@ -113,6 +114,7 @@ export function StatisticsToolsDialog({
   const layerOptions = useCallback(
     (filter?: GeometryFamily[]) =>
       layers.filter((layer) => {
+        if (isPersistedPrivateEarthwork(layer)) return false;
         if (layer.type !== "geojson" || !layer.geojson) return false;
         if (!filter?.length) return true;
         const profile = detectGeometryProfile(layer.geojson);
@@ -133,6 +135,7 @@ export function StatisticsToolsDialog({
     const map = new Map<string, string[]>();
     if (!open) return map;
     for (const layer of layers) {
+      if (isPersistedPrivateEarthwork(layer)) continue;
       if (layer.type !== "geojson" || !layer.geojson) continue;
       const keys = new Set<string>();
       for (const feature of layer.geojson.features.slice(0, FIELD_SCAN_SAMPLE)) {

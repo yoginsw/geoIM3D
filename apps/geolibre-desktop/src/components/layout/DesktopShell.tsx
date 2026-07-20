@@ -234,6 +234,14 @@ const IfcImportDialog = __TAURI_BUILD__
     )
   : null;
 
+const EarthworkAnalysisDialog = __TAURI_BUILD__
+  ? lazy(() =>
+      import("../processing/EarthworkAnalysisDialog").then((module) => ({
+        default: module.EarthworkAnalysisDialog,
+      })),
+    )
+  : null;
+
 const VectorToolsDialog = lazy(() =>
   import("../processing/VectorToolsDialog")
     .then((module) => ({
@@ -609,6 +617,7 @@ export function DesktopShell({
   const [basemapExtractOpen, setBasemapExtractOpen] = useState(false);
   const [cadAlignmentOpen, setCadAlignmentOpen] = useState(false);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
+  const [earthworkAnalysisOpen, setEarthworkAnalysisOpen] = useState(false);
   const dragDepthRef = useRef(0);
   const dropMessageTimeoutRef = useRef<number | null>(null);
   const materializingRef = useRef(false);
@@ -2002,6 +2011,7 @@ export function DesktopShell({
             onOpenBasemapExtract={() => setBasemapExtractOpen(true)}
             onOpenCadAlignment={() => setCadAlignmentOpen(true)}
             onOpenPrivateModelImport={() => setIfcImportOpen(true)}
+            onOpenPrivateTerrainAnalysis={() => setEarthworkAnalysisOpen(true)}
           />
         </SectionErrorBoundary>
       ) : null}
@@ -2377,6 +2387,15 @@ export function DesktopShell({
           <IfcImportDialog
             open={ifcImportOpen}
             onOpenChange={setIfcImportOpen}
+            mapControllerRef={mapControllerRef}
+          />
+        </Suspense>
+      ) : null}
+      {EarthworkAnalysisDialog && isTauri() ? (
+        <Suspense fallback={null}>
+          <EarthworkAnalysisDialog
+            open={earthworkAnalysisOpen}
+            onOpenChange={setEarthworkAnalysisOpen}
             mapControllerRef={mapControllerRef}
           />
         </Suspense>

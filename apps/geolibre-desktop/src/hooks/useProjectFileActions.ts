@@ -48,7 +48,7 @@ import { assertProjectSafeForExternalTransfer } from "../lib/project-private-con
 
 async function sanitizeIncomingDesktopIfcProject(
   project: GeoLibreProject,
-  source: DesktopProjectIngressSource = "local",
+  source: DesktopProjectIngressSource,
 ): Promise<GeoLibreProject> {
   return sanitizeIncomingDesktopProject(project, source);
 }
@@ -165,6 +165,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
             sanitizeIncomingProjectCredentials(
               await resolveProjectXyzLayers(result.project),
             ),
+            "local",
           ),
           result.path,
           { rememberRecent: true },
@@ -189,6 +190,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
             sanitizeIncomingProjectCredentials(
               await resolveProjectXyzLayers(result.project),
             ),
+            "local",
           ),
           result.path,
           { rememberRecent: isTauri() },
@@ -215,6 +217,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
           sanitizeIncomingProjectCredentials(
             await resolveProjectXyzLayers(project),
           ),
+          "local",
         ),
         null,
         {

@@ -19,5 +19,7 @@ export async function sanitizeIncomingDesktopProject(
   }
   if (!__TAURI_BUILD__) return project;
   const { sanitizeIncomingIfcProject } = await import("./ifc-project");
-  return sanitizeIncomingIfcProject(project);
+  const ifcSanitized = sanitizeIncomingIfcProject(project);
+  const { sanitizeIncomingEarthworkProject } = await import("./earthwork-project");
+  return sanitizeIncomingEarthworkProject(ifcSanitized);
 }

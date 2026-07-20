@@ -1,3 +1,4 @@
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { useAppStore } from "@geolibre/core";
 import { detectGeometryProfile, type MapController } from "@geolibre/map";
 import {
@@ -67,7 +68,7 @@ export function VectorToolsDialog({
 }: VectorToolsDialogProps): ReactElement {
   const openTool = useAppStore((s) => s.ui.vectorToolOpen);
   const setVectorToolOpen = useAppStore((s) => s.setVectorToolOpen);
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) => selectLayersWithoutPrivateEarthwork(s.layers));
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
 
   const open = openTool !== null;

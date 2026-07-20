@@ -57,6 +57,7 @@ getrandom = "0.4"
 # builds do not pull a Secret Service/DBus backend or its development packages.
 [target."cfg(target_os = \"windows\")".dependencies]
 keyring = { version = "4.1.5", default-features = false, features = ["v1", "windows-native-keyring-store"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
 # Runtime WebKitGTK version check (already an indirect dep via tauri/wry).
 [target."cfg(target_os = \"linux\")".dependencies]

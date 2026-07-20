@@ -7,6 +7,7 @@ import type {
   Position,
 } from "geojson";
 import proj4 from "proj4";
+import { registerLocalCrsDefinitions } from "./local-crs";
 
 export const SUPPORTED_CAD_CRS = [
   "EPSG:4326",
@@ -24,19 +25,7 @@ const MAX_COORDINATES = 1_000_000;
 const MIN_SCALE = 1e-6;
 const MAX_SCALE = 1e6;
 
-proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
-proj4.defs(
-  "EPSG:3857",
-  "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs",
-);
-proj4.defs(
-  "EPSG:5179",
-  "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs +type=crs",
-);
-proj4.defs(
-  "EPSG:5186",
-  "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs +type=crs",
-);
+registerLocalCrsDefinitions();
 
 export interface SimilarityTransform {
   scale: number;
