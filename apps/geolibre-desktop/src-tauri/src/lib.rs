@@ -1,9 +1,11 @@
 mod credential_store;
-mod vworld;
 mod earth_engine_oauth;
 mod earthwork_file;
 #[cfg(feature = "native-duckdb")]
 mod native_duckdb;
+#[cfg(target_os = "windows")]
+mod terrain_safety_file;
+mod vworld;
 #[cfg(not(feature = "native-duckdb"))]
 mod native_duckdb {
     #[tauri::command]
@@ -229,6 +231,8 @@ pub fn run() {
             credential_store::credential_load,
             credential_store::credential_set,
             earthwork_file::read_earthwork_geotiff,
+            #[cfg(target_os = "windows")]
+            terrain_safety_file::pick_and_read_terrain_safety_geotiff,
             native_duckdb::count_native_vector_file_features,
             ensure_martin_binary,
             fetch_url_bytes,

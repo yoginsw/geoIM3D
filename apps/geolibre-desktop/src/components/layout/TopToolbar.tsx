@@ -174,6 +174,7 @@ interface TopToolbarProps {
   onOpenCadAlignment: () => void;
   onOpenPrivateModelImport: () => void;
   onOpenPrivateTerrainAnalysis: () => void;
+  onOpenWindowsPrivateAnalysis: () => void;
 }
 
 export function TopToolbar({
@@ -192,6 +193,7 @@ export function TopToolbar({
   onOpenCadAlignment,
   onOpenPrivateModelImport,
   onOpenPrivateTerrainAnalysis,
+  onOpenWindowsPrivateAnalysis,
 }: TopToolbarProps) {
   const { t } = useTranslation();
   // The reverse-geocode plugin lives in the framework-agnostic plugins package
@@ -1226,6 +1228,7 @@ export function TopToolbar({
           onOpenCadAlignment={onOpenCadAlignment}
           onOpenPrivateModelImport={onOpenPrivateModelImport}
           onOpenPrivateTerrainAnalysis={onOpenPrivateTerrainAnalysis}
+          onOpenWindowsPrivateAnalysis={onOpenWindowsPrivateAnalysis}
         />
       )}
       {isMenuVisible(uiProfile, "controls") && (

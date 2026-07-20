@@ -32,6 +32,7 @@ import {
   prepareProjectForFileSave,
   sanitizeIncomingProjectCredentials,
 } from "../lib/project-file-contract";
+import { sanitizeDesktopProjectForLocalSave } from "../lib/desktop-project-egress";
 import { mergeStringLists } from "../lib/string-lists";
 import { fetchProjectFromUrl } from "../lib/project-url";
 import { getShareFetch } from "../lib/share-fetch";
@@ -44,7 +45,10 @@ import {
   sanitizeIncomingDesktopProject,
   type DesktopProjectIngressSource,
 } from "../lib/desktop-project-ingress";
-import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
+import {
+  assertProjectSafeForExternalTransfer,
+  selectLayersWithoutPrivateEarthwork,
+} from "../lib/project-private-content";
 
 async function sanitizeIncomingDesktopIfcProject(
   project: GeoLibreProject,
@@ -407,7 +411,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // Build the current project from live store + map state and serialize it.
   // Shared by Save/Save As and the Share action so they all capture identical
   // project content (including the current map view and plugin state).
-  const buildCurrentProject = (
+  const buildCurrentProject = async (
     nameOverride?: string,
     layersOverride?: GeoLibreLayer[],
   ) => {
@@ -441,10 +445,12 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       primaryMapLabel: state.primaryMapLabel,
       metadata: state.metadata,
     });
+    const portableProject = prepareProjectForFileSave(project);
+    const sanitizedProject = await sanitizeDesktopProjectForLocalSave(portableProject);
     return {
-      project,
+      project: sanitizedProject,
       defaultProjectName,
-      content: serializeProject(prepareProjectForFileSave(project)),
+      content: serializeProject(sanitizedProject),
       // Expose the path read from this same snapshot so callers don't take a
       // second `getState()` read that could be misread as a separate instant.
       projectPath: state.projectPath,
@@ -487,7 +493,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       : layers;
     if (uncovered.length > 0) {
       for (const [id, collection] of await materializeEmbeddableVectorLayers(
-        uncovered,
+        selectLayersWithoutPrivateEarthwork(uncovered),
       )) {
         embeddable.set(id, collection);
       }
@@ -534,7 +540,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     { layers?: GeoLibreLayer[] } | "cancel"
   > => {
     const state = useAppStore.getState();
-    const embeddable = await materializeEmbeddableVectorLayers(state.layers);
+    const embeddable = await materializeEmbeddableVectorLayers(
+      selectLayersWithoutPrivateEarthwork(state.layers),
+    );
     const localFileLayers = isTauri()
       ? state.layers.filter(isReloadableLocalFileLayer)
       : [];
@@ -592,10 +600,10 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // references. Used by the Share dialog.
   const buildEmbeddedProject = async (nameOverride?: string) => {
     assertProjectSafeForExternalTransfer(
-      buildCurrentProject(nameOverride).project,
+      (await buildCurrentProject(nameOverride)).project,
     );
     const layers = await buildEmbeddedLayers(useAppStore.getState().layers);
-    const result = buildCurrentProject(nameOverride, layers);
+    const result = await buildCurrentProject(nameOverride, layers);
     assertProjectSafeForExternalTransfer(result.project);
     return result;
   };
@@ -635,7 +643,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     const layersForSave = await resolveLayersForSave();
     if (layersForSave === "cancel") return false;
     const { project, defaultProjectName, content, projectPath } =
-      buildCurrentProject(undefined, layersForSave.layers);
+      await buildCurrentProject(undefined, layersForSave.layers);
     // buildCurrentProject always removes runtime environment values from the
     // portable content while preserving them in the live store.
     const contentToSave = content;

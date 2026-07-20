@@ -64,6 +64,23 @@ const TILEJSON_URL =
   "https://planetarycomputer.microsoft.com/api/data/v1/item/tilejson.json?collection=sentinel-2-l2a&item=S2A&assets=visual";
 
 describe("buildStoryMapHtml raster sources", () => {
+  it("rejects private terrain analysis before building standalone HTML", () => {
+    const privateLayer = rasterLayer("scene-a", { type: "raster" }, {
+      metadata: {
+        customLayerType: "terrain-slope-safety",
+        terrainSafetyAnalysis: { schema: "geoim3d-terrain-slope-safety-v1" },
+      },
+    });
+    assert.throws(
+      () => buildStoryMapHtml({
+        storymap: story(),
+        basemapStyleUrl: "",
+        layers: [privateLayer],
+      }),
+      /TERRAIN_SAFETY_PRIVATE_CONTENT_BLOCKED/,
+    );
+  });
+
   it("inlines a raster layer whose source is a TileJSON url (#1272)", () => {
     const html = buildStoryMapHtml({
       storymap: story(),

@@ -8,6 +8,7 @@ import {
   type StoryMap,
 } from "@geolibre/core";
 import { sanitizeStoryHtml } from "./sanitize-html";
+import { assertNoPrivateAnalysisContent } from "./project-private-content";
 import {
   STORY_END_STEP_ID,
   STORY_GLOBAL_VIEW,
@@ -81,6 +82,7 @@ const BLANK_EXPORT_STYLE: Record<string, unknown> = {
  * @returns A complete HTML document as a string.
  */
 export function buildStoryMapHtml(options: StoryMapExportOptions): string {
+  assertNoPrivateAnalysisContent(options.layers);
   const {
     storymap,
     basemapStyleUrl,

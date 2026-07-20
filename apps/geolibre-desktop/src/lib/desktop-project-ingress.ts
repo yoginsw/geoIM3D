@@ -21,5 +21,11 @@ export async function sanitizeIncomingDesktopProject(
   const { sanitizeIncomingIfcProject } = await import("./ifc-project");
   const ifcSanitized = sanitizeIncomingIfcProject(project);
   const { sanitizeIncomingEarthworkProject } = await import("./earthwork-project");
-  return sanitizeIncomingEarthworkProject(ifcSanitized);
+  const earthworkSanitized = sanitizeIncomingEarthworkProject(ifcSanitized);
+  if (!__WINDOWS_TAURI_BUILD__) {
+    assertProjectSafeForExternalTransfer(earthworkSanitized);
+    return earthworkSanitized;
+  }
+  const { sanitizeIncomingTerrainSafetyProject } = await import("./terrain-safety-project");
+  return sanitizeIncomingTerrainSafetyProject(earthworkSanitized);
 }

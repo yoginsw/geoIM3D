@@ -292,7 +292,11 @@ Partner Center Identity가 준비된 Phase 8 환경에서 별도 검증한다.
   - Branch: `feat/geoim3d-earthwork-analysis`
   - Windows Desktop 전용 Local DEM GeoTIFF + WGS84 Polygon + 일정 계획고 MVP
   - 요구사항/Acceptance: `docs/rebranding/07C_EARTHWORK_CUT_FILL.md`
-- [ ] 경사·가시권·안전 분석
+- [ ] 경사·가시권·안전 분석 — **Phase 7D1 경사·안전 Acceptance Review 중**
+  - Branch: `feat/geoim3d-terrain-safety-analysis`
+  - 7D1: Local DEM + AOI 기반 Horn 3×3 경사 및 사용자 임계값 안전 Summary
+  - 7D2: 7D1 완료 후 별도 Branch/Acceptance로 bounded 가시권 분석
+  - 요구사항/Acceptance: `docs/rebranding/07D1_TERRAIN_SLOPE_SAFETY.md`
 - [ ] 3D Scene Project Preset
 - [ ] 환경·재난 Dashboard
 

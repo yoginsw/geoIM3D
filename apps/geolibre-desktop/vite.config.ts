@@ -94,6 +94,7 @@ if (!process.env.VITE_GEE_OAUTH_CLIENT_ID) {
 // (`npm run build`), so their presence flags a desktop build. Used below to drop
 // the service worker from the desktop bundle.
 const IS_TAURI_BUILD = !!process.env.TAURI_ENV_PLATFORM;
+const IS_WINDOWS_TAURI_BUILD = process.env.TAURI_ENV_PLATFORM === "windows";
 
 // PGlite + PostGIS is ~25 MB raw and weighs ~22 MB inside the Tauri binary
 // (postgis.tar is pre-gzipped, so brotli can't shrink it — it was the entire
@@ -899,6 +900,7 @@ export default defineConfig({
     ...publicClientEnvDefines(),
     __GEOLIBRE_VERSION__: JSON.stringify(APP_VERSION),
     __TAURI_BUILD__: JSON.stringify(IS_TAURI_BUILD),
+    __WINDOWS_TAURI_BUILD__: JSON.stringify(IS_WINDOWS_TAURI_BUILD),
     __PGLITE_CDN_URL__: JSON.stringify(PGLITE_CDN_URL),
     __PGLITE_POSTGIS_CDN_URL__: JSON.stringify(PGLITE_POSTGIS_CDN_URL),
     __CEREUS_WASM_CDN_URL__: JSON.stringify(CEREUS_WASM_CDN_URL),

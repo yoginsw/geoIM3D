@@ -64,6 +64,7 @@ import {
 import { saveTextFileWithFallback } from "../../lib/tauri-io";
 import { promptDownloadNameIfNeeded } from "../../hooks/useFileNamePrompt";
 import { buildStoryMapHtml } from "../../lib/storymap-export";
+import { assertNoPrivateAnalysisContent } from "../../lib/project-private-content";
 import { StoryMapHandoutDialog } from "./StoryMapHandoutDialog";
 
 interface StoryMapPanelProps {
@@ -323,6 +324,7 @@ export function StoryMapPanel({ mapControllerRef }: StoryMapPanelProps) {
     setExportError(null);
     if (chapters.length === 0) return;
     try {
+      assertNoPrivateAnalysisContent(layers);
       // URL-backed GeoJSON layers (remote GeoJSON, in-browser Parquet/Shapefile
       // conversion) keep their features only in the live MapLibre source, not in
       // the store record, so read them back so the export inlines the same data
