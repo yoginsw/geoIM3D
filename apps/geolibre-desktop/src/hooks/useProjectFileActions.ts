@@ -1,6 +1,5 @@
 import {
   DEFAULT_PROJECT_NAME,
-  parseProject,
   projectFromStore,
   serializeProject,
   useAppStore,
@@ -26,6 +25,10 @@ import {
   saveTextFileWithFallback,
   takeStartupProjectPath,
 } from "../lib/tauri-io";
+import {
+  MAX_LOCAL_PROJECT_BYTES,
+  parseBoundedLocalProjectBytes,
+} from "../lib/project-file-bytes";
 import { buildProjectHtml } from "../lib/html-export";
 import { ensureHtmlFileName, ensureProjectFileName } from "../lib/file-names";
 import {
@@ -42,21 +45,40 @@ import { normalizeProjectUrl } from "../lib/urls";
 import { resolveProjectXyzLayers } from "../lib/xyz-url";
 import type { MapControllerRef } from "../components/layout/toolbar/constants";
 import {
-  sanitizeIncomingDesktopProject,
-  type DesktopProjectIngressSource,
+  sanitizeLocalDropProject,
+  sanitizeLocalOpenProject,
+  sanitizeLocalRecentProject,
+  sanitizeLocalStartupProject,
+  sanitizeRemoteHttpRecentProject,
+  sanitizeRemoteShareProject,
+  sanitizeRemoteUrlProject,
 } from "../lib/desktop-project-ingress";
 import {
   assertProjectSafeForExternalTransfer,
+  containsPersistedViewshedAnalysis,
   selectLayersWithoutPrivateEarthwork,
 } from "../lib/project-private-content";
+import { serializeViewshedProjectUtf8 } from "../lib/viewshed-project-serializer";
 
-async function sanitizeIncomingDesktopIfcProject(
+async function sanitizeIncomingDesktopProject(
   project: GeoLibreProject,
-  source: DesktopProjectIngressSource,
+  route:
+    | "open"
+    | "recent"
+    | "startup"
+    | "drop"
+    | "url"
+    | "share"
+    | "http-recent"
 ): Promise<GeoLibreProject> {
-  return sanitizeIncomingDesktopProject(project, source);
+  if (route === "open") return sanitizeLocalOpenProject(project);
+  if (route === "recent") return sanitizeLocalRecentProject(project);
+  if (route === "startup") return sanitizeLocalStartupProject(project);
+  if (route === "drop") return sanitizeLocalDropProject(project);
+  if (route === "share") return sanitizeRemoteShareProject(project);
+  if (route === "http-recent") return sanitizeRemoteHttpRecentProject(project);
+  return sanitizeRemoteUrlProject(project);
 }
-
 
 /**
  * A pending "embed local vector data?" prompt, shown on the web when saving a
@@ -141,7 +163,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   const [embedVectorDataPrompt, setEmbedVectorDataPrompt] =
     useState<EmbedVectorDataPrompt | null>(null);
   const [saveNamePrompt, setSaveNamePrompt] = useState<SaveNamePrompt | null>(
-    null,
+    null
   );
   const [saveNameInput, setSaveNameInput] = useState("");
   const projectUrlAbortRef = useRef<AbortController | null>(null);
@@ -165,21 +187,21 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
         if (!path) return;
         const result = await openRecentProjectFile(path);
         loadProject(
-          await sanitizeIncomingDesktopIfcProject(
+          await sanitizeIncomingDesktopProject(
             sanitizeIncomingProjectCredentials(
-              await resolveProjectXyzLayers(result.project),
+              await resolveProjectXyzLayers(result.project)
             ),
-            "local",
+            "startup"
           ),
           result.path,
-          { rememberRecent: true },
+          { rememberRecent: true }
         );
       } catch (error) {
         console.error("Failed to open startup project", error);
         setActionError(
           error instanceof Error
             ? error.message
-            : t("toolbar.error.couldNotOpenProject"),
+            : t("toolbar.error.couldNotOpenProject")
         );
       }
     })();
@@ -190,21 +212,21 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     if (result) {
       try {
         loadProject(
-          await sanitizeIncomingDesktopIfcProject(
+          await sanitizeIncomingDesktopProject(
             sanitizeIncomingProjectCredentials(
-              await resolveProjectXyzLayers(result.project),
+              await resolveProjectXyzLayers(result.project)
             ),
-            "local",
+            "open"
           ),
           result.path,
-          { rememberRecent: isTauri() },
+          { rememberRecent: isTauri() }
         );
       } catch (error) {
         console.error("Failed to open project", error);
         setActionError(
           error instanceof Error
             ? error.message
-            : t("toolbar.error.couldNotOpenProject"),
+            : t("toolbar.error.couldNotOpenProject")
         );
       }
     }
@@ -212,21 +234,25 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
 
   /** Open one browser drag-dropped canonical project without inventing a path. */
   const handleOpenDroppedProjectFile = async (
-    file: File,
+    file: File
   ): Promise<string | null> => {
     try {
-      const project = parseProject(await file.text());
+      if (file.size > MAX_LOCAL_PROJECT_BYTES)
+        throw new Error("PROJECT_FILE_TOO_LARGE");
+      const project = await parseBoundedLocalProjectBytes(
+        await file.arrayBuffer()
+      );
       loadProject(
-        await sanitizeIncomingDesktopIfcProject(
+        await sanitizeIncomingDesktopProject(
           sanitizeIncomingProjectCredentials(
-            await resolveProjectXyzLayers(project),
+            await resolveProjectXyzLayers(project)
           ),
-          "local",
+          "drop"
         ),
         null,
         {
           rememberRecent: false,
-        },
+        }
       );
       return null;
     } catch (error) {
@@ -256,19 +282,19 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       const result = await openRecentProjectFile(
         normalizedUrl,
         controller.signal,
-        getShareFetch(),
+        getShareFetch()
       );
       const project = await resolveProjectXyzLayers(
         result.project,
-        controller.signal,
+        controller.signal
       );
       if (controller.signal.aborted) return;
       loadProject(
-        await sanitizeIncomingDesktopIfcProject(
+        await sanitizeIncomingDesktopProject(
           sanitizeIncomingProjectCredentials(project),
-          "remote",
+          "url"
         ),
-        result.path,
+        result.path
       );
       setProjectUrl("");
       setProjectUrlDialogOpen(false);
@@ -278,7 +304,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       setProjectUrlError(
         error instanceof Error
           ? error.message
-          : t("toolbar.error.couldNotOpenProjectUrl"),
+          : t("toolbar.error.couldNotOpenProjectUrl")
       );
     } finally {
       if (projectUrlAbortRef.current === controller) {
@@ -303,7 +329,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // the header.
   const openProjectFromShareUrl = async (
     url: string,
-    options: { authToken?: string } = {},
+    options: { authToken?: string } = {}
   ): Promise<void> => {
     const normalizedUrl = normalizeProjectUrl(url);
     if (!normalizedUrl) {
@@ -324,23 +350,20 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
               resolveShareBaseUrl(),
               // On desktop this routes the share host through Tauri's native
               // HTTP client, which is exempt from the WebView's CORS checks.
-              baseFetch,
+              baseFetch
             )
           : baseFetch,
       });
-      const project = await resolveProjectXyzLayers(
-        fetched,
-        controller.signal,
-      );
+      const project = await resolveProjectXyzLayers(fetched, controller.signal);
       if (controller.signal.aborted) return;
       // Share service endpoints are compatibility APIs, not canonical local
       // file references, so never persist them as writable/recent paths.
       loadProject(
-        await sanitizeIncomingDesktopIfcProject(
+        await sanitizeIncomingDesktopProject(
           sanitizeIncomingProjectCredentials(project),
-          "remote",
+          "share"
         ),
-        null,
+        null
       );
     } finally {
       if (shareUrlAbortRef.current === controller) {
@@ -366,7 +389,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       result = await openRecentProjectFile(
         path,
         controller.signal,
-        getShareFetch(),
+        getShareFetch()
       );
     } catch (error) {
       if (controller.signal.aborted) return null;
@@ -384,15 +407,15 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     try {
       const project = await resolveProjectXyzLayers(
         result.project,
-        controller.signal,
+        controller.signal
       );
       if (controller.signal.aborted) return null;
       loadProject(
-        await sanitizeIncomingDesktopIfcProject(
+        await sanitizeIncomingDesktopProject(
           sanitizeIncomingProjectCredentials(project),
-          isHttpUrl(path) ? "remote" : "local",
+          isHttpUrl(path) ? "http-recent" : "recent"
         ),
-        result.path,
+        result.path
       );
       return null;
     } catch (error) {
@@ -413,14 +436,14 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // project content (including the current map view and plugin state).
   const buildCurrentProject = async (
     nameOverride?: string,
-    layersOverride?: GeoLibreLayer[],
+    layersOverride?: GeoLibreLayer[]
   ) => {
     const state = useAppStore.getState();
     const defaultProjectName =
       nameOverride?.trim() || state.projectName.trim() || DEFAULT_PROJECT_NAME;
     const pluginManifestUrls = mergeStringLists(
       state.projectPlugins?.manifestUrls ?? [],
-      useDesktopSettingsStore.getState().desktopSettings.pluginManifestUrls,
+      useDesktopSettingsStore.getState().desktopSettings.pluginManifestUrls
     );
     const project = projectFromStore({
       projectName: defaultProjectName,
@@ -446,17 +469,23 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       metadata: state.metadata,
     });
     const portableProject = prepareProjectForFileSave(project);
-    const sanitizedProject = await sanitizeDesktopProjectForLocalSave(portableProject);
+    const sanitizedProject = await sanitizeDesktopProjectForLocalSave(
+      portableProject
+    );
+    const hasViewshed = containsPersistedViewshedAnalysis(sanitizedProject);
+    const localContent = hasViewshed
+      ? serializeViewshedProjectUtf8(sanitizedProject)
+      : serializeProject(sanitizedProject);
     return {
       project: sanitizedProject,
       defaultProjectName,
-      content: serializeProject(sanitizedProject),
+      content: hasViewshed ? "" : (localContent as string),
+      localContent,
       // Expose the path read from this same snapshot so callers don't take a
       // second `getState()` read that could be misread as a separate instant.
       projectPath: state.projectPath,
     };
   };
-
 
   // Ask whether to embed local vector layers' data in the saved file. Resolves
   // when the user picks an option in the dialog.
@@ -466,7 +495,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     });
 
   const resolveEmbedVectorDataPrompt = (
-    choice: "embed" | "noembed" | "cancel",
+    choice: "embed" | "noembed" | "cancel"
   ) => {
     embedVectorDataPrompt?.resolve(choice);
     setEmbedVectorDataPrompt(null);
@@ -481,7 +510,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // restores. Used by the save dialog's Embed choice and by Share (always).
   const buildEmbeddedLayers = async (
     layers: GeoLibreLayer[],
-    prebuilt?: Map<string, FeatureCollection>,
+    prebuilt?: Map<string, FeatureCollection>
   ): Promise<GeoLibreLayer[]> => {
     // Reuse a map the caller already materialized (the Embed save path) so each
     // layer's features aren't read from the control twice, but materialize any
@@ -493,7 +522,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       : layers;
     if (uncovered.length > 0) {
       for (const [id, collection] of await materializeEmbeddableVectorLayers(
-        selectLayersWithoutPrivateEarthwork(uncovered),
+        selectLayersWithoutPrivateEarthwork(uncovered)
       )) {
         embeddable.set(id, collection);
       }
@@ -515,7 +544,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // GeoJSON layers use their `geojson`.
   const estimateEmbedBytes = (
     layers: GeoLibreLayer[],
-    embeddable: Map<string, FeatureCollection>,
+    embeddable: Map<string, FeatureCollection>
   ): number => {
     const encoder = new TextEncoder();
     let bytes = 0;
@@ -541,7 +570,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   > => {
     const state = useAppStore.getState();
     const embeddable = await materializeEmbeddableVectorLayers(
-      selectLayersWithoutPrivateEarthwork(state.layers),
+      selectLayersWithoutPrivateEarthwork(state.layers)
     );
     const localFileLayers = isTauri()
       ? state.layers.filter(isReloadableLocalFileLayer)
@@ -558,7 +587,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       return {
         layers: await buildEmbeddedLayers(
           useAppStore.getState().layers,
-          embeddable,
+          embeddable
         ),
       };
     }
@@ -600,7 +629,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // references. Used by the Share dialog.
   const buildEmbeddedProject = async (nameOverride?: string) => {
     assertProjectSafeForExternalTransfer(
-      (await buildCurrentProject(nameOverride)).project,
+      (await buildCurrentProject(nameOverride)).project
     );
     const layers = await buildEmbeddedLayers(useAppStore.getState().layers);
     const result = await buildCurrentProject(nameOverride, layers);
@@ -615,7 +644,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // if cancelled.
   const askSaveName = (
     defaultName: string,
-    labels: Omit<SaveNamePrompt, "resolve">,
+    labels: Omit<SaveNamePrompt, "resolve">
   ) =>
     new Promise<string | null>((resolve) => {
       setSaveNameInput(defaultName);
@@ -642,11 +671,11 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     // first, so the serialized content below reflects the user's choice.
     const layersForSave = await resolveLayersForSave();
     if (layersForSave === "cancel") return false;
-    const { project, defaultProjectName, content, projectPath } =
+    const { project, defaultProjectName, localContent, projectPath } =
       await buildCurrentProject(undefined, layersForSave.layers);
     // buildCurrentProject always removes runtime environment values from the
     // portable content while preserving them in the live store.
-    const contentToSave = content;
+    const contentToSave = localContent;
     // Projects opened from a URL have no writable path, so both Save and
     // Save As fall back to the save dialog for them.
     const existingLocalPath =
@@ -676,14 +705,14 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
           ? await saveProjectFileToPath(contentToSave, existingLocalPath)
           : await saveProjectFile(
               contentToSave,
-              promptForName ? saveName : (existingLocalPath ?? saveName),
+              promptForName ? saveName : existingLocalPath ?? saveName
             );
     } catch (error) {
       console.error("Failed to save project", error);
       setActionError(
         error instanceof Error
           ? error.message
-          : t("toolbar.error.couldNotSaveProject"),
+          : t("toolbar.error.couldNotSaveProject")
       );
       return false;
     }
@@ -754,8 +783,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       // costly on a project with many local layers, so it runs after the user
       // has committed to the export rather than before the prompt. Reuse the
       // name snapshot so the title matches the slug computed above.
-      const { project, defaultProjectName } =
-        await buildEmbeddedProject(projectName);
+      const { project, defaultProjectName } = await buildEmbeddedProject(
+        projectName
+      );
       const safeProject = {
         ...project,
         preferences: { ...project.preferences, environmentVariables: [] },
@@ -782,7 +812,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       setActionError(
         error instanceof Error
           ? error.message
-          : t("toolbar.error.couldNotExportHtml"),
+          : t("toolbar.error.couldNotExportHtml")
       );
       return false;
     } finally {

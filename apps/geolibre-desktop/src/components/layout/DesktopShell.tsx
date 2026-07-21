@@ -33,7 +33,11 @@ import {
   subscribeGeometryEdit,
   TIME_SLIDER_PLUGIN_ID,
 } from "@geolibre/plugins";
-import { convertGeoTiffToCog, isTiff, readGeoTiffInfo } from "@geolibre/processing";
+import {
+  convertGeoTiffToCog,
+  isTiff,
+  readGeoTiffInfo,
+} from "@geolibre/processing";
 import {
   type CSSProperties,
   type DragEvent,
@@ -123,10 +127,7 @@ import { RasterSubsetPanel } from "./RasterSubsetPanel";
 import { BasemapExtractPanel } from "./BasemapExtractPanel";
 import { TerrainSettingsDialog } from "./TerrainSettingsDialog";
 import { MapContextMenu } from "./MapContextMenu";
-import {
-  KnowledgeCardPanel,
-  type KnowledgePlace,
-} from "./KnowledgeCardPanel";
+import { KnowledgeCardPanel, type KnowledgePlace } from "./KnowledgeCardPanel";
 import { KnowledgeCardConsentDialog } from "./KnowledgeCardConsentDialog";
 import { MapGrid } from "./MapGrid";
 import { RemoteCursorsOverlay } from "./RemoteCursorsOverlay";
@@ -184,7 +185,7 @@ function confirmLargeVectorDataset({ name, featureCount }: LargeVectorDataset) {
     i18n.t("toolbar.item.largeVectorDesc", {
       name,
       count: featureCount.toLocaleString(),
-    }),
+    })
   );
 }
 
@@ -201,7 +202,7 @@ const ProcessingDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/ProcessingDialog").ProcessingDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const ConversionDialog = lazy(() =>
@@ -215,14 +216,14 @@ const ConversionDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/ConversionDialog").ConversionDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const CadCoordinateAlignmentDialog = __TAURI_BUILD__
   ? lazy(() =>
       import("../processing/CadCoordinateAlignmentDialog").then((module) => ({
         default: module.CadCoordinateAlignmentDialog,
-      })),
+      }))
     )
   : null;
 
@@ -230,7 +231,7 @@ const IfcImportDialog = __TAURI_BUILD__
   ? lazy(() =>
       import("../processing/IfcImportDialog").then((module) => ({
         default: module.IfcImportDialog,
-      })),
+      }))
     )
   : null;
 
@@ -238,7 +239,7 @@ const EarthworkAnalysisDialog = __TAURI_BUILD__
   ? lazy(() =>
       import("../processing/EarthworkAnalysisDialog").then((module) => ({
         default: module.EarthworkAnalysisDialog,
-      })),
+      }))
     )
   : null;
 
@@ -246,7 +247,15 @@ const TerrainSafetyAnalysisDialog = __WINDOWS_TAURI_BUILD__
   ? lazy(() =>
       import("../processing/TerrainSafetyAnalysisDialog").then((module) => ({
         default: module.TerrainSafetyAnalysisDialog,
-      })),
+      }))
+    )
+  : null;
+
+const ViewshedAnalysisDialog = __WINDOWS_TAURI_BUILD__
+  ? lazy(() =>
+      import("../processing/ViewshedAnalysisDialog").then((module) => ({
+        default: module.ViewshedAnalysisDialog,
+      }))
     )
   : null;
 
@@ -261,7 +270,7 @@ const VectorToolsDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/VectorToolsDialog").VectorToolsDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const ModelBuilderDialog = lazy(() =>
@@ -275,7 +284,7 @@ const ModelBuilderDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/ModelBuilderDialog").ModelBuilderDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const NetworkToolsDialog = lazy(() =>
@@ -289,7 +298,7 @@ const NetworkToolsDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/NetworkToolsDialog").NetworkToolsDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const StatisticsToolsDialog = lazy(() =>
@@ -303,7 +312,7 @@ const StatisticsToolsDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/StatisticsToolsDialog").StatisticsToolsDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const GeocodeDialog = lazy(() =>
@@ -317,7 +326,7 @@ const GeocodeDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/GeocodeDialog").GeocodeDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const RasterToolsDialog = lazy(() =>
@@ -331,7 +340,7 @@ const RasterToolsDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/RasterToolsDialog").RasterToolsDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const SegmentationDialog = lazy(() =>
@@ -344,7 +353,7 @@ const SegmentationDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/SegmentationDialog").SegmentationDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const ObjectDetectionDialog = lazy(() =>
@@ -357,7 +366,7 @@ const ObjectDetectionDialog = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/ObjectDetectionDialog").ObjectDetectionDialog;
       return { default: Fallback };
-    }),
+    })
 );
 
 const SegmentEverythingPanel = lazy(() =>
@@ -370,7 +379,7 @@ const SegmentEverythingPanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../processing/SegmentEverythingPanel").SegmentEverythingPanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 const SqlWorkspacePanel = lazy(() =>
@@ -384,7 +393,7 @@ const SqlWorkspacePanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../panels/SqlWorkspacePanel").SqlWorkspacePanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 const NotebookPanel = lazy(() =>
@@ -398,7 +407,7 @@ const NotebookPanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../panels/NotebookPanel").NotebookPanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 const AssistantPanel = lazy(() =>
@@ -412,7 +421,7 @@ const AssistantPanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../panels/AssistantPanel").AssistantPanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 const DashboardPanel = lazy(() =>
@@ -426,7 +435,7 @@ const DashboardPanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../panels/DashboardPanel").DashboardPanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 const PythonConsolePanel = lazy(() =>
@@ -440,7 +449,7 @@ const PythonConsolePanel = lazy(() =>
       const Fallback = (() =>
         null) as unknown as typeof import("../panels/PythonConsolePanel").PythonConsolePanel;
       return { default: Fallback };
-    }),
+    })
 );
 
 interface DesktopShellProps {
@@ -553,7 +562,10 @@ export function DesktopShell({
         (document as Document & { webkitFullscreenElement?: Element | null })
           .webkitFullscreenElement ??
         null;
-      shell.toggleAttribute("data-map-fullscreen", !!fsEl && shell.contains(fsEl));
+      shell.toggleAttribute(
+        "data-map-fullscreen",
+        !!fsEl && shell.contains(fsEl)
+      );
     };
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync);
@@ -572,7 +584,7 @@ export function DesktopShell({
   // `pendingKnowledgePlace` holds the target while the one-time consent notice
   // is open, so it can be applied only after the user acknowledges it.
   const [knowledgePlace, setKnowledgePlace] = useState<KnowledgePlace | null>(
-    null,
+    null
   );
   const [pendingKnowledgePlace, setPendingKnowledgePlace] =
     useState<KnowledgePlace | null>(null);
@@ -612,7 +624,7 @@ export function DesktopShell({
   const rasterSubsetLayerExists = useAppStore((s) =>
     rasterSubsetLayer
       ? s.layers.some((layer) => layer.id === rasterSubsetLayer.id)
-      : true,
+      : true
   );
   useEffect(() => {
     if (rasterSubsetLayer && !rasterSubsetLayerExists) {
@@ -626,7 +638,9 @@ export function DesktopShell({
   const [cadAlignmentOpen, setCadAlignmentOpen] = useState(false);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const [earthworkAnalysisOpen, setEarthworkAnalysisOpen] = useState(false);
-  const [terrainSafetyAnalysisOpen, setTerrainSafetyAnalysisOpen] = useState(false);
+  const [terrainSafetyAnalysisOpen, setTerrainSafetyAnalysisOpen] =
+    useState(false);
+  const [viewshedAnalysisOpen, setViewshedAnalysisOpen] = useState(false);
   const dragDepthRef = useRef(0);
   const dropMessageTimeoutRef = useRef<number | null>(null);
   const materializingRef = useRef(false);
@@ -653,15 +667,12 @@ export function DesktopShell({
   projectFilesRef.current = projectFiles;
   const notebookOpen = useAppStore((s) => s.ui.notebookOpen);
   const uiProfile = useDesktopSettingsStore(
-    (state) => state.desktopSettings.uiProfile,
+    (state) => state.desktopSettings.uiProfile
   );
-  const notebookAllowed = isMenuItemVisible(
-    uiProfile,
-    "processing.notebook",
-  );
+  const notebookAllowed = isMenuItemVisible(uiProfile, "processing.notebook");
   const pythonConsoleAllowed = isMenuItemVisible(
     uiProfile,
-    "processing.pythonConsole",
+    "processing.pythonConsole"
   );
   const visibleNotebookOpen = notebookAllowed && notebookOpen;
   const storymapPresenting = useAppStore((s) => s.ui.storymapPresenting);
@@ -677,7 +688,7 @@ export function DesktopShell({
   const replaceStylePanelId = useReplaceStylePanelId();
   const replaceLayersPanelId = useReplaceLayersPanelId();
   const [pluginPanelWidth, setPluginPanelWidth] = useState(
-    PLUGIN_PANEL_DEFAULT_WIDTH,
+    PLUGIN_PANEL_DEFAULT_WIDTH
   );
   // The active plugin panel's content lives in this one host element (created
   // once per app instance). The active dock slot adopts it via appendChild, so
@@ -728,7 +739,9 @@ export function DesktopShell({
   useEffect(() => {
     if (!activePanel) return;
     setPluginPanelWidth(
-      clampPluginPanelWidth(activePanel.defaultWidth ?? PLUGIN_PANEL_DEFAULT_WIDTH),
+      clampPluginPanelWidth(
+        activePanel.defaultWidth ?? PLUGIN_PANEL_DEFAULT_WIDTH
+      )
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanelId]);
@@ -736,7 +749,7 @@ export function DesktopShell({
   const dashboardOpen = useAppStore((s) => s.ui.dashboardOpen);
   const geometryEditLayerId = useSyncExternalStore(
     subscribeGeometryEdit,
-    getGeometryEditTargetLayerId,
+    getGeometryEditTargetLayerId
   );
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [mapReadyGeneration, setMapReadyGeneration] = useState(0);
@@ -757,7 +770,7 @@ export function DesktopShell({
   const collaboration = useCollaboration(mapControllerRef);
   const collaborateDialogOpen = useAppStore((s) => s.ui.collaborateDialogOpen);
   const setCollaborateDialogOpen = useAppStore(
-    (s) => s.setCollaborateDialogOpen,
+    (s) => s.setCollaborateDialogOpen
   );
   // When opened via a `?collab=<code>` share link, auto-open the Collaborate
   // dialog (which prefills the code) so the recipient only picks a name and
@@ -780,7 +793,7 @@ export function DesktopShell({
   const [layerPanelWidth, setLayerPanelWidth] = useState(initialSidePanelWidth);
   const [stylePanelWidth, setStylePanelWidth] = useState(initialSidePanelWidth);
   const [notebookPanelWidth, setNotebookPanelWidth] = useState(
-    DEFAULT_NOTEBOOK_PANEL_WIDTH,
+    DEFAULT_NOTEBOOK_PANEL_WIDTH
   );
   // Opening the notebook (Processing → Jupyter Notebook) splits the workspace
   // 50/50 between the map and the notebook: we size the notebook to half of the
@@ -804,7 +817,7 @@ export function DesktopShell({
     // and manual-resize paths cannot diverge (an ultrawide shell would otherwise
     // initialize past MAX, a width the user could never drag back to).
     setNotebookPanelWidth(
-      clamp(half, MIN_NOTEBOOK_PANEL_WIDTH, MAX_NOTEBOOK_PANEL_WIDTH),
+      clamp(half, MIN_NOTEBOOK_PANEL_WIDTH, MAX_NOTEBOOK_PANEL_WIDTH)
     );
   }, [
     visibleNotebookOpen,
@@ -883,7 +896,7 @@ export function DesktopShell({
           manager.activate("maplibre-gl-geo-editor", appAPI);
           if (!manager.isActive("maplibre-gl-geo-editor")) {
             setDropError(
-              "Could not activate the geometry editor. Try again once the map has fully loaded.",
+              "Could not activate the geometry editor. Try again once the map has fully loaded."
             );
             clearDropMessageLater();
             return;
@@ -892,7 +905,7 @@ export function DesktopShell({
         const started = await startLayerGeometryEdit(appAPI, layerId);
         if (!started) {
           setDropError(
-            "Could not start geometry editing for this layer. Its data may still be loading.",
+            "Could not start geometry editing for this layer. Its data may still be loading."
           );
           clearDropMessageLater();
         }
@@ -900,7 +913,7 @@ export function DesktopShell({
         togglingGeometryEditRef.current = false;
       }
     },
-    [clearDropMessageLater, ensureLayerGeojsonFromSource],
+    [clearDropMessageLater, ensureLayerGeojsonFromSource]
   );
 
   const handleCancelGeometryEdit = useCallback(() => {
@@ -943,21 +956,21 @@ export function DesktopShell({
           .layers.find((candidate) => candidate.id === id);
         if (created) mapControllerRef.current?.fitLayer(created);
         setDropMessage(
-          `Materialized ${result.geojson.features.length.toLocaleString()} features.`,
+          `Materialized ${result.geojson.features.length.toLocaleString()} features.`
         );
       } catch (error) {
         setDropMessage(null);
         setDropError(
           error instanceof Error
             ? error.message
-            : "Could not materialize this layer.",
+            : "Could not materialize this layer."
         );
       } finally {
         materializingRef.current = false;
         clearDropMessageLater();
       }
     },
-    [addGeoJsonLayer, clearDropMessageLater],
+    [addGeoJsonLayer, clearDropMessageLater]
   );
 
   useEffect(() => {
@@ -973,79 +986,86 @@ export function DesktopShell({
   // and hands us the bytes; the conversion and the prompt live here because this
   // layer has i18n and the client-side converter. See opengeos/GeoLibre#789.
   useEffect(() => {
-    setNonTiledRasterHandler(async ({ name, bytesAreRemote, readBytes, dismiss }) => {
-      try {
-        // A remote source gets a single up-front prompt that names the download:
-        // its size is unknown until it has been fetched, so prompting again after
-        // the download (with dimensions) would just risk discarding a large file
-        // the user already agreed to download. A local file resolves instantly,
-        // so it defers to the post-read prompt below, which can pick the
-        // large-raster warning now that the dimensions are cheap to read. See #916.
-        if (
-          bytesAreRemote &&
-          !window.confirm(t("raster.cogConvertRemoteConfirm", { name }))
-        ) {
-          return;
-        }
-        // Read the source bytes in their own try so a failure to obtain them
-        // reports a read/download problem rather than the misleading "could not
-        // convert" message below, which assumes a conversion was attempted. For
-        // a remote URL this is a network/timeout error or a RangeError when the
-        // download is too large to allocate (rasterDownloadFailed names both);
-        // for a local file it is the rare case of the blob URL being revoked
-        // (e.g. the layer removed) before the read, so fall back to the generic
-        // convert-failed message rather than the server-oriented download one.
-        let bytes: Uint8Array;
+    setNonTiledRasterHandler(
+      async ({ name, bytesAreRemote, readBytes, dismiss }) => {
         try {
-          bytes = await readBytes();
+          // A remote source gets a single up-front prompt that names the download:
+          // its size is unknown until it has been fetched, so prompting again after
+          // the download (with dimensions) would just risk discarding a large file
+          // the user already agreed to download. A local file resolves instantly,
+          // so it defers to the post-read prompt below, which can pick the
+          // large-raster warning now that the dimensions are cheap to read. See #916.
+          if (
+            bytesAreRemote &&
+            !window.confirm(t("raster.cogConvertRemoteConfirm", { name }))
+          ) {
+            return;
+          }
+          // Read the source bytes in their own try so a failure to obtain them
+          // reports a read/download problem rather than the misleading "could not
+          // convert" message below, which assumes a conversion was attempted. For
+          // a remote URL this is a network/timeout error or a RangeError when the
+          // download is too large to allocate (rasterDownloadFailed names both);
+          // for a local file it is the rare case of the blob URL being revoked
+          // (e.g. the layer removed) before the read, so fall back to the generic
+          // convert-failed message rather than the server-oriented download one.
+          let bytes: Uint8Array;
+          try {
+            bytes = await readBytes();
+          } catch (error) {
+            console.error(
+              "[geoIM3D] Failed to read raster for conversion",
+              error
+            );
+            window.alert(
+              bytesAreRemote
+                ? t("raster.rasterDownloadFailed", { name })
+                : t("raster.cogConvertFailed", { name })
+            );
+            return;
+          }
+          // A URL can answer 200 with non-GeoTIFF content (an auth/login or error
+          // page), which downloads fine but is not convertible. Sniff the TIFF
+          // signature up front so that surfaces as a clear "not a GeoTIFF" message
+          // instead of the misleading "could not convert" one the parser would
+          // otherwise trigger. isTiff accepts BigTIFF too, matching the wasm
+          // reader/converter, so a valid >4 GiB raster is not wrongly rejected.
+          if (!isTiff(bytes)) {
+            window.alert(t("raster.rasterNotGeotiff", { name }));
+            return;
+          }
+          if (!bytesAreRemote) {
+            // Local file: pick the prompt by size now that the header is cheap to
+            // read, then confirm once. (A remote source already confirmed above.)
+            const info = await readGeoTiffInfo(bytes);
+            const samples = info.width * info.height * Math.max(info.bands, 1);
+            const message =
+              samples > LARGE_RASTER_SAMPLE_LIMIT
+                ? t("raster.cogConvertLargeConfirm", {
+                    name,
+                    width: info.width,
+                    height: info.height,
+                  })
+                : t("raster.cogConvertConfirm", { name });
+            if (!window.confirm(message)) return;
+          }
+          const cog = await convertGeoTiffToCog(bytes);
+          // The cast is required: TS types Uint8Array as Uint8Array<ArrayBufferLike>,
+          // which is not directly assignable to BlobPart's ArrayBufferView.
+          const file = new File([cog as BlobPart], name, {
+            type: "image/tiff",
+          });
+          await addRasterToMap(createAppAPI(mapControllerRef), file, { name });
+          // Drop the failed layer only after the replacement is fully loaded, so
+          // any failure above (conversion or re-add) leaves the original errored
+          // layer (and its message) in place.
+          dismiss();
         } catch (error) {
-          console.error("[geoIM3D] Failed to read raster for conversion", error);
-          window.alert(
-            bytesAreRemote
-              ? t("raster.rasterDownloadFailed", { name })
-              : t("raster.cogConvertFailed", { name }),
-          );
-          return;
+          console.error("[geoIM3D] Failed to convert GeoTIFF to COG", error);
+          window.alert(t("raster.cogConvertFailed", { name }));
         }
-        // A URL can answer 200 with non-GeoTIFF content (an auth/login or error
-        // page), which downloads fine but is not convertible. Sniff the TIFF
-        // signature up front so that surfaces as a clear "not a GeoTIFF" message
-        // instead of the misleading "could not convert" one the parser would
-        // otherwise trigger. isTiff accepts BigTIFF too, matching the wasm
-        // reader/converter, so a valid >4 GiB raster is not wrongly rejected.
-        if (!isTiff(bytes)) {
-          window.alert(t("raster.rasterNotGeotiff", { name }));
-          return;
-        }
-        if (!bytesAreRemote) {
-          // Local file: pick the prompt by size now that the header is cheap to
-          // read, then confirm once. (A remote source already confirmed above.)
-          const info = await readGeoTiffInfo(bytes);
-          const samples = info.width * info.height * Math.max(info.bands, 1);
-          const message =
-            samples > LARGE_RASTER_SAMPLE_LIMIT
-              ? t("raster.cogConvertLargeConfirm", {
-                  name,
-                  width: info.width,
-                  height: info.height,
-                })
-              : t("raster.cogConvertConfirm", { name });
-          if (!window.confirm(message)) return;
-        }
-        const cog = await convertGeoTiffToCog(bytes);
-        // The cast is required: TS types Uint8Array as Uint8Array<ArrayBufferLike>,
-        // which is not directly assignable to BlobPart's ArrayBufferView.
-        const file = new File([cog as BlobPart], name, { type: "image/tiff" });
-        await addRasterToMap(createAppAPI(mapControllerRef), file, { name });
-        // Drop the failed layer only after the replacement is fully loaded, so
-        // any failure above (conversion or re-add) leaves the original errored
-        // layer (and its message) in place.
-        dismiss();
-      } catch (error) {
-        console.error("[geoIM3D] Failed to convert GeoTIFF to COG", error);
-        window.alert(t("raster.cogConvertFailed", { name }));
       }
-    });
+    );
     return () => setNonTiledRasterHandler(null);
   }, [t]);
 
@@ -1064,7 +1084,7 @@ export function DesktopShell({
     const pluginManager = getPluginManager();
     pluginManager.restoreProjectState(
       useAppStore.getState().projectPlugins,
-      appAPI,
+      appAPI
     );
     restoreThreeDTilesLayers(appAPI);
     restoreRasterLayers(appAPI);
@@ -1090,7 +1110,7 @@ export function DesktopShell({
     restoreEffects(
       appAPI,
       pluginManager.isActive(EFFECTS_PLUGIN_ID),
-      useAppStore.getState().projectPlugins?.settings?.[EFFECTS_PLUGIN_ID],
+      useAppStore.getState().projectPlugins?.settings?.[EFFECTS_PLUGIN_ID]
     );
     // The sun simulation reads/writes native map layers, so it must re-bind to
     // the (possibly new) map instance after a map re-init or basemap change.
@@ -1119,7 +1139,7 @@ export function DesktopShell({
     }
     restoreReverseGeocode(
       appAPI,
-      pluginManager.isActive(REVERSE_GEOCODE_PLUGIN_ID),
+      pluginManager.isActive(REVERSE_GEOCODE_PLUGIN_ID)
     );
     // Same contract for the deck.gl overlay: re-attach it to the current map
     // and re-render any deckgl-viz layers a restored project carries.
@@ -1129,7 +1149,7 @@ export function DesktopShell({
       .handleUrlParameters(
         new URLSearchParams(search),
         appAPI,
-        `${projectGeneration}:${search}`,
+        `${projectGeneration}:${search}`
       )
       .catch(console.error);
   }, [externalPluginsReady, mapReadyGeneration, projectGeneration]);
@@ -1152,14 +1172,16 @@ export function DesktopShell({
   // outside React.
   useEffect(() => {
     mapControllerRef.current?.setCompassLabel(
-      t("toolbar.item.resetPitchBearing"),
+      t("toolbar.item.resetPitchBearing")
     );
   }, [t, mapReadyGeneration]);
 
   // Keep the on-map terrain control's tooltip translated (it lives outside
   // React). Re-runs on controller (re)init and language change.
   useEffect(() => {
-    mapControllerRef.current?.setTerrainLabel(t("terrainSettings.controlLabel"));
+    mapControllerRef.current?.setTerrainLabel(
+      t("terrainSettings.controlLabel")
+    );
   }, [t, mapReadyGeneration]);
 
   // Keep the Layer Swipe panel's grouped base-layer label translated. That
@@ -1201,7 +1223,7 @@ export function DesktopShell({
               sourcePath: layer.path,
               ...(layer.timeSpan ? { timeSpan: layer.timeSpan } : {}),
               ...(layer.visible === false ? { visible: false } : {}),
-            },
+            }
           );
           if (layer.groupId) {
             const ids = frameGroups.get(layer.groupId) ?? [];
@@ -1222,13 +1244,15 @@ export function DesktopShell({
         lastLayerId = addGeoJsonLayer(
           layer.name || layerNameFromPath(layer.path),
           layer.data,
-          layer.path,
+          layer.path
         );
       }
 
       // Gather each time-animated overlay's frames into one collapsible group so
       // the sequence reads as a single timeline entry, not N stacked layers.
-      const sequences = [...frameGroups.values()].filter((ids) => ids.length > 1);
+      const sequences = [...frameGroups.values()].filter(
+        (ids) => ids.length > 1
+      );
       sequences.forEach((ids, index) => {
         // Suffix when a single drop yields more than one sequence so the groups
         // are distinguishable in the panel (e.g. two independent radar loops).
@@ -1278,7 +1302,7 @@ export function DesktopShell({
       isPluginActive,
       togglePlugin,
       t,
-    ],
+    ]
   );
 
   const addDroppedPhotos = useCallback(
@@ -1286,7 +1310,7 @@ export function DesktopShell({
       if (!result || result.located === 0) return 0;
       const layerId = addGeoJsonLayer(
         t("addData.photos.defaultName"),
-        result.featureCollection,
+        result.featureCollection
       );
       const layer = useAppStore
         .getState()
@@ -1304,7 +1328,7 @@ export function DesktopShell({
       setDropMessage(summary + skippedNote);
       return result.located;
     },
-    [addGeoJsonLayer, t],
+    [addGeoJsonLayer, t]
   );
 
   const addDroppedRasters = useCallback(
@@ -1316,7 +1340,7 @@ export function DesktopShell({
       }
       return rasters.length;
     },
-    [],
+    []
   );
 
   // Add a single local file (clicked in the Browser panel's Files tree) as a
@@ -1328,7 +1352,7 @@ export function DesktopShell({
       try {
         if (isRasterFileName(path)) {
           const count = await addDroppedRasters(
-            await loadDroppedRasterPaths([path]),
+            await loadDroppedRasterPaths([path])
           );
           return count > 0 ? null : t("browser.addFileFailed");
         }
@@ -1357,7 +1381,7 @@ export function DesktopShell({
           : t("browser.addFileFailed");
       }
     },
-    [addDroppedRasters, addImportedVectorLayers, t],
+    [addDroppedRasters, addImportedVectorLayers, t]
   );
 
   const finishDrop = useCallback(
@@ -1376,7 +1400,7 @@ export function DesktopShell({
         setDropMessage(
           t("toolbar.fileDrop.addedLayer", {
             name: only.name || layerNameFromPath(only.path),
-          }),
+          })
         );
         return;
       }
@@ -1395,13 +1419,13 @@ export function DesktopShell({
               }),
             })
           : importedLayers.length
-            ? t("toolbar.fileDrop.addedVectorLayers", {
-                count: importedLayers.length,
-              })
-            : t("toolbar.fileDrop.addedRasterLayers", { count: rasterCount }),
+          ? t("toolbar.fileDrop.addedVectorLayers", {
+              count: importedLayers.length,
+            })
+          : t("toolbar.fileDrop.addedRasterLayers", { count: rasterCount })
       );
     },
-    [addImportedVectorLayers, t],
+    [addImportedVectorLayers, t]
   );
 
   useEffect(() => {
@@ -1436,13 +1460,13 @@ export function DesktopShell({
                 t(
                   projectDrop.reason === "legacy"
                     ? "toolbar.fileDrop.legacyProject"
-                    : "toolbar.fileDrop.oneProjectOnly",
-                ),
+                    : "toolbar.fileDrop.oneProjectOnly"
+                )
               );
             }
             if (projectDrop.kind === "project") {
               const error = await projectFilesRef.current.handleOpenRecent(
-                projectDrop.reference,
+                projectDrop.reference
               );
               if (error) throw new Error(error);
               setDropMessage(t("toolbar.fileDrop.openedProject"));
@@ -1452,9 +1476,7 @@ export function DesktopShell({
             // single-FeatureCollection pipeline (which would otherwise route a
             // .pbf to DuckDB ST_Read and merge it).
             const pbfPaths = paths.filter((path) => isOsmPbfFileName(path));
-            const otherPaths = paths.filter(
-              (path) => !isOsmPbfFileName(path),
-            );
+            const otherPaths = paths.filter((path) => !isOsmPbfFileName(path));
 
             if (pbfPaths.length > 0) {
               const { readFile, stat } = await import("@tauri-apps/plugin-fs");
@@ -1471,7 +1493,7 @@ export function DesktopShell({
                     // it returns false and the file is skipped.
                     if (
                       !window.confirm(
-                        `${name} is about ${sizeMb} MB. Parsing it may use a lot of memory. Continue?`,
+                        `${name} is about ${sizeMb} MB. Parsing it may use a lot of memory. Continue?`
                       )
                     ) {
                       continue;
@@ -1487,22 +1509,24 @@ export function DesktopShell({
                       ? (bytes.buffer as ArrayBuffer)
                       : (bytes.buffer.slice(
                           bytes.byteOffset,
-                          bytes.byteOffset + bytes.byteLength,
+                          bytes.byteOffset + bytes.byteLength
                         ) as ArrayBuffer);
                   const layers = await loadOsmPbf(buffer);
                   const added = addOsmPbfLayers(
                     addGeoJsonLayer,
                     osmPbfBaseName(name),
                     path,
-                    layers,
+                    layers
                   );
                   if (added > 0 && layers.bounds) {
                     mapControllerRef.current?.fitBounds(layers.bounds);
                   }
                   setDropMessage(
                     added > 0
-                      ? `Added ${added} layer${added === 1 ? "" : "s"} from ${name}.`
-                      : `No features found in ${name}.`,
+                      ? `Added ${added} layer${
+                          added === 1 ? "" : "s"
+                        } from ${name}.`
+                      : `No features found in ${name}.`
                   );
                 } catch (err) {
                   // Isolate per-file failures so one bad PBF doesn't abandon the
@@ -1511,7 +1535,9 @@ export function DesktopShell({
                   setDropError(
                     err instanceof OsmPbfTooLargeError
                       ? t("toolbar.error.osmPbfTooLarge")
-                      : `Could not parse ${name}: ${err instanceof Error ? err.message : String(err)}`,
+                      : `Could not parse ${name}: ${
+                          err instanceof Error ? err.message : String(err)
+                        }`
                   );
                 }
               }
@@ -1526,16 +1552,16 @@ export function DesktopShell({
             // the drop doesn't complete silently.
             if (photoResult && photoCount === 0 && photoResult.total > 0) {
               setDropError(
-                t("addData.photos.errorNoGps", { count: photoResult.total }),
+                t("addData.photos.errorNoGps", { count: photoResult.total })
               );
             }
             const restPaths = otherPaths.filter(
-              (path) => !isPhotoDropFileName(path),
+              (path) => !isPhotoDropFileName(path)
             );
 
             if (restPaths.length > 0) {
               const rasterCount = await addDroppedRasters(
-                await loadDroppedRasterPaths(restPaths),
+                await loadDroppedRasterPaths(restPaths)
               );
               const importedLayers = await loadDroppedVectorPaths(restPaths, {
                 onLargeDataset: confirmLargeVectorDataset,
@@ -1555,9 +1581,7 @@ export function DesktopShell({
           } catch (error) {
             setDropMessage(null);
             setDropError(
-              error instanceof Error
-                ? error.message
-                : "Could not import files.",
+              error instanceof Error ? error.message : "Could not import files."
             );
           } finally {
             clearDropMessageLater();
@@ -1620,20 +1644,20 @@ export function DesktopShell({
       try {
         const allFiles = Array.from(event.dataTransfer.files);
         const projectDrop = classifyProjectDrop(
-          allFiles.map((file) => file.name),
+          allFiles.map((file) => file.name)
         );
         if (projectDrop.kind === "invalid-project") {
           throw new Error(
             t(
               projectDrop.reason === "legacy"
                 ? "toolbar.fileDrop.legacyProject"
-                : "toolbar.fileDrop.oneProjectOnly",
-            ),
+                : "toolbar.fileDrop.oneProjectOnly"
+            )
           );
         }
         if (projectDrop.kind === "project") {
           const file = allFiles.find(
-            (candidate) => candidate.name === projectDrop.reference,
+            (candidate) => candidate.name === projectDrop.reference
           );
           if (!file) throw new Error(t("toolbar.error.couldNotOpenProject"));
           const error =
@@ -1649,7 +1673,7 @@ export function DesktopShell({
         // files were dropped.
         const pbfFiles = allFiles.filter((file) => isOsmPbfFileName(file.name));
         const otherFiles = allFiles.filter(
-          (file) => !isOsmPbfFileName(file.name),
+          (file) => !isOsmPbfFileName(file.name)
         );
 
         for (const file of pbfFiles) {
@@ -1659,7 +1683,7 @@ export function DesktopShell({
             const sizeMb = Math.round(file.size / (1024 * 1024));
             if (
               !window.confirm(
-                `${file.name} is about ${sizeMb} MB. Parsing it may use a lot of memory. Continue?`,
+                `${file.name} is about ${sizeMb} MB. Parsing it may use a lot of memory. Continue?`
               )
             ) {
               continue;
@@ -1676,7 +1700,9 @@ export function DesktopShell({
             setDropError(
               err instanceof OsmPbfTooLargeError
                 ? t("toolbar.error.osmPbfTooLarge")
-                : `Could not parse ${file.name}: ${err instanceof Error ? err.message : String(err)}`,
+                : `Could not parse ${file.name}: ${
+                    err instanceof Error ? err.message : String(err)
+                  }`
             );
             continue;
           }
@@ -1684,15 +1710,17 @@ export function DesktopShell({
             addGeoJsonLayer,
             osmPbfBaseName(file.name),
             file.name,
-            layers,
+            layers
           );
           if (added > 0 && layers.bounds) {
             mapControllerRef.current?.fitBounds(layers.bounds);
           }
           setDropMessage(
             added > 0
-              ? `Added ${added} layer${added === 1 ? "" : "s"} from ${file.name}.`
-              : `No features found in ${file.name}.`,
+              ? `Added ${added} layer${added === 1 ? "" : "s"} from ${
+                  file.name
+                }.`
+              : `No features found in ${file.name}.`
           );
         }
 
@@ -1706,16 +1734,16 @@ export function DesktopShell({
         // drop doesn't complete silently.
         if (photoResult && photoCount === 0 && photoResult.total > 0) {
           setDropError(
-            t("addData.photos.errorNoGps", { count: photoResult.total }),
+            t("addData.photos.errorNoGps", { count: photoResult.total })
           );
         }
         const restFiles = otherFiles.filter(
-          (file) => !isPhotoDropFileName(file.name),
+          (file) => !isPhotoDropFileName(file.name)
         );
 
         if (restFiles.length > 0) {
           const rasterCount = await addDroppedRasters(
-            loadDroppedRasterFiles(restFiles),
+            loadDroppedRasterFiles(restFiles)
           );
           const importedLayers = await loadDroppedVectorFiles(restFiles, {
             onLargeDataset: confirmLargeVectorDataset,
@@ -1739,7 +1767,7 @@ export function DesktopShell({
       } catch (error) {
         setDropMessage(null);
         setDropError(
-          error instanceof Error ? error.message : "Could not import files.",
+          error instanceof Error ? error.message : "Could not import files."
         );
       } finally {
         clearDropMessageLater();
@@ -1752,7 +1780,7 @@ export function DesktopShell({
       addDroppedPhotos,
       addGeoJsonLayer,
       t,
-    ],
+    ]
   );
 
   const startLayerPanelResize = useCallback(
@@ -1783,7 +1811,7 @@ export function DesktopShell({
         nextWidth = clamp(
           startWidth + dirSign * (moveEvent.clientX - startX),
           MIN_SIDE_PANEL_WIDTH,
-          MAX_SIDE_PANEL_WIDTH,
+          MAX_SIDE_PANEL_WIDTH
         );
         if (resizeFrame !== null) return;
         resizeFrame = window.requestAnimationFrame(() => {
@@ -1801,7 +1829,7 @@ export function DesktopShell({
           }
           shellRef.current?.style.setProperty(
             "--layer-panel-width",
-            `${nextWidth}px`,
+            `${nextWidth}px`
           );
         });
       };
@@ -1817,7 +1845,7 @@ export function DesktopShell({
         }
         shellRef.current?.style.setProperty(
           "--layer-panel-width",
-          `${nextWidth}px`,
+          `${nextWidth}px`
         );
         verticalResizeGuideRef.current?.classList.add("hidden");
         setLayerPanelWidth(nextWidth);
@@ -1833,7 +1861,7 @@ export function DesktopShell({
       window.addEventListener("pointerup", onPointerUp);
       window.addEventListener("pointercancel", onPointerUp);
     },
-    [deferPanelResize, layerPanelWidth],
+    [deferPanelResize, layerPanelWidth]
   );
 
   const startStylePanelResize = useCallback(
@@ -1862,7 +1890,7 @@ export function DesktopShell({
         nextWidth = clamp(
           startWidth + dirSign * (startX - moveEvent.clientX),
           MIN_SIDE_PANEL_WIDTH,
-          MAX_SIDE_PANEL_WIDTH,
+          MAX_SIDE_PANEL_WIDTH
         );
         if (resizeFrame !== null) return;
         resizeFrame = window.requestAnimationFrame(() => {
@@ -1880,7 +1908,7 @@ export function DesktopShell({
           }
           shellRef.current?.style.setProperty(
             "--style-panel-width",
-            `${nextWidth}px`,
+            `${nextWidth}px`
           );
         });
       };
@@ -1896,7 +1924,7 @@ export function DesktopShell({
         }
         shellRef.current?.style.setProperty(
           "--style-panel-width",
-          `${nextWidth}px`,
+          `${nextWidth}px`
         );
         verticalResizeGuideRef.current?.classList.add("hidden");
         setStylePanelWidth(nextWidth);
@@ -1912,7 +1940,7 @@ export function DesktopShell({
       window.addEventListener("pointerup", onPointerUp);
       window.addEventListener("pointercancel", onPointerUp);
     },
-    [deferPanelResize, stylePanelWidth],
+    [deferPanelResize, stylePanelWidth]
   );
 
   // The notebook panel is docked on the same side as the Style panel, so its
@@ -1942,7 +1970,7 @@ export function DesktopShell({
         nextWidth = clamp(
           startWidth + dirSign * (startX - moveEvent.clientX),
           MIN_NOTEBOOK_PANEL_WIDTH,
-          MAX_NOTEBOOK_PANEL_WIDTH,
+          MAX_NOTEBOOK_PANEL_WIDTH
         );
         if (resizeFrame !== null) return;
         resizeFrame = window.requestAnimationFrame(() => {
@@ -1960,7 +1988,7 @@ export function DesktopShell({
           }
           shellRef.current?.style.setProperty(
             "--notebook-panel-width",
-            `${nextWidth}px`,
+            `${nextWidth}px`
           );
         });
       };
@@ -1976,7 +2004,7 @@ export function DesktopShell({
         }
         shellRef.current?.style.setProperty(
           "--notebook-panel-width",
-          `${nextWidth}px`,
+          `${nextWidth}px`
         );
         verticalResizeGuideRef.current?.classList.add("hidden");
         setNotebookPanelWidth(nextWidth);
@@ -1990,7 +2018,7 @@ export function DesktopShell({
       window.addEventListener("pointerup", onPointerUp);
       window.addEventListener("pointercancel", onPointerUp);
     },
-    [deferPanelResize, notebookPanelWidth],
+    [deferPanelResize, notebookPanelWidth]
   );
 
   return (
@@ -2021,7 +2049,10 @@ export function DesktopShell({
             onOpenCadAlignment={() => setCadAlignmentOpen(true)}
             onOpenPrivateModelImport={() => setIfcImportOpen(true)}
             onOpenPrivateTerrainAnalysis={() => setEarthworkAnalysisOpen(true)}
-            onOpenWindowsPrivateAnalysis={() => setTerrainSafetyAnalysisOpen(true)}
+            onOpenWindowsPrivateAnalysis={(slot) => {
+              if (slot === 0) setTerrainSafetyAnalysisOpen(true);
+              else setViewshedAnalysisOpen(true);
+            }}
           />
         </SectionErrorBoundary>
       ) : null}
@@ -2039,7 +2070,7 @@ export function DesktopShell({
                 onOpenRecentProject={projectFiles.handleOpenRecent}
                 onAddFilePath={addFilePath}
               />,
-              browserContentEl,
+              browserContentEl
             )
           : null}
         {replaceLayersPanelId ? (
@@ -2374,9 +2405,11 @@ export function DesktopShell({
             const file = new File(
               [bytes as BlobPart],
               fileName ?? `${name}.tif`,
-              { type: "image/tiff" },
+              { type: "image/tiff" }
             );
-            await addRasterToMap(createAppAPI(mapControllerRef), file, { name });
+            await addRasterToMap(createAppAPI(mapControllerRef), file, {
+              name,
+            });
           }}
         />
       </Suspense>
@@ -2415,6 +2448,15 @@ export function DesktopShell({
           <TerrainSafetyAnalysisDialog
             open={terrainSafetyAnalysisOpen}
             onOpenChange={setTerrainSafetyAnalysisOpen}
+            mapControllerRef={mapControllerRef}
+          />
+        </Suspense>
+      ) : null}
+      {ViewshedAnalysisDialog && isTauri() ? (
+        <Suspense fallback={null}>
+          <ViewshedAnalysisDialog
+            open={viewshedAnalysisOpen}
+            onOpenChange={setViewshedAnalysisOpen}
             mapControllerRef={mapControllerRef}
           />
         </Suspense>

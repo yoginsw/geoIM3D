@@ -8,7 +8,7 @@ import { type RefObject, useEffect } from "react";
 import type { MapController } from "@geolibre/map";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
 import { preparePortableProject } from "../lib/project-file-contract";
-import { sanitizeIncomingDesktopProject } from "../lib/desktop-project-ingress";
+import { sanitizeRemoteEmbedProject } from "../lib/desktop-project-ingress";
 import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
 import { getEmbedHost, isEmbedded } from "./embedHost";
 
@@ -56,7 +56,7 @@ type InboundMessage = LoadProjectMessage | RequestStateMessage;
  *   snapshot captures the current camera (pan/zoom) rather than only the store.
  */
 export function useEmbedBridge(
-  mapControllerRef: RefObject<MapController | null>,
+  mapControllerRef: RefObject<MapController | null>
 ): void {
   useEffect(() => {
     if (!isEmbedded()) return;
@@ -95,7 +95,7 @@ export function useEmbedBridge(
               type: "geolibre:error",
               message: "Private model content cannot be shared or embedded.",
             },
-            targetOrigin(),
+            targetOrigin()
           );
         }
         return;
@@ -116,7 +116,7 @@ export function useEmbedBridge(
             seq: lastLoadedSeq,
             project: JSON.parse(content) as GeoLibreProject,
           },
-          targetOrigin(),
+          targetOrigin()
         );
       } catch (error) {
         console.error("[geoIM3D] Failed to post embed state", error);
@@ -144,9 +144,8 @@ export function useEmbedBridge(
           typeof message.project === "string"
             ? parseProject(message.project)
             : parseProject(JSON.stringify(message.project));
-        const project = await sanitizeIncomingDesktopProject(
-          preparePortableProject(parsedProject),
-          "remote",
+        const project = await sanitizeRemoteEmbedProject(
+          preparePortableProject(parsedProject)
         );
         useAppStore
           .getState()
@@ -162,7 +161,7 @@ export function useEmbedBridge(
             type: "geolibre:error",
             message: error instanceof Error ? error.message : String(error),
           },
-          targetOrigin(),
+          targetOrigin()
         );
       }
     };
@@ -190,7 +189,7 @@ export function useEmbedBridge(
 
     host.postMessage(
       { type: "geolibre:ready", version: __GEOLIBRE_VERSION__ },
-      "*",
+      "*"
     );
 
     return () => {

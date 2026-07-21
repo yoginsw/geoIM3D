@@ -125,7 +125,7 @@ const LAYER_CONTROL_SELECTOR = ".maplibregl-ctrl-layer-control";
 export function restoreControlOrder(
   parent: Element | null,
   anchor: Element | null,
-  refreshed: Element | null,
+  refreshed: Element | null
 ): void {
   if (!parent) return;
   if (anchor !== null && anchor.parentElement !== parent) return;
@@ -166,7 +166,7 @@ function isCustomControllableLayer(layer: GeoLibreLayer): boolean {
  */
 export function layerControlPaintToStyle(
   property: string,
-  value: unknown,
+  value: unknown
 ): Partial<LayerStyle> | null {
   if (typeof value !== "number") return null;
 
@@ -221,7 +221,7 @@ function createBlankMapStyle(): maplibregl.StyleSpecification {
 }
 
 function resolveMapStyle(
-  styleUrl: string | undefined,
+  styleUrl: string | undefined
 ): string | maplibregl.StyleSpecification {
   if (styleUrl === BLANK_BASEMAP) return createBlankMapStyle();
   const offline = getOfflineBasemapStyle(styleUrl);
@@ -236,7 +236,7 @@ function resolveMapStyle(
   // must not be fetched as a URL. Fall back to the default basemap.
   if (isOfflineBasemapSentinel(styleUrl)) {
     console.warn(
-      `Offline basemap "${styleUrl}" is not available in this session; falling back to the default basemap.`,
+      `Offline basemap "${styleUrl}" is not available in this session; falling back to the default basemap.`
     );
     return DEFAULT_BASEMAP;
   }
@@ -248,7 +248,7 @@ function resolveMapStyle(
   // map. Fall back to the default basemap instead.
   if (styleUrl?.startsWith(PLANETARY_BASEMAP_SENTINEL_PREFIX)) {
     console.warn(
-      `Unknown planetary basemap "${styleUrl}"; falling back to the default basemap.`,
+      `Unknown planetary basemap "${styleUrl}"; falling back to the default basemap.`
     );
     return DEFAULT_BASEMAP;
   }
@@ -264,7 +264,7 @@ function resolveMapStyle(
  * tiles fade to black at the poles (and reading as space around the globe).
  */
 function createPlanetaryMapStyle(
-  basemap: PlanetaryBasemap,
+  basemap: PlanetaryBasemap
 ): maplibregl.StyleSpecification {
   return {
     version: 8,
@@ -421,7 +421,7 @@ export class MapController {
        * layer/basemap state back to the global store.
        */
       controlVisibility?: Partial<Record<BuiltInMapControl, boolean>>;
-    },
+    }
   ): maplibregl.Map {
     const view = options.mapView;
     if (options.controlVisibility) {
@@ -432,7 +432,10 @@ export class MapController {
     }
     const mapPreferences = options.mapPreferences ?? this.mapPreferences;
     const minZoom = clampNumber(mapPreferences.minZoom, 0, 24);
-    const maxZoom = Math.max(minZoom, clampNumber(mapPreferences.maxZoom, 0, 24));
+    const maxZoom = Math.max(
+      minZoom,
+      clampNumber(mapPreferences.maxZoom, 0, 24)
+    );
     const maxPitch = clampNumber(mapPreferences.maxPitch, 0, DEFAULT_MAX_PITCH);
     this.mapPreferences = mapPreferences;
     this.basemapStyleUrl = options.styleUrl ?? DEFAULT_BASEMAP;
@@ -450,6 +453,7 @@ export class MapController {
       renderWorldCopies: mapPreferences.renderWorldCopies,
       attributionControl: false,
       maplibreLogo: false,
+      reduceMotion: true,
       // preserveDrawingBuffer must stay true: the Print Layout composer and any
       // future export feature reads the canvas via drawImage / toDataURL outside
       // of a render callback. Removing this causes blank captures on browsers
@@ -598,9 +602,7 @@ export class MapController {
         const { tiles: _tiles, ...rest } = spec;
         return rest;
       }
-      const tiles = Array.isArray(spec.tiles)
-        ? spec.tiles.filter(httpUrl)
-        : [];
+      const tiles = Array.isArray(spec.tiles) ? spec.tiles.filter(httpUrl) : [];
       if (tiles.length > 0) {
         const { url: _url, ...rest } = spec;
         return { ...rest, tiles };
@@ -626,7 +628,7 @@ export class MapController {
   setStoryLayerOpacity(
     layerId: string,
     opacity: number,
-    durationMs?: number,
+    durationMs?: number
   ): void {
     if (!this.map) return;
     const clamped = Math.min(1, Math.max(0, opacity));
@@ -685,7 +687,9 @@ export class MapController {
    * instant move whose `moveend` precedes attachment.
    */
   private pendingRotateHandler:
-    | ((event: maplibregl.MapLibreEvent & { storyCameraToken?: number }) => void)
+    | ((
+        event: maplibregl.MapLibreEvent & { storyCameraToken?: number }
+      ) => void)
     | null = null;
 
   /**
@@ -703,7 +707,7 @@ export class MapController {
   applyStoryChapterCamera(
     location: StoryChapterLocation,
     animation: StoryChapterAnimation = "flyTo",
-    rotate = false,
+    rotate = false
   ): void {
     if (!this.map) return;
     const map = this.map;
@@ -735,11 +739,11 @@ export class MapController {
         pitch: location.pitch,
         bearing: location.bearing,
       },
-      { storyCameraToken: token },
+      { storyCameraToken: token }
     );
     if (rotate) {
       const onMoveEnd = (
-        event: maplibregl.MapLibreEvent & { storyCameraToken?: number },
+        event: maplibregl.MapLibreEvent & { storyCameraToken?: number }
       ) => {
         // Only detach once the token matches. Stay attached through any
         // preceding moveend (e.g. the deferred moveend of a halted prior
@@ -776,7 +780,7 @@ export class MapController {
       },
       // Tag as a story camera move (like applyStoryChapterCamera) so viewport
       // history skips this scripted preview rather than recording it.
-      { storyCameraToken: this.storyCameraToken },
+      { storyCameraToken: this.storyCameraToken }
     );
   }
 
@@ -786,7 +790,7 @@ export class MapController {
 
   addControl(
     control: maplibregl.IControl,
-    position: maplibregl.ControlPosition = "top-right",
+    position: maplibregl.ControlPosition = "top-right"
   ): boolean {
     if (!this.map) return false;
     // Guard against adding the same control instance twice: MapLibre would call
@@ -809,7 +813,7 @@ export class MapController {
 
   setBuiltInControlVisible(
     control: BuiltInMapControl,
-    visible: boolean,
+    visible: boolean
   ): boolean {
     this.controlVisibility[control] = visible;
 
@@ -845,14 +849,14 @@ export class MapController {
   }
 
   getBuiltInControlPosition(
-    control: BuiltInMapControl,
+    control: BuiltInMapControl
   ): maplibregl.ControlPosition {
     return this.controlPositions[control];
   }
 
   setBuiltInControlPosition(
     control: BuiltInMapControl,
-    position: maplibregl.ControlPosition,
+    position: maplibregl.ControlPosition
   ): boolean {
     this.controlPositions[control] = position;
     if (!this.controlVisibility[control]) return true;
@@ -929,12 +933,9 @@ export class MapController {
     const minZoom = effectiveMinZoomForPreferences(
       preferences,
       this.map,
-      requestedMinZoom,
+      requestedMinZoom
     );
-    const maxZoom = Math.max(
-      minZoom,
-      clampNumber(preferences.maxZoom, 0, 24),
-    );
+    const maxZoom = Math.max(minZoom, clampNumber(preferences.maxZoom, 0, 24));
     const maxPitch = clampNumber(preferences.maxPitch, 0, DEFAULT_MAX_PITCH);
 
     // Lower minZoom to an intermediate value first so neither setter ever
@@ -951,7 +952,7 @@ export class MapController {
     this.enforceProjection();
     this.map.setMaxBounds(mapBoundsForPreferences(preferences));
     this.map.setTransformConstrain(
-      createMapTransformConstraint(preferences, this.map, minZoom, maxZoom),
+      createMapTransformConstraint(preferences, this.map, minZoom, maxZoom)
     );
     this.applyView(this.readView());
     // The ellipsoid or the scale unit can change here (Settings' dropdowns)
@@ -994,7 +995,7 @@ export class MapController {
         removeLayerFromMap(
           map,
           id,
-          this.syncedLayers.find((layer) => layer.id === id),
+          this.syncedLayers.find((layer) => layer.id === id)
         );
       }
     }
@@ -1044,7 +1045,7 @@ export class MapController {
         map.setLayoutProperty(
           layer.id,
           "visibility",
-          this.basemapVisible ? "visible" : "none",
+          this.basemapVisible ? "visible" : "none"
         );
       } catch {
         // Some third-party custom style layers may not expose layout properties.
@@ -1073,15 +1074,15 @@ export class MapController {
 
     const userStyleLayerIds = new Set(
       this.syncedLayers.flatMap((layer) =>
-        this.getCandidateStyleLayers(layer).map(({ id }) => id),
-      ),
+        this.getCandidateStyleLayers(layer).map(({ id }) => id)
+      )
     );
     const nonBasemapStyleLayerIds = new Set(NON_BASEMAP_STYLE_LAYER_IDS);
 
     return (map.getStyle().layers ?? []).filter(
       (layer) =>
         !userStyleLayerIds.has(layer.id) &&
-        !nonBasemapStyleLayerIds.has(layer.id),
+        !nonBasemapStyleLayerIds.has(layer.id)
     );
   }
 
@@ -1096,7 +1097,7 @@ export class MapController {
     if (!originalPaintValues.has(property)) {
       originalPaintValues.set(
         property,
-        this.map.getPaintProperty(layerId, property),
+        this.map.getPaintProperty(layerId, property)
       );
     }
 
@@ -1105,8 +1106,8 @@ export class MapController {
       this.basemapOpacity >= 1
         ? original
         : typeof original === "number"
-          ? original * this.basemapOpacity
-          : this.basemapOpacity;
+        ? original * this.basemapOpacity
+        : this.basemapOpacity;
     try {
       this.map.setPaintProperty(layerId, property, opacity);
     } catch {
@@ -1153,7 +1154,11 @@ export class MapController {
     const minRenderZoom = this.getLayerMinRenderZoom(layer);
     if (minRenderZoom !== null) {
       const camera = this.map.cameraForBounds(box, { padding: 40 });
-      if (camera?.center && typeof camera.zoom === "number" && camera.zoom < minRenderZoom) {
+      if (
+        camera?.center &&
+        typeof camera.zoom === "number" &&
+        camera.zoom < minRenderZoom
+      ) {
         this.map.flyTo({
           center: camera.center,
           zoom: minRenderZoom,
@@ -1210,7 +1215,7 @@ export class MapController {
         [bounds[0], bounds[1]],
         [bounds[2], bounds[3]],
       ],
-      { padding: 40, duration: 800 },
+      { padding: 40, duration: 800 }
     );
   }
 
@@ -1240,7 +1245,7 @@ export class MapController {
       onMove: (lngLat: [number, number]) => void;
       /** Called once when the user clicks the "Done" button. */
       onDone?: () => void;
-    },
+    }
   ): () => void {
     const map = this.map;
     if (!map) return () => {};
@@ -1349,7 +1354,9 @@ export class MapController {
     this.map.flyTo({
       ...(camera.center ? { center: camera.center } : {}),
       ...(typeof camera.zoom === "number" ? { zoom: camera.zoom } : {}),
-      ...(typeof camera.bearing === "number" ? { bearing: camera.bearing } : {}),
+      ...(typeof camera.bearing === "number"
+        ? { bearing: camera.bearing }
+        : {}),
       ...(typeof camera.pitch === "number" ? { pitch: camera.pitch } : {}),
       duration: typeof camera.duration === "number" ? camera.duration : 800,
     });
@@ -1407,7 +1414,7 @@ export class MapController {
    */
   identifyFeatures(
     lngLat: [number, number],
-    layerId?: string,
+    layerId?: string
   ): Array<{
     layerId: string;
     featureId: string | null;
@@ -1446,7 +1453,7 @@ export class MapController {
   highlightFeature(
     layer: GeoLibreLayer | undefined,
     featureId: string | string[] | null,
-    options: { fit?: boolean } = {},
+    options: { fit?: boolean } = {}
   ): void {
     if (!this.isStyleReady()) return;
 
@@ -1466,14 +1473,11 @@ export class MapController {
       layer.geojson.features.map((feature, index) => [
         String(feature.id ?? index),
         feature,
-      ]),
+      ])
     );
     const features = ids
       .map((id) => featureById.get(id))
-      .filter(
-        (feature): feature is Feature =>
-          feature?.geometry != null,
-      );
+      .filter((feature): feature is Feature => feature?.geometry != null);
     if (features.length === 0) {
       this.syncHighlight(EMPTY_HIGHLIGHT);
       return;
@@ -1664,7 +1668,7 @@ export class MapController {
     });
     this.map.addControl(
       this.layerControl,
-      this.controlPositions["layer-control"],
+      this.controlPositions["layer-control"]
     );
     this.syncLayerControlState();
     window.setTimeout(() => this.syncLayerControlState(), 100);
@@ -1707,7 +1711,7 @@ export class MapController {
     restoreControlOrder(
       parent,
       anchor,
-      container.querySelector(LAYER_CONTROL_SELECTOR),
+      container.querySelector(LAYER_CONTROL_SELECTOR)
     );
   }
 
@@ -1744,7 +1748,7 @@ export class MapController {
   private applyLayerControlStyleChange(
     layerId: string,
     property: string,
-    value: unknown,
+    value: unknown
   ): void {
     // Ignore callbacks that fire while we are pushing store values back into
     // the editor; otherwise a misbehaving refresh could create a sync loop.
@@ -1771,10 +1775,10 @@ export class MapController {
   }
 
   private createLayerControlConfig(
-    layers: GeoLibreLayer[],
+    layers: GeoLibreLayer[]
   ): LayerControlConfig {
     const nativeStyleLayerIds = layers.flatMap((layer) =>
-      this.getCandidateStyleLayers(layer).map(({ id }) => id),
+      this.getCandidateStyleLayers(layer).map(({ id }) => id)
     );
     // Hide style layers a plugin marks as internal chrome (e.g. selection
     // footprints, draw/highlight helpers) so they don't clutter the control.
@@ -1783,8 +1787,8 @@ export class MapController {
         Boolean(
           (styleLayer.metadata as Record<string, unknown> | undefined)?.[
             "geolibre:internal"
-          ],
-        ),
+          ]
+        )
       )
       .map((styleLayer) => styleLayer.id)
       // Sort so a plugin reordering an already-hidden internal layer (which
@@ -1796,12 +1800,12 @@ export class MapController {
         ...LAYER_CONTROL_EXCLUDED_LAYERS,
         ...nativeStyleLayerIds,
         ...internalStyleLayerIds,
-      ]),
+      ])
     );
     const controllableLayers = layers.filter(
       (layer) =>
         this.getNativeLayerIds(layer).length > 0 ||
-        isCustomControllableLayer(layer),
+        isCustomControllableLayer(layer)
     );
 
     if (controllableLayers.length === 0) {
@@ -1832,7 +1836,7 @@ export class MapController {
             name: state?.name,
             symbol: adapter.getSymbolType?.(id),
           };
-        }),
+        })
       ),
     });
   }
@@ -1892,22 +1896,22 @@ export class MapController {
     const items = control.panel?.querySelectorAll(".layer-control-item") ?? [];
     return (
       (Array.from(items).find(
-        (item) => (item as HTMLElement).dataset.layerId === layerId,
+        (item) => (item as HTMLElement).dataset.layerId === layerId
       ) as HTMLElement | undefined) ?? null
     );
   }
 
   private updateLayerControlItem(
     item: HTMLElement,
-    state: { name: string; visible: boolean; opacity: number },
+    state: { name: string; visible: boolean; opacity: number }
   ): void {
     const checkbox = item.querySelector(
-      ".layer-control-checkbox",
+      ".layer-control-checkbox"
     ) as HTMLInputElement | null;
     if (checkbox) checkbox.checked = state.visible;
 
     const opacity = item.querySelector(
-      ".layer-control-opacity",
+      ".layer-control-opacity"
     ) as HTMLInputElement | null;
     if (opacity) {
       opacity.value = String(state.opacity);
@@ -1915,7 +1919,7 @@ export class MapController {
     }
 
     const name = item.querySelector(
-      ".layer-control-name",
+      ".layer-control-name"
     ) as HTMLElement | null;
     if (name) {
       name.textContent = state.name;
@@ -1924,7 +1928,7 @@ export class MapController {
   }
 
   private createGeoLibreLayerAdapter(
-    layers: GeoLibreLayer[],
+    layers: GeoLibreLayer[]
   ): CustomLayerAdapter {
     const layerById = new Map(layers.map((layer) => [layer.id, layer]));
 
@@ -2004,7 +2008,7 @@ export class MapController {
   }
 
   private getLayerMetadataBounds(
-    layer: GeoLibreLayer,
+    layer: GeoLibreLayer
   ): [number, number, number, number] | null {
     return (
       this.normalizeLayerBounds(layer.source.bounds) ??
@@ -2013,7 +2017,7 @@ export class MapController {
   }
 
   private getLayerSourceBounds(
-    layer: GeoLibreLayer,
+    layer: GeoLibreLayer
   ): [number, number, number, number] | null {
     for (const id of this.getLayerSourceIds(layer)) {
       const source = this.map?.getSource(id) as
@@ -2040,7 +2044,7 @@ export class MapController {
   }
 
   private normalizeLayerBounds(
-    bounds: unknown,
+    bounds: unknown
   ): [number, number, number, number] | null {
     if (
       Array.isArray(bounds) &&
@@ -2060,7 +2064,7 @@ export class MapController {
     if (!this.map) return [];
 
     const existingStyleLayers = this.getCandidateStyleLayers(layer).filter(
-      ({ id }) => this.map?.getLayer(id),
+      ({ id }) => this.map?.getLayer(id)
     );
     return existingStyleLayers.map(({ id, suffix }) => ({
       id,
@@ -2074,13 +2078,13 @@ export class MapController {
 
   private getBeforeStyleLayerId(
     layers: GeoLibreLayer[],
-    layerIndex: number,
+    layerIndex: number
   ): string | undefined {
     if (!this.map) return undefined;
 
     for (const layer of layers.slice(layerIndex + 1)) {
       const beforeLayer = this.getCandidateStyleLayers(layer).find(({ id }) =>
-        this.map?.getLayer(id),
+        this.map?.getLayer(id)
       );
       if (beforeLayer) return beforeLayer.id;
     }
@@ -2093,12 +2097,12 @@ export class MapController {
   }
 
   private getExternalBeforeStyleLayerId(
-    layer: GeoLibreLayer | undefined,
+    layer: GeoLibreLayer | undefined
   ): string | undefined {
     if (!this.map || !layer?.beforeId) return undefined;
     if (
       this.getCandidateStyleLayers(layer).some(
-        ({ id }) => id === layer.beforeId,
+        ({ id }) => id === layer.beforeId
       )
     ) {
       return undefined;
@@ -2180,7 +2184,7 @@ export class MapController {
           (layer) =>
             layer.type === "cog" &&
             layer.metadata.sourceKind === "cog-url" &&
-            layer.metadata.externalNativeLayer === true,
+            layer.metadata.externalNativeLayer === true
         )
         .map((layer): [string, string] => [layer.id, layer.name]),
       // The Layer Swipe panel groups all basemap layers under "__basemap__";
@@ -2215,7 +2219,7 @@ export class MapController {
     this.navigationControl = new maplibregl.NavigationControl();
     this.map.addControl(
       this.navigationControl,
-      this.controlPositions.navigation,
+      this.controlPositions.navigation
     );
     return true;
   }
@@ -2244,7 +2248,7 @@ export class MapController {
     this.fullscreenControl = new maplibregl.FullscreenControl();
     this.map.addControl(
       this.fullscreenControl,
-      this.controlPositions.fullscreen,
+      this.controlPositions.fullscreen
     );
     return true;
   }
@@ -2484,7 +2488,7 @@ export class MapController {
     });
     this.map.addControl(
       this.attributionControl,
-      this.controlPositions.attribution,
+      this.controlPositions.attribution
     );
     return true;
   }
@@ -2546,7 +2550,7 @@ function createMapTransformConstraint(
   preferences: MapPreferences,
   map: maplibregl.Map,
   minZoom: number,
-  maxZoom: number,
+  maxZoom: number
 ): Parameters<maplibregl.Map["setTransformConstrain"]>[0] {
   return (lngLat, zoom) => {
     const constrainedZoom = clampNumber(zoom, minZoom, maxZoom);
@@ -2558,7 +2562,7 @@ function createMapTransformConstraint(
           preferences.renderWorldCopies
             ? lngLat.lng
             : clampNumber(lngLat.lng, -180, 180),
-          clampNumber(lngLat.lat, -85, 85),
+          clampNumber(lngLat.lat, -85, 85)
         ),
         zoom: constrainedZoom,
       };
@@ -2569,7 +2573,7 @@ function createMapTransformConstraint(
         [lngLat.lng, lngLat.lat],
         bounds,
         map,
-        constrainedZoom,
+        constrainedZoom
       ),
       zoom: constrainedZoom,
     };
@@ -2579,7 +2583,7 @@ function createMapTransformConstraint(
 function constrainMapView(
   view: MapViewState,
   preferences: MapPreferences,
-  map: maplibregl.Map | null,
+  map: maplibregl.Map | null
 ): maplibregl.JumpToOptions {
   const requestedMinZoom = clampNumber(preferences.minZoom, 0, 24);
   // Use the same effective floor the transform constraint enforces so the
@@ -2588,10 +2592,7 @@ function constrainMapView(
   const minZoom = map
     ? effectiveMinZoomForPreferences(preferences, map, requestedMinZoom)
     : requestedMinZoom;
-  const maxZoom = Math.max(
-    minZoom,
-    clampNumber(preferences.maxZoom, 0, 24),
-  );
+  const maxZoom = Math.max(minZoom, clampNumber(preferences.maxZoom, 0, 24));
 
   return {
     center: [
@@ -2605,7 +2606,7 @@ function constrainMapView(
     pitch: clampNumber(
       view.pitch,
       0,
-      clampNumber(preferences.maxPitch, 0, DEFAULT_MAX_PITCH),
+      clampNumber(preferences.maxPitch, 0, DEFAULT_MAX_PITCH)
     ),
   };
 }
@@ -2618,7 +2619,7 @@ function constrainMapView(
  */
 function featureIdForLayer(
   layer: GeoLibreLayer,
-  feature: maplibregl.MapGeoJSONFeature,
+  feature: maplibregl.MapGeoJSONFeature
 ): string | null {
   if (feature.id != null) return String(feature.id);
   if (!layer.geojson) return null;
@@ -2646,7 +2647,7 @@ function featureIdForLayer(
         return false;
       }
       return propertyKeys.every((key) =>
-        valuesEqual(candidateProperties[key], properties[key]),
+        valuesEqual(candidateProperties[key], properties[key])
       );
     });
   if (matches.length !== 1) return null;
@@ -2657,7 +2658,7 @@ function featureIdForLayer(
 function effectiveMinZoomForPreferences(
   preferences: MapPreferences,
   map: maplibregl.Map,
-  requestedMinZoom: number,
+  requestedMinZoom: number
 ): number {
   const bounds =
     preferences.restrictBounds && normalizeMapBounds(preferences.bounds);
@@ -2675,7 +2676,7 @@ function effectiveMinZoomForPreferences(
   return clampNumber(
     Math.max(requestedMinZoom, minZoomForWidth, minZoomForHeight),
     0,
-    24,
+    24
   );
 }
 
@@ -2683,7 +2684,7 @@ function constrainCenterToVisibleBounds(
   center: [number, number],
   bounds: MapPreferences["bounds"],
   map: maplibregl.Map,
-  zoom: number,
+  zoom: number
 ): maplibregl.LngLat {
   const mercatorBounds = mercatorBoundsForLngLatBounds(bounds);
   const worldSize = 512 * 2 ** zoom;
@@ -2702,13 +2703,13 @@ function constrainCenterToVisibleBounds(
     lngFromMercatorX(
       minX <= maxX
         ? clampNumber(centerMercator.x, minX, maxX)
-        : (mercatorBounds.west + mercatorBounds.east) / 2,
+        : (mercatorBounds.west + mercatorBounds.east) / 2
     ),
     latFromMercatorY(
       minY <= maxY
         ? clampNumber(centerMercator.y, minY, maxY)
-        : (mercatorBounds.north + mercatorBounds.south) / 2,
-    ),
+        : (mercatorBounds.north + mercatorBounds.south) / 2
+    )
   );
 }
 
@@ -2746,7 +2747,7 @@ function latFromMercatorY(y: number): number {
 }
 
 function normalizeMapBounds(
-  bounds: MapPreferences["bounds"],
+  bounds: MapPreferences["bounds"]
 ): MapPreferences["bounds"] | null {
   const [west, south, east, north] = bounds;
   if (![west, south, east, north].every(Number.isFinite)) return null;
@@ -2764,7 +2765,7 @@ function normalizeMapBounds(
 }
 
 function mapBoundsForPreferences(
-  preferences: MapPreferences,
+  preferences: MapPreferences
 ): maplibregl.LngLatBoundsLike | null {
   const bounds =
     preferences.restrictBounds && normalizeMapBounds(preferences.bounds);

@@ -154,7 +154,9 @@ export function buildStoryMapHtml(options: StoryMapExportOptions): string {
   // template runtime reads `layer.layer` for the MapLibre id, so map our
   // `layerId` field onto that shape as well.
   const inlinedIds = new Set(inlineLayers.map((entry) => entry.id));
-  const keepChanges = (changes: StoryMap["chapters"][number]["onChapterEnter"]) =>
+  const keepChanges = (
+    changes: StoryMap["chapters"][number]["onChapterEnter"]
+  ) =>
     changes
       .filter((change) => inlinedIds.has(change.layerId))
       .map((change) => ({
@@ -224,7 +226,9 @@ export function buildStoryMapHtml(options: StoryMapExportOptions): string {
       // 0 opacity wins outright, including over a hidden layer's 0, exactly as
       // the in-app presenter's setLayerOpacity overwrites the live value. Circles
       // carry both fill and stroke opacity so a faded point hides fully (#934).
-      for (const opacityProp of opacityProperties(entry.layerSpec.type as string)) {
+      for (const opacityProp of opacityProperties(
+        entry.layerSpec.type as string
+      )) {
         const styleOpacity =
           typeof paint[opacityProp] === "number"
             ? (paint[opacityProp] as number)
@@ -240,7 +244,9 @@ export function buildStoryMapHtml(options: StoryMapExportOptions): string {
         source: sourceId,
         paint,
       };
-      return `    map.addSource(${jsonForScript(sourceId)}, ${jsonForScript(entry.source)});
+      return `    map.addSource(${jsonForScript(sourceId)}, ${jsonForScript(
+        entry.source
+      )});
     map.addLayer(${jsonForScript(spec)});`;
     })
     .join("\n");
@@ -286,8 +292,11 @@ function opacityProperties(type: string): string[] {
  * stand-alone (e.g. PMTiles or MBTiles that need GeoLibre's own protocols).
  */
 function buildInlineLayer(
-  layer: GeoLibreLayer,
-): { source: Record<string, unknown>; layerSpec: Record<string, unknown> } | null {
+  layer: GeoLibreLayer
+): {
+  source: Record<string, unknown>;
+  layerSpec: Record<string, unknown>;
+} | null {
   if (layer.type === "geojson" && layer.geojson) {
     const layerSpec = buildLayerSpec(layer);
     if (!layerSpec) return null;
@@ -307,8 +316,14 @@ function buildInlineLayer(
         type: "raster",
         paint: {
           "raster-opacity": 1,
-          "raster-brightness-min": styleValue(layer.style, "rasterBrightnessMin"),
-          "raster-brightness-max": styleValue(layer.style, "rasterBrightnessMax"),
+          "raster-brightness-min": styleValue(
+            layer.style,
+            "rasterBrightnessMin"
+          ),
+          "raster-brightness-max": styleValue(
+            layer.style,
+            "rasterBrightnessMax"
+          ),
           "raster-saturation": styleValue(layer.style, "rasterSaturation"),
           "raster-contrast": styleValue(layer.style, "rasterContrast"),
           "raster-hue-rotate": styleValue(layer.style, "rasterHueRotate"),
@@ -331,7 +346,7 @@ function buildInlineLayer(
  * its credential — the export can only embed what the source exposes.
  */
 function buildRasterTileSource(
-  layer: GeoLibreLayer,
+  layer: GeoLibreLayer
 ): Record<string, unknown> | null {
   if (
     layer.type !== "raster" &&
@@ -381,7 +396,7 @@ function buildRasterTileSource(
     layer.source.bounds.length === 4 &&
     layer.source.bounds.every(
       (value): value is number =>
-        typeof value === "number" && Number.isFinite(value),
+        typeof value === "number" && Number.isFinite(value)
     )
   ) {
     source.bounds = layer.source.bounds;
@@ -391,7 +406,7 @@ function buildRasterTileSource(
 
 /** Pick the dominant (most common) geometry kind for the MapLibre layer type. */
 function geometryKind(
-  geojson: FeatureCollection,
+  geojson: FeatureCollection
 ): "polygon" | "line" | "point" | null {
   const counts = { polygon: 0, line: 0, point: 0 };
   for (const feature of geojson.features) {
@@ -408,7 +423,7 @@ function geometryKind(
 }
 
 function classifyGeometry(
-  geometry: Geometry | null,
+  geometry: Geometry | null
 ): "polygon" | "line" | "point" | null {
   if (!geometry) return null;
   switch (geometry.type) {
@@ -433,9 +448,7 @@ function classifyGeometry(
 }
 
 /** Convert a GeoLibre GeoJSON layer to a minimal MapLibre layer spec. */
-function buildLayerSpec(
-  layer: GeoLibreLayer,
-): Record<string, unknown> | null {
+function buildLayerSpec(layer: GeoLibreLayer): Record<string, unknown> | null {
   if (!layer.geojson) return null;
   const kind = geometryKind(layer.geojson);
   if (!kind) return null;
@@ -492,7 +505,7 @@ function buildLayerSpec(
 
 function renderTemplate(
   config: Record<string, unknown>,
-  inlineLayerScript: string,
+  inlineLayerScript: string
 ): string {
   const configJson = jsonForScript(config, 4);
   return `<!DOCTYPE html>
@@ -766,7 +779,8 @@ function renderTemplate(
             zoom: openLocation.zoom,
             bearing: openLocation.bearing,
             pitch: openLocation.pitch,
-            interactive: false
+            interactive: false,
+            reduceMotion: true
         });
 
         var insetMap = null, insetMarker = null;
@@ -775,7 +789,7 @@ function renderTemplate(
             insetContainer.id = 'inset-map';
             insetContainer.classList.add(config.insetPosition || 'bottom-left');
             document.body.appendChild(insetContainer);
-            insetMap = new maplibregl.Map({ container: 'inset-map', style: config.insetStyle, center: openLocation.center, zoom: config.insetZoom || 1, interactive: false, attributionControl: false });
+            insetMap = new maplibregl.Map({ container: 'inset-map', style: config.insetStyle, center: openLocation.center, zoom: config.insetZoom || 1, interactive: false, attributionControl: false, reduceMotion: true });
             var markerEl = document.createElement('div');
             markerEl.className = 'inset-marker';
             insetMarker = new maplibregl.Marker({ element: markerEl }).setLngLat(openLocation.center).addTo(insetMap);

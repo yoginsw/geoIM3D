@@ -24,7 +24,8 @@ describe("VWorld desktop client boundary", () => {
   });
 
   it("uses only fixed commands and keyless typed payloads", async () => {
-    const calls: Array<{ command: string; args?: Record<string, unknown> }> = [];
+    const calls: Array<{ command: string; args?: Record<string, unknown> }> =
+      [];
     const response: VWorldResponse = { status: "OK" };
     const client = createVWorldDesktopClient({
       desktop: true,
@@ -42,6 +43,7 @@ describe("VWorld desktop client boundary", () => {
       pnu: "1111010100100020001",
     });
     await client.tile({ layer: "Base", z: 10, x: 873, y: 401 });
+    await client.tile({ layer: "Satellite", z: 10, x: 873, y: 401 });
 
     assert.deepEqual(
       calls.map((call) => call.command),
@@ -51,11 +53,15 @@ describe("VWorld desktop client boundary", () => {
         "vworld_reverse_geocode",
         "vworld_get_features",
         "vworld_tile",
+        "vworld_tile",
       ]
     );
     for (const call of calls) {
       const serialized = JSON.stringify(call.args);
-      assert.equal(/apiKey|credentialId|rawQuery|filePath|https?:\/\//i.test(serialized), false);
+      assert.equal(
+        /apiKey|credentialId|rawQuery|filePath|https?:\/\//i.test(serialized),
+        false
+      );
       assert.match(serialized, /"requestId":"vw-/);
     }
   });

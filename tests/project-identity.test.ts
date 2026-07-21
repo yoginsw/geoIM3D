@@ -37,14 +37,11 @@ describe("classifyProjectDrop", () => {
   it("rejects mixed or multiple project drops", () => {
     assert.deepEqual(
       classifyProjectDrop(["/tmp/site.geoim3d.json", "/tmp/roads.geojson"]),
-      { kind: "invalid-project", reason: "mixed" },
+      { kind: "invalid-project", reason: "mixed" }
     );
     assert.deepEqual(
-      classifyProjectDrop([
-        "/tmp/one.geoim3d.json",
-        "/tmp/two.geoim3d.json",
-      ]),
-      { kind: "invalid-project", reason: "mixed" },
+      classifyProjectDrop(["/tmp/one.geoim3d.json", "/tmp/two.geoim3d.json"]),
+      { kind: "invalid-project", reason: "mixed" }
     );
   });
 
@@ -84,7 +81,7 @@ describe("prepareProjectForFileSave", () => {
           activePluginIds: ["maplibre-gl-swipe"],
           settings: { "maplibre-gl-swipe": { position: 35 } },
         },
-      }),
+      })
     );
 
     const content = serializeProject(prepareProjectForFileSave(project));
@@ -120,7 +117,7 @@ describe("incoming project credential boundary", () => {
             apiKeys: { google: "incoming-geocoder" },
           },
         },
-      }),
+      })
     );
 
     const sanitized = sanitizeIncomingProjectCredentials(project);
@@ -146,7 +143,7 @@ describe("portable project boundaries", () => {
             { key: "PRIVATE_VALUE", value: "portable-secret", enabled: true },
           ],
         },
-      }),
+      })
     );
     const portable = preparePortableProject(project);
     assert.deepEqual(portable.preferences.environmentVariables, []);
@@ -155,13 +152,13 @@ describe("portable project boundaries", () => {
     const collaboration = readFileSync(
       path.join(
         repoRoot,
-        "apps/geolibre-desktop/src/hooks/useCollaboration.ts",
+        "apps/geolibre-desktop/src/hooks/useCollaboration.ts"
       ),
-      "utf8",
+      "utf8"
     );
     const embed = readFileSync(
       path.join(repoRoot, "apps/geolibre-desktop/src/hooks/useEmbedBridge.ts"),
-      "utf8",
+      "utf8"
     );
     assert.match(collaboration, /preparePortableProject\(buildProjectSnapshot/);
     assert.match(embed, /preparePortableProject\(buildProjectSnapshot/);
@@ -188,11 +185,11 @@ describe("portable project boundaries", () => {
 
     const relay = readFileSync(
       path.join(repoRoot, "workers/collab/src/session.ts"),
-      "utf8",
+      "utf8"
     );
     assert.match(
       relay,
-      /snapshot:\s*sanitizePortableProjectSnapshot\(\s*parseStoredSnapshot\(snapshot\)/,
+      /snapshot:\s*sanitizePortableProjectSnapshot\(\s*parseStoredSnapshot\(snapshot\)/
     );
   });
 });
@@ -214,7 +211,7 @@ describe("filterCanonicalRecentProjects", () => {
 
     assert.deepEqual(
       entries.map((entry) => entry.name),
-      ["Local", "Remote"],
+      ["Local", "Remote"]
     );
   });
 });
@@ -223,11 +220,11 @@ describe("project identity platform boundaries", () => {
   it("accepts only canonical deep-link file URLs", () => {
     assert.equal(
       isCanonicalProjectUrl("https://example.com/site.geoim3d.json?download=1"),
-      true,
+      true
     );
     assert.equal(
       isCanonicalProjectUrl("https://example.com/site.geolibre.json"),
-      false,
+      false
     );
     assert.equal(isCanonicalProjectUrl("https://example.com/site.json"), false);
   });
@@ -235,12 +232,9 @@ describe("project identity platform boundaries", () => {
   it("keeps dialogs and Rust reads canonical without claiming a compound OS association", () => {
     const config = JSON.parse(
       readFileSync(
-        path.join(
-          repoRoot,
-          "apps/geolibre-desktop/src-tauri/tauri.conf.json",
-        ),
-        "utf8",
-      ),
+        path.join(repoRoot, "apps/geolibre-desktop/src-tauri/tauri.conf.json"),
+        "utf8"
+      )
     ) as {
       bundle: {
         fileAssociations?: Array<{
@@ -254,55 +248,64 @@ describe("project identity platform boundaries", () => {
 
     const io = readFileSync(
       path.join(repoRoot, "apps/geolibre-desktop/src/lib/tauri-io.ts"),
-      "utf8",
+      "utf8"
     );
     assert.match(io, /extensions: \[PROJECT_FILE_DIALOG_EXTENSION\]/);
     assert.doesNotMatch(io, /extensions: \["geolibre"/);
 
     const browserSave = io.slice(
       io.indexOf("async function saveProjectFileBrowser"),
-      io.indexOf("async function saveTextFileBrowser"),
+      io.indexOf("async function saveTextFileBrowser")
     );
     const validateIndex = browserSave.indexOf(
-      "isCanonicalProjectFileName(handle.name)",
+      "isCanonicalProjectFileName(handle.name)"
     );
     const writeIndex = browserSave.indexOf("handle.createWritable()");
-    assert.ok(validateIndex >= 0, "browser save must validate the selected name");
+    assert.ok(
+      validateIndex >= 0,
+      "browser save must validate the selected name"
+    );
     assert.ok(
       validateIndex < writeIndex,
-      "browser save must reject before creating a writable handle",
+      "browser save must reject before creating a writable handle"
     );
 
     const rust = readFileSync(
-      path.join(repoRoot, "apps/geolibre-desktop/src-tauri/src/lib.rs"),
-      "utf8",
+      path.join(
+        repoRoot,
+        "apps/geolibre-desktop/src-tauri/src/project_file.rs"
+      ),
+      "utf8"
     );
-    assert.match(rust, /lower\.ends_with\("\.geoim3d\.json"\)/);
-    assert.doesNotMatch(rust, /lower\.ends_with\("\.geolibre/);
+    assert.match(
+      rust,
+      /to_ascii_lowercase\(\)\.ends_with\("\.geoim3d\.json"\)/
+    );
+    assert.doesNotMatch(rust, /ends_with\("\.geolibre/);
   });
 
   it("routes manual and deep-link project URLs through the scoped share fetch", () => {
     const actions = readFileSync(
       path.join(
         repoRoot,
-        "apps/geolibre-desktop/src/hooks/useProjectFileActions.ts",
+        "apps/geolibre-desktop/src/hooks/useProjectFileActions.ts"
       ),
-      "utf8",
+      "utf8"
     );
     const deepLink = readFileSync(
       path.join(
         repoRoot,
-        "apps/geolibre-desktop/src/hooks/useProjectUrlLoader.ts",
+        "apps/geolibre-desktop/src/hooks/useProjectUrlLoader.ts"
       ),
-      "utf8",
+      "utf8"
     );
     assert.match(
       actions,
-      /openRecentProjectFile\([\s\S]{0,160}getShareFetch\(\)/,
+      /openRecentProjectFile\([\s\S]{0,160}getShareFetch\(\)/
     );
     assert.match(
       deepLink,
-      /fetchProjectFromUrl\([\s\S]{0,160}fetchImpl: getShareFetch\(\)/,
+      /fetchProjectFromUrl\([\s\S]{0,160}fetchImpl: getShareFetch\(\)/
     );
   });
 });

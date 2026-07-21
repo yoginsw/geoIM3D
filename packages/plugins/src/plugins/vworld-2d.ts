@@ -45,10 +45,11 @@ const ACTIONS: ReadonlyArray<{
   { id: "white", label: "백지도", layer: "white" },
   { id: "midnight", label: "야간 지도", layer: "midnight" },
   { id: "hybrid", label: "하이브리드", layer: "Hybrid" },
+  { id: "satellite", label: "위성 지도", layer: "Satellite" },
 ];
 
 export function createVWorld2DPlugin(
-  options: VWorld2DPluginOptions,
+  options: VWorld2DPluginOptions
 ): GeoLibrePlugin {
   const controllers = new Map<VWorldMapLike, VWorldEphemeralLayerController>();
   const dataControllers = new Map<VWorldMapLike, VWorldDataLayerController>();
@@ -91,7 +92,7 @@ export function createVWorld2DPlugin(
       }
       if (options.dataClient && !dataControllers.has(map)) {
         const controller = new VWorldDataLayerController(
-          map as unknown as VWorldDataMapLike,
+          map as unknown as VWorldDataMapLike
         );
         dataControllers.set(map, controller);
         const snapshot = dataSession?.getSnapshot();
@@ -138,7 +139,8 @@ export function createVWorld2DPlugin(
     name: "VWorld 2D 지도",
     version: "1.0.0",
     activate(app: GeoLibreAppAPI) {
-      if (!options.desktop || activated || !app.registerToolbarMenu) return false;
+      if (!options.desktop || activated || !app.registerToolbarMenu)
+        return false;
       if (!options.getMaps && !app.getMap?.()) return false;
 
       activated = true;
@@ -147,7 +149,8 @@ export function createVWorld2DPlugin(
         unsubscribeDataSession = dataSession.subscribe(syncDataLayers);
       }
       reconcileMaps(app);
-      unsubscribeMaps = options.subscribeMaps?.(() => reconcileMaps(app)) ?? null;
+      unsubscribeMaps =
+        options.subscribeMaps?.(() => reconcileMaps(app)) ?? null;
       if (options.searchClient && app.registerFloatingPanel) {
         searchSession = new VWorldSearchSession(options.searchClient);
         unregisterSearchPanel = app.registerFloatingPanel({
@@ -184,7 +187,9 @@ export function createVWorld2DPlugin(
                   | VWorldDataInteractiveMapLike
                   | undefined;
                 return (options.getMaps?.() ??
-                  (primary ? [primary] : [])) as readonly VWorldDataInteractiveMapLike[];
+                  (primary
+                    ? [primary]
+                    : [])) as readonly VWorldDataInteractiveMapLike[];
               },
             }),
         });
@@ -209,7 +214,9 @@ export function createVWorld2DPlugin(
                         id: "search-address",
                         label: "검색·주소 변환",
                         onSelect: () =>
-                          app.openFloatingPanel?.("geoim3d-vworld-search-panel"),
+                          app.openFloatingPanel?.(
+                            "geoim3d-vworld-search-panel"
+                          ),
                       },
                     ]
                   : []),

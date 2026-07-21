@@ -64,7 +64,7 @@ export function createDefaultMapView(): MapViewState {
 
 export function createEmptyProject(
   name = DEFAULT_PROJECT_NAME,
-  options: CreateProjectOptions = {},
+  options: CreateProjectOptions = {}
 ): GeoLibreProject {
   return {
     version: PROJECT_VERSION,
@@ -90,7 +90,214 @@ export function createEmptyProject(
   };
 }
 
+const privateMarker = (...codes: number[]): string =>
+  String.fromCharCode(...codes);
+const PRIVATE_PROJECT_MARKERS = [
+  privateMarker(
+    118,
+    105,
+    101,
+    119,
+    115,
+    104,
+    101,
+    100,
+    65,
+    110,
+    97,
+    108,
+    121,
+    115,
+    105,
+    115
+  ),
+  privateMarker(
+    118,
+    105,
+    101,
+    119,
+    115,
+    104,
+    101,
+    100,
+    45,
+    97,
+    110,
+    97,
+    108,
+    121,
+    115,
+    105,
+    115
+  ),
+  privateMarker(
+    103,
+    101,
+    111,
+    105,
+    109,
+    51,
+    100,
+    45,
+    118,
+    105,
+    101,
+    119,
+    115,
+    104,
+    101,
+    100,
+    45,
+    118,
+    49
+  ),
+  privateMarker(
+    103,
+    114,
+    105,
+    100,
+    45,
+    112,
+    111,
+    115,
+    105,
+    116,
+    105,
+    118,
+    101,
+    45,
+    105,
+    110,
+    116,
+    101,
+    114,
+    118,
+    97,
+    108,
+    45,
+    100,
+    100,
+    97,
+    45,
+    108,
+    111,
+    115,
+    45,
+    118,
+    49
+  ),
+] as const;
+const PRIVATE_PROJECT_HIGH_KEYS = new Set([
+  "observerheightmeters",
+  "targetheightmeters",
+  "maximumradiusmeters",
+  "occludedcells",
+  "visibleruncount",
+  "visiblerunlengths",
+]);
+const PRIVATE_PROJECT_LOW_KEYS = new Set([
+  "sourcecrs",
+  "cellareasquaremeters",
+  "candidatecells",
+  "visiblecells",
+  "evaluatedcells",
+  "visibleareasquaremeters",
+  "occludedareasquaremeters",
+  "unknownareasquaremeters",
+]);
+
+function privateGeometrySignature(value: Record<string, unknown>): boolean {
+  if (
+    value.type !== "FeatureCollection" ||
+    !Array.isArray(value.features) ||
+    value.features.length < 3
+  ) {
+    return false;
+  }
+  const geometryType = (feature: unknown): unknown => {
+    if (!feature || typeof feature !== "object" || Array.isArray(feature))
+      return undefined;
+    const geometry = (feature as Record<string, unknown>).geometry;
+    return geometry && typeof geometry === "object" && !Array.isArray(geometry)
+      ? (geometry as Record<string, unknown>).type
+      : undefined;
+  };
+  let hasBoundary = false;
+  let hasObserver = false;
+  let hasVisibleRuns = false;
+  for (const feature of value.features) {
+    const type = geometryType(feature);
+    if (type === "Polygon" || type === "MultiPolygon") hasBoundary = true;
+    else if (type === "Point") hasObserver = true;
+    else if (type === "GeometryCollection") hasVisibleRuns = true;
+  }
+  return hasBoundary && hasObserver && hasVisibleRuns;
+}
+
+function containsBoundedPrivateProjectContent(value: unknown): boolean {
+  const seen = new Set<object>();
+  const stack: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  const highKeys = new Set<string>();
+  const lowKeys = new Set<string>();
+  let visited = 0;
+  let stringUnits = 0;
+  let parseAttempts = 0;
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (current.depth > 12 || visited > 10_000 || stringUnits > 512 * 1024)
+      return true;
+    if (typeof current.value === "string") {
+      stringUnits += current.value.length;
+      if (stringUnits > 512 * 1024) return true;
+      const normalized = current.value.toLowerCase();
+      if (
+        PRIVATE_PROJECT_MARKERS.some((marker) =>
+          normalized.includes(marker.toLowerCase())
+        )
+      )
+        return true;
+      const trimmed = current.value.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        parseAttempts += 1;
+        if (parseAttempts > 32) return true;
+        try {
+          stack.push({
+            value: JSON.parse(trimmed) as unknown,
+            depth: current.depth + 1,
+          });
+        } catch {
+          return true;
+        }
+      }
+      continue;
+    }
+    if (!current.value || typeof current.value !== "object") continue;
+    if (seen.has(current.value as object)) continue;
+    seen.add(current.value as object);
+    visited += 1;
+    if (Array.isArray(current.value)) {
+      for (const child of current.value)
+        stack.push({ value: child, depth: current.depth + 1 });
+      continue;
+    }
+    const record = current.value as Record<string, unknown>;
+    if (privateGeometrySignature(record)) return true;
+    for (const [key, child] of Object.entries(record)) {
+      const normalizedKey = key.toLowerCase();
+      if (PRIVATE_PROJECT_HIGH_KEYS.has(normalizedKey))
+        highKeys.add(normalizedKey);
+      if (PRIVATE_PROJECT_LOW_KEYS.has(normalizedKey))
+        lowKeys.add(normalizedKey);
+      stack.push({ value: child, depth: current.depth + 1 });
+    }
+  }
+  return highKeys.size >= 2 || (highKeys.size >= 1 && lowKeys.size >= 2);
+}
+
 export function serializeProject(project: GeoLibreProject): string {
+  if (containsBoundedPrivateProjectContent(project)) {
+    throw new Error("PRIVATE_ANALYSIS_CONTENT_BLOCKED");
+  }
   return JSON.stringify(project, null, 2);
 }
 
@@ -106,7 +313,7 @@ export function parseProject(json: string): GeoLibreProject {
     .map((layer) =>
       layer.groupId && !validGroupIds.has(layer.groupId)
         ? { ...layer, groupId: undefined }
-        : layer,
+        : layer
     );
   const basemapStyleUrl = data.basemapStyleUrl ?? DEFAULT_BASEMAP;
   const basemapVisible = data.basemapVisible ?? true;
@@ -114,7 +321,7 @@ export function parseProject(json: string): GeoLibreProject {
   const { mapLayout, secondaryMapViews } = resolveMapGrid(
     normalizeMapLayout(data.mapLayout),
     normalizeSecondaryMapViews(data.secondaryMapViews),
-    { mapView: data.mapView },
+    { mapView: data.mapView }
   );
   return {
     version: data.version,
@@ -169,7 +376,8 @@ function normalizeLayerGroups(value: unknown): LayerGroup[] {
     if (!id || seen.has(id)) continue;
     seen.add(id);
     const opacity =
-      typeof candidate.opacity === "number" && Number.isFinite(candidate.opacity)
+      typeof candidate.opacity === "number" &&
+      Number.isFinite(candidate.opacity)
         ? Math.min(Math.max(candidate.opacity, 0), 1)
         : DEFAULT_LAYER_GROUP_OPACITY;
     groups.push({
@@ -224,7 +432,7 @@ function normalizeLegendConfig(legend: unknown): LegendConfig | undefined {
         : DEFAULT_LEGEND_CONFIG.title,
     groupByLayer: normalizeBoolean(
       candidate.groupByLayer,
-      DEFAULT_LEGEND_CONFIG.groupByLayer,
+      DEFAULT_LEGEND_CONFIG.groupByLayer
     ),
     order,
     overrides,
@@ -268,7 +476,7 @@ export function normalizeStoryMap(storymap: unknown): StoryMap | null {
       normalizeString(candidate.markerColor) || DEFAULT_STORY_MAP.markerColor,
     inset: normalizeBoolean(candidate.inset, false),
     insetPosition: STORY_INSET_POSITIONS.has(
-      candidate.insetPosition as StoryInsetPosition,
+      candidate.insetPosition as StoryInsetPosition
     )
       ? (candidate.insetPosition as StoryInsetPosition)
       : DEFAULT_STORY_MAP.insetPosition,
@@ -357,7 +565,9 @@ function normalizeStoryChapter(chapter: unknown): StoryChapter | null {
     title: normalizeString(candidate.title),
     description: normalizeString(candidate.description),
     image: normalizeString(candidate.image) || undefined,
-    alignment: STORY_ALIGNMENTS.has(candidate.alignment as StoryChapterAlignment)
+    alignment: STORY_ALIGNMENTS.has(
+      candidate.alignment as StoryChapterAlignment
+    )
       ? (candidate.alignment as StoryChapterAlignment)
       : "left",
     hidden: normalizeBoolean(candidate.hidden, false),
@@ -374,7 +584,7 @@ function normalizeStoryChapter(chapter: unknown): StoryChapter | null {
       bearing: ((normalizeNumber(location?.bearing, 0) % 360) + 360) % 360,
     },
     mapAnimation: STORY_ANIMATIONS.has(
-      candidate.mapAnimation as StoryChapterAnimation,
+      candidate.mapAnimation as StoryChapterAnimation
     )
       ? (candidate.mapAnimation as StoryChapterAnimation)
       : "flyTo",
@@ -473,12 +683,17 @@ export function normalizeMapViewState(value: unknown): MapViewState {
   // what lands on screen. Bearing wraps into [0, 360).
   const view: MapViewState = {
     center: [
-      clampCoordinate(normalizeNumber(center[0], fallback.center[0]), -180, 180),
+      clampCoordinate(
+        normalizeNumber(center[0], fallback.center[0]),
+        -180,
+        180
+      ),
       clampCoordinate(normalizeNumber(center[1], fallback.center[1]), -90, 90),
     ],
     zoom: clamp(normalizeNumber(candidate.zoom, fallback.zoom), 0, 24),
     bearing:
-      ((normalizeNumber(candidate.bearing, fallback.bearing) % 360) + 360) % 360,
+      ((normalizeNumber(candidate.bearing, fallback.bearing) % 360) + 360) %
+      360,
     pitch: clamp(normalizeNumber(candidate.pitch, fallback.pitch), 0, 85),
   };
   if (
@@ -507,18 +722,21 @@ export function normalizeMapLayout(value: unknown): MapGridLayout | null {
   const rows = clamp(
     Math.floor(normalizeNumber(candidate.rows, 1)),
     1,
-    MAX_MAP_GRID_DIM,
+    MAX_MAP_GRID_DIM
   );
   const cols = clamp(
     Math.floor(normalizeNumber(candidate.cols, 1)),
     1,
-    MAX_MAP_GRID_DIM,
+    MAX_MAP_GRID_DIM
   );
   if (rows * cols <= 1) return null;
   return {
     rows,
     cols,
-    syncView: normalizeBoolean(candidate.syncView, DEFAULT_MAP_GRID_LAYOUT.syncView),
+    syncView: normalizeBoolean(
+      candidate.syncView,
+      DEFAULT_MAP_GRID_LAYOUT.syncView
+    ),
   };
 }
 
@@ -528,7 +746,7 @@ export function normalizeMapLayout(value: unknown): MapGridLayout | null {
  * de-duplicating by id. Returns null when none are valid.
  */
 export function normalizeSecondaryMapViews(
-  value: unknown,
+  value: unknown
 ): SecondaryMapView[] | null {
   if (!Array.isArray(value)) return null;
   const views: SecondaryMapView[] = [];
@@ -576,7 +794,7 @@ function normalizeLayerVisibility(value: unknown): Record<string, boolean> {
 export function resolveMapGrid(
   layout: MapGridLayout | null,
   secondaryViews: SecondaryMapView[] | null,
-  primary: { mapView: MapViewState },
+  primary: { mapView: MapViewState }
 ): { mapLayout: MapGridLayout; secondaryMapViews: SecondaryMapView[] } {
   if (!layout) {
     return { mapLayout: { ...DEFAULT_MAP_GRID_LAYOUT }, secondaryMapViews: [] };
@@ -699,7 +917,7 @@ export function normalizeDashboardColumns(value: unknown): number {
   }
   return Math.max(
     MIN_DASHBOARD_COLUMNS,
-    Math.min(MAX_DASHBOARD_COLUMNS, Math.trunc(value)),
+    Math.min(MAX_DASHBOARD_COLUMNS, Math.trunc(value))
   );
 }
 
@@ -717,26 +935,26 @@ function normalizeProjectPreferences(preferences: unknown): ProjectPreferences {
     map: {
       ...DEFAULT_PROJECT_PREFERENCES.map,
       bounds: normalizeBounds(
-        (map as Partial<ProjectPreferences["map"]>).bounds,
+        (map as Partial<ProjectPreferences["map"]>).bounds
       ),
       minZoom: normalizeNumber(
         (map as Partial<ProjectPreferences["map"]>).minZoom,
-        DEFAULT_PROJECT_PREFERENCES.map.minZoom,
+        DEFAULT_PROJECT_PREFERENCES.map.minZoom
       ),
       maxZoom: normalizeNumber(
         (map as Partial<ProjectPreferences["map"]>).maxZoom,
-        DEFAULT_PROJECT_PREFERENCES.map.maxZoom,
+        DEFAULT_PROJECT_PREFERENCES.map.maxZoom
       ),
       maxPitch: normalizeNumber(
         (map as Partial<ProjectPreferences["map"]>).maxPitch,
-        DEFAULT_PROJECT_PREFERENCES.map.maxPitch,
+        DEFAULT_PROJECT_PREFERENCES.map.maxPitch
       ),
       restrictBounds: Boolean(
-        (map as Partial<ProjectPreferences["map"]>).restrictBounds,
+        (map as Partial<ProjectPreferences["map"]>).restrictBounds
       ),
       renderWorldCopies: normalizeBoolean(
         (map as Partial<ProjectPreferences["map"]>).renderWorldCopies,
-        true,
+        true
       ),
       projection:
         (map as Partial<ProjectPreferences["map"]>).projection === "mercator"
@@ -744,17 +962,17 @@ function normalizeProjectPreferences(preferences: unknown): ProjectPreferences {
           : "globe",
       // Coerce unknown/missing bodies to Earth so measurements never break.
       ellipsoidId: getEllipsoid(
-        (map as Partial<ProjectPreferences["map"]>).ellipsoidId,
+        (map as Partial<ProjectPreferences["map"]>).ellipsoidId
       ).id,
       scaleUnit: normalizeScaleUnit(
-        (map as Partial<ProjectPreferences["map"]>).scaleUnit,
+        (map as Partial<ProjectPreferences["map"]>).scaleUnit
       ),
     },
     environmentVariables: Array.isArray(candidate.environmentVariables)
       ? candidate.environmentVariables
           .map(normalizeEnvironmentVariable)
           .filter((variable): variable is RuntimeEnvironmentVariable =>
-            Boolean(variable),
+            Boolean(variable)
           )
       : [],
     geocoding: normalizeGeocodingPreferences(candidate.geocoding),
@@ -762,7 +980,7 @@ function normalizeProjectPreferences(preferences: unknown): ProjectPreferences {
 }
 
 function normalizeGeocodingPreferences(
-  geocoding: unknown,
+  geocoding: unknown
 ): ProjectPreferences["geocoding"] {
   if (!geocoding || typeof geocoding !== "object") {
     return { ...DEFAULT_PROJECT_PREFERENCES.geocoding, apiKeys: {} };
@@ -845,7 +1063,7 @@ function normalizeBoolean(value: unknown, fallback: boolean): boolean {
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function normalizeEnvironmentVariable(
-  variable: unknown,
+  variable: unknown
 ): RuntimeEnvironmentVariable | null {
   if (!variable || typeof variable !== "object") return null;
   const candidate = variable as Partial<RuntimeEnvironmentVariable>;
@@ -884,13 +1102,13 @@ function normalizeProjectPlugins(plugins: unknown): ProjectPluginState | null {
     typeof candidate.mapControlPositions === "object"
   ) {
     for (const [pluginId, position] of Object.entries(
-      candidate.mapControlPositions,
+      candidate.mapControlPositions
     )) {
       if (
         typeof pluginId === "string" &&
         pluginId.trim() &&
         PROJECT_PLUGIN_CONTROL_POSITIONS.has(
-          position as ProjectPluginControlPosition,
+          position as ProjectPluginControlPosition
         )
       ) {
         mapControlPositions[pluginId.trim()] =
@@ -1029,7 +1247,7 @@ export function projectFromStore(state: {
   const { mapLayout, secondaryMapViews } = resolveMapGrid(
     normalizeMapLayout(state.mapLayout),
     normalizeSecondaryMapViews(state.secondaryMapViews),
-    { mapView: state.mapView },
+    { mapView: state.mapView }
   );
   const persistGrid = mapLayout.rows * mapLayout.cols > 1;
   return {
@@ -1048,7 +1266,9 @@ export function projectFromStore(state: {
     ...(storymap ? { storymap } : {}),
     ...(models ? { models } : {}),
     ...(widgets ? { widgets } : {}),
-    ...(dashboardColumns !== DEFAULT_DASHBOARD_COLUMNS ? { dashboardColumns } : {}),
+    ...(dashboardColumns !== DEFAULT_DASHBOARD_COLUMNS
+      ? { dashboardColumns }
+      : {}),
     ...(persistGrid
       ? {
           mapLayout,
@@ -1129,8 +1349,8 @@ function prepareLayerForSave(layer: GeoLibreLayer): GeoLibreLayer {
     layer.metadata.originalUrl.trim()
       ? layer.metadata.originalUrl
       : typeof layer.source.url === "string" && layer.source.url.trim()
-        ? layer.source.url
-        : null;
+      ? layer.source.url
+      : null;
   if (!originalUrl) return layer;
 
   const metadata = { ...layer.metadata };
@@ -1187,8 +1407,8 @@ export function applyProjectToStore(project: GeoLibreProject): {
     layers.map((layer) =>
       layer.groupId && !validGroupIds.has(layer.groupId)
         ? { ...layer, groupId: undefined }
-        : layer,
-    ),
+        : layer
+    )
   );
   const basemapStyleUrl = project.basemapStyleUrl;
   const basemapVisible = project.basemapVisible ?? true;
@@ -1198,7 +1418,7 @@ export function applyProjectToStore(project: GeoLibreProject): {
   const { mapLayout, secondaryMapViews } = resolveMapGrid(
     normalizeMapLayout(project.mapLayout),
     normalizeSecondaryMapViews(project.secondaryMapViews),
-    { mapView: project.mapView },
+    { mapView: project.mapView }
   );
   return {
     projectName: project.name,
@@ -1210,7 +1430,9 @@ export function applyProjectToStore(project: GeoLibreProject): {
     layerGroups,
     preferences: normalizeProjectPreferences(project.preferences),
     projectPlugins: normalizeProjectPlugins(project.plugins),
-    legend: normalizeLegendConfig(project.legend) ?? { ...DEFAULT_LEGEND_CONFIG },
+    legend: normalizeLegendConfig(project.legend) ?? {
+      ...DEFAULT_LEGEND_CONFIG,
+    },
     storymap: normalizeStoryMap(project.storymap),
     models: normalizeModels(project.models) ?? [],
     widgets: normalizeWidgets(project.widgets) ?? [],

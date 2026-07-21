@@ -46,6 +46,7 @@ import {
   PROJECT_FILE_DIALOG_EXTENSION,
   PROJECT_FILE_SUFFIX,
 } from "./file-names";
+import { parseBoundedLocalProjectBytes } from "./project-file-bytes";
 import { isTauri } from "./is-tauri";
 import {
   parseKmlGroundOverlays,
@@ -171,7 +172,7 @@ const VECTOR_FILE_DIALOG_EXTENSIONS = [
 
 const RESTORABLE_VECTOR_PATH = new RegExp(
   `\\.(${VECTOR_FILE_DIALOG_EXTENSIONS.join("|")})$`,
-  "i",
+  "i"
 );
 
 /**
@@ -222,7 +223,7 @@ export interface LocalDirectoryEntry {
  * @returns The directory's entries (folders and files).
  */
 export async function listDirectory(
-  path: string,
+  path: string
 ): Promise<LocalDirectoryEntry[]> {
   if (!isTauri()) return [];
   const entries = await readDir(path);
@@ -324,7 +325,7 @@ export type LoadedLayer = LoadedVectorLayer | LoadedImageOverlay | LoadedModel;
 
 /** Narrow a {@link LoadedLayer} to its image-overlay variant. */
 export function isLoadedImageOverlay(
-  layer: LoadedLayer,
+  layer: LoadedLayer
 ): layer is LoadedImageOverlay {
   return "kind" in layer && layer.kind === "image-overlay";
 }
@@ -336,7 +337,7 @@ export function isLoadedModel(layer: LoadedLayer): layer is LoadedModel {
 
 /** Narrow a {@link LoadedLayer} to its vector variant. */
 export function isLoadedVectorLayer(
-  layer: LoadedLayer,
+  layer: LoadedLayer
 ): layer is LoadedVectorLayer {
   return !("kind" in layer);
 }
@@ -392,9 +393,7 @@ function pathWithoutExtension(path: string): string {
 }
 
 function isProjectFileName(path: string): boolean {
-  return (
-    isCanonicalProjectFileName(path) || isLegacyProjectFileName(path)
-  );
+  return isCanonicalProjectFileName(path) || isLegacyProjectFileName(path);
 }
 
 function isVectorFileName(path: string): boolean {
@@ -416,7 +415,7 @@ function assertFeatureCollection(value: unknown): FeatureCollection {
     return value as FeatureCollection;
   }
   throw new Error(
-    "The selected file did not produce a GeoJSON FeatureCollection.",
+    "The selected file did not produce a GeoJSON FeatureCollection."
   );
 }
 
@@ -430,7 +429,7 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 }
 
 function mergeFeatureCollections(
-  collections: FeatureCollection[],
+  collections: FeatureCollection[]
 ): FeatureCollection {
   return {
     type: "FeatureCollection",
@@ -473,7 +472,7 @@ async function parseGeoJsonText(text: string): Promise<FeatureCollection> {
  * @returns The file's raw bytes.
  */
 export async function readLocalFileBytes(
-  path: string,
+  path: string
 ): Promise<Uint8Array<ArrayBuffer>> {
   try {
     return await readFile(path);
@@ -485,7 +484,7 @@ export async function readLocalFileBytes(
     // ultimately surfaces.
     console.debug(
       `[geoIM3D] fs read of "${path}" failed; retrying via read_local_file.`,
-      error,
+      error
     );
     const buffer = await invoke<ArrayBuffer>("read_local_file", { path });
     return new Uint8Array(buffer);
@@ -508,7 +507,7 @@ async function readLocalFileText(path: string): Promise<string> {
     if (!isTauri()) throw error;
     console.debug(
       `[geoIM3D] fs read of "${path}" failed; retrying via read_local_file.`,
-      error,
+      error
     );
     const buffer = await invoke<ArrayBuffer>("read_local_file", { path });
     // `fatal: true` matches `readTextFile`, which rejects on malformed UTF-8
@@ -563,7 +562,7 @@ function isDelimitedTextFileName(path: string): boolean {
  */
 function parseDelimitedTextFile(
   text: string,
-  path: string,
+  path: string
 ): FeatureCollection | null {
   const name = browserSafeFileName(path);
   const pickColumns = `Use Add Data → Delimited Text to choose the coordinate columns for ${name}.`;
@@ -613,7 +612,7 @@ export function shapefileShapeType(shp: Uint8Array): number {
   if (shp.byteLength < 36) return -1;
   return new DataView(shp.buffer, shp.byteOffset, shp.byteLength).getInt32(
     32,
-    true,
+    true
   );
 }
 
@@ -638,11 +637,11 @@ export interface UnzippedShapefile {
  * decodes the TIN surfaces (issue #1121).
  */
 export async function readShapefileZipForDuckDb(
-  data: ArrayBuffer | Uint8Array,
+  data: ArrayBuffer | Uint8Array
 ): Promise<UnzippedShapefile | null> {
   const entries = await unzipArchive(data);
   const shpEntry = Object.keys(entries).find(
-    (name) => /\.shp$/i.test(name) && !isMacOsMetadataEntry(name),
+    (name) => /\.shp$/i.test(name) && !isMacOsMetadataEntry(name)
   );
   if (!shpEntry) return null;
   const baseName = browserSafeFileName(shpEntry) || "layer.shp";
@@ -707,7 +706,7 @@ function parseShapefileComponents({
  */
 async function loadShapefileZip(
   data: ArrayBuffer | Uint8Array,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<FeatureCollection> {
   const unzipped = await readShapefileZipForDuckDb(data);
   if (!unzipped) {
@@ -727,7 +726,7 @@ async function loadShapefileZip(
 }
 
 function unzipArchive(
-  data: ArrayBuffer | Uint8Array,
+  data: ArrayBuffer | Uint8Array
 ): Promise<Record<string, Uint8Array>> {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   return new Promise<Record<string, Uint8Array>>((resolve, reject) => {
@@ -746,7 +745,7 @@ function toDuckDbVectorData(data: Uint8Array): Uint8Array<ArrayBuffer> {
 }
 
 function readKmlEntries(
-  entries: Record<string, Uint8Array>,
+  entries: Record<string, Uint8Array>
 ): DuckDbVectorFile[] {
   const kmlEntries = Object.entries(entries)
     .filter(([entryName]) => entryName.toLowerCase().endsWith(".kml"))
@@ -775,7 +774,7 @@ function readKmlEntries(
 }
 
 async function readKmzKmlFiles(
-  data: ArrayBuffer | Uint8Array,
+  data: ArrayBuffer | Uint8Array
 ): Promise<DuckDbVectorFile[]> {
   return readKmlEntries(await unzipArchive(data));
 }
@@ -797,13 +796,15 @@ function bytesToDataUrl(bytes: Uint8Array, mime: string): Promise<string> {
 function imageOverlayLayer(
   overlay: KmlGroundOverlay,
   url: string,
-  path: string,
+  path: string
 ): LoadedImageOverlay {
   return {
     kind: "image-overlay",
     // Strip the file extension for the fallback name (e.g. "tour.kmz" ->
     // "tour overlay"), matching how the vector layers are named.
-    name: overlay.name?.trim() || `${pathWithoutExtension(fileBaseName(path))} overlay`,
+    name:
+      overlay.name?.trim() ||
+      `${pathWithoutExtension(fileBaseName(path))} overlay`,
     path,
     url,
     coordinates: overlay.coordinates,
@@ -830,13 +831,15 @@ function imageOverlayLayer(
  * @returns The same array, for chaining.
  */
 function sequenceTimeOverlays(
-  overlays: LoadedImageOverlay[],
+  overlays: LoadedImageOverlay[]
 ): LoadedImageOverlay[] {
   const frames = overlays
     .filter(
-      (overlay): overlay is LoadedImageOverlay & {
+      (
+        overlay
+      ): overlay is LoadedImageOverlay & {
         timeSpan: { begin: number; end: number | null };
-      } => typeof overlay.timeSpan?.begin === "number",
+      } => typeof overlay.timeSpan?.begin === "number"
     )
     .sort((a, b) => a.timeSpan.begin - b.timeSpan.begin);
 
@@ -897,7 +900,7 @@ function archiveDirname(entryName: string): string {
 async function groundOverlaysFromKmz(
   entries: Record<string, Uint8Array>,
   kmlDocs: { name: string; text: string }[],
-  path: string,
+  path: string
 ): Promise<LoadedImageOverlay[]> {
   // Prefilter (case-insensitively, matching kml.ts's tolerant element matching)
   // so a KML with no overlay is not DOM-parsed a second time.
@@ -907,7 +910,7 @@ async function groundOverlaysFromKmz(
       parseKmlGroundOverlays(doc.text).map((overlay) => ({
         overlay,
         baseDir: archiveDirname(doc.name),
-      })),
+      }))
     )
     .sort((a, b) => a.overlay.drawOrder - b.overlay.drawOrder);
 
@@ -931,13 +934,19 @@ async function groundOverlaysFromKmz(
       findArchiveEntry(entries, overlay.href);
     if (!data) {
       console.warn(
-        `Skipping a KML ground overlay: its image "${overlay.href}" was not found in the KMZ archive.`,
+        `Skipping a KML ground overlay: its image "${overlay.href}" was not found in the KMZ archive.`
       );
       continue;
     }
     if (data.length > MAX_OVERLAY_IMAGE_BYTES) {
       console.warn(
-        `Skipping a KML ground overlay: its image "${overlay.href}" is ${Math.round(data.length / (1024 * 1024))} MB, over the ${Math.round(MAX_OVERLAY_IMAGE_BYTES / (1024 * 1024))} MB inline limit.`,
+        `Skipping a KML ground overlay: its image "${
+          overlay.href
+        }" is ${Math.round(
+          data.length / (1024 * 1024)
+        )} MB, over the ${Math.round(
+          MAX_OVERLAY_IMAGE_BYTES / (1024 * 1024)
+        )} MB inline limit.`
       );
       continue;
     }
@@ -956,7 +965,7 @@ function isUnrenderableOverlayImage(href: string): boolean {
 
 function warnUnrenderableOverlay(href: string): void {
   console.warn(
-    `Skipping a KML ground overlay: browsers cannot render the TIFF image "${href}".`,
+    `Skipping a KML ground overlay: browsers cannot render the TIFF image "${href}".`
   );
 }
 
@@ -972,7 +981,7 @@ function sortByDrawOrder(overlays: KmlGroundOverlay[]): KmlGroundOverlay[] {
 // a browser load does not have.
 function groundOverlaysFromKml(
   text: string,
-  path: string,
+  path: string
 ): LoadedImageOverlay[] {
   // Cheap prefilter so a KML with no overlays is not DOM-parsed a second time
   // (its placemarks are already parsed by the vector loader). Matched
@@ -983,7 +992,7 @@ function groundOverlaysFromKml(
   for (const overlay of sortByDrawOrder(parseKmlGroundOverlays(text))) {
     if (!isHttpUrl(overlay.href)) {
       console.warn(
-        `Skipping a KML ground overlay: its image "${overlay.href}" is a relative path, which a standalone KML (unlike a KMZ) cannot resolve. Only absolute URLs are supported.`,
+        `Skipping a KML ground overlay: its image "${overlay.href}" is a relative path, which a standalone KML (unlike a KMZ) cannot resolve. Only absolute URLs are supported.`
       );
       continue;
     }
@@ -1015,7 +1024,7 @@ function kmlModelName(
   model: KmlModel,
   path: string,
   index: number,
-  total: number,
+  total: number
 ): string {
   const named = model.name?.trim();
   if (named) return named;
@@ -1033,7 +1042,7 @@ function kmlModelLayer(
   },
   path: string,
   index: number,
-  total: number,
+  total: number
 ): LoadedModel {
   return {
     kind: "model",
@@ -1062,7 +1071,7 @@ async function daeToGlbDataUrl(
   daeText: string,
   href: string,
   resolveTexture?: (path: string) => Uint8Array | undefined,
-  basePath = "",
+  basePath = ""
 ): Promise<{
   url: string;
   radiusMeters: number;
@@ -1075,7 +1084,7 @@ async function daeToGlbDataUrl(
         const bytes = resolveTexture(url);
         if (!bytes) return undefined;
         const blob = URL.createObjectURL(
-          new Blob([bytes as BlobPart], { type: imageMimeFromName(url) }),
+          new Blob([bytes as BlobPart], { type: imageMimeFromName(url) })
         );
         blobUrls.push(blob);
         return blob;
@@ -1084,14 +1093,14 @@ async function daeToGlbDataUrl(
   try {
     const { convertDaeToGlb } = await import("./collada-to-glb");
     const { glb, radiusMeters, verticalMinMeters, verticalMaxMeters } =
-      await convertDaeToGlb(
-        daeText,
-        modifier,
-        basePath,
-      );
+      await convertDaeToGlb(daeText, modifier, basePath);
     if (glb.length > MAX_MODEL_GLB_BYTES) {
       console.warn(
-        `Skipping a KML model: "${href}" converts to ${Math.round(glb.length / (1024 * 1024))} MB, over the ${Math.round(MAX_MODEL_GLB_BYTES / (1024 * 1024))} MB inline limit.`,
+        `Skipping a KML model: "${href}" converts to ${Math.round(
+          glb.length / (1024 * 1024)
+        )} MB, over the ${Math.round(
+          MAX_MODEL_GLB_BYTES / (1024 * 1024)
+        )} MB inline limit.`
       );
       return null;
     }
@@ -1112,7 +1121,7 @@ async function daeToGlbDataUrl(
 async function modelsFromKmz(
   entries: Record<string, Uint8Array>,
   kmlDocs: { name: string; text: string }[],
-  path: string,
+  path: string
 ): Promise<LoadedModel[]> {
   const parsed = kmlDocs
     // `(?:\w+:)?` so a namespace-prefixed `<kml:Model>` (valid but rare) isn't
@@ -1122,7 +1131,7 @@ async function modelsFromKmz(
       parseKmlModels(doc.text).map((model) => ({
         model,
         baseDir: archiveDirname(doc.name),
-      })),
+      }))
     );
 
   const models: LoadedModel[] = [];
@@ -1139,14 +1148,18 @@ async function modelsFromKmz(
       findArchiveEntryKey(entries, model.href);
     if (daeKey === undefined) {
       console.warn(
-        `Skipping a KML model: its mesh "${model.href}" was not found in the KMZ archive.`,
+        `Skipping a KML model: its mesh "${model.href}" was not found in the KMZ archive.`
       );
       continue;
     }
     const data = entries[daeKey];
     if (data.length > MAX_DAE_SOURCE_BYTES) {
       console.warn(
-        `Skipping a KML model: its mesh "${model.href}" is ${Math.round(data.length / (1024 * 1024))} MB, over the ${Math.round(MAX_DAE_SOURCE_BYTES / (1024 * 1024))} MB limit.`,
+        `Skipping a KML model: its mesh "${model.href}" is ${Math.round(
+          data.length / (1024 * 1024)
+        )} MB, over the ${Math.round(
+          MAX_DAE_SOURCE_BYTES / (1024 * 1024)
+        )} MB limit.`
       );
       continue;
     }
@@ -1164,7 +1177,11 @@ async function modelsFromKmz(
       // the GLB-size cap ever measures the result; skip it (untextured) instead.
       if (bytes && bytes.length > MAX_OVERLAY_IMAGE_BYTES) {
         console.warn(
-          `Skipping a KML model texture "${texturePath}": ${Math.round(bytes.length / (1024 * 1024))} MB, over the ${Math.round(MAX_OVERLAY_IMAGE_BYTES / (1024 * 1024))} MB limit.`,
+          `Skipping a KML model texture "${texturePath}": ${Math.round(
+            bytes.length / (1024 * 1024)
+          )} MB, over the ${Math.round(
+            MAX_OVERLAY_IMAGE_BYTES / (1024 * 1024)
+          )} MB limit.`
         );
         return undefined;
       }
@@ -1173,7 +1190,7 @@ async function modelsFromKmz(
     const converted = await daeToGlbDataUrl(
       new TextDecoder("utf-8").decode(data),
       model.href,
-      resolveTexture,
+      resolveTexture
     );
     if (converted)
       models.push(kmlModelLayer(model, converted, path, index, total));
@@ -1184,9 +1201,7 @@ async function modelsFromKmz(
 // Fetch an absolute-URL `.dae`, convert it to a GLB data URL. Textures resolve
 // against the mesh's URL directory (best effort; a CORS-blocked fetch is
 // skipped). Returns null on any failure.
-async function fetchDaeAsGlbDataUrl(
-  href: string,
-): Promise<{
+async function fetchDaeAsGlbDataUrl(href: string): Promise<{
   url: string;
   radiusMeters: number;
   verticalMinMeters: number;
@@ -1198,7 +1213,7 @@ async function fetchDaeAsGlbDataUrl(
     const response = await fetch(href, { signal: AbortSignal.timeout(15000) });
     if (!response.ok) {
       console.warn(
-        `Skipping a KML model: fetching "${href}" returned ${response.status}.`,
+        `Skipping a KML model: fetching "${href}" returned ${response.status}.`
       );
       return null;
     }
@@ -1206,9 +1221,16 @@ async function fetchDaeAsGlbDataUrl(
     // Content-Length pre-check in `openRecentProjectFile`). A chunked response
     // with no Content-Length still falls through to the post-read check below.
     const contentLength = response.headers.get("content-length");
-    if (contentLength !== null && Number(contentLength) > MAX_DAE_SOURCE_BYTES) {
+    if (
+      contentLength !== null &&
+      Number(contentLength) > MAX_DAE_SOURCE_BYTES
+    ) {
       console.warn(
-        `Skipping a KML model: "${href}" is ${Math.round(Number(contentLength) / (1024 * 1024))} MB, over the ${Math.round(MAX_DAE_SOURCE_BYTES / (1024 * 1024))} MB limit.`,
+        `Skipping a KML model: "${href}" is ${Math.round(
+          Number(contentLength) / (1024 * 1024)
+        )} MB, over the ${Math.round(
+          MAX_DAE_SOURCE_BYTES / (1024 * 1024)
+        )} MB limit.`
       );
       return null;
     }
@@ -1218,7 +1240,11 @@ async function fetchDaeAsGlbDataUrl(
     const daeBytes = new Blob([daeText]).size;
     if (daeBytes > MAX_DAE_SOURCE_BYTES) {
       console.warn(
-        `Skipping a KML model: "${href}" is ${Math.round(daeBytes / (1024 * 1024))} MB, over the ${Math.round(MAX_DAE_SOURCE_BYTES / (1024 * 1024))} MB limit.`,
+        `Skipping a KML model: "${href}" is ${Math.round(
+          daeBytes / (1024 * 1024)
+        )} MB, over the ${Math.round(
+          MAX_DAE_SOURCE_BYTES / (1024 * 1024)
+        )} MB limit.`
       );
       return null;
     }
@@ -1234,7 +1260,7 @@ async function fetchDaeAsGlbDataUrl(
 // href is an absolute URL; a relative path needs the archive's packaged files.
 async function modelsFromKml(
   text: string,
-  path: string,
+  path: string
 ): Promise<LoadedModel[]> {
   // `(?:\w+:)?` so a namespace-prefixed `<kml:Model>` isn't skipped before
   // `parseKmlModels` (which matches by localName) runs.
@@ -1244,7 +1270,7 @@ async function modelsFromKml(
   for (const [index, model] of parsed.entries()) {
     if (!isHttpUrl(model.href)) {
       console.warn(
-        `Skipping a KML model: its mesh "${model.href}" is a relative path, which a standalone KML (unlike a KMZ) cannot resolve. Only absolute URLs are supported.`,
+        `Skipping a KML model: its mesh "${model.href}" is a relative path, which a standalone KML (unlike a KMZ) cannot resolve. Only absolute URLs are supported.`
       );
       continue;
     }
@@ -1263,7 +1289,7 @@ async function modelsFromKml(
 // loaded.
 async function kmzVectorFeatures(
   kmlFiles: DuckDbVectorFile[],
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<FeatureCollection> {
   let cancellation: unknown;
   const settled = await Promise.all(
@@ -1277,15 +1303,15 @@ async function kmzVectorFeatures(
           }
           console.warn(
             "Could not read vector features from a KML entry in the KMZ archive.",
-            error,
+            error
           );
           return null;
-        },
-      ),
-    ),
+        }
+      )
+    )
   );
   const collections = settled.filter(
-    (collection): collection is FeatureCollection => collection !== null,
+    (collection): collection is FeatureCollection => collection !== null
   );
   if (collections.length === 0 && cancellation) throw cancellation;
   return mergeFeatureCollections(collections);
@@ -1300,7 +1326,7 @@ async function kmzVectorFeatures(
 async function loadKmzLayers(
   data: ArrayBuffer | Uint8Array,
   path: string,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<LoadedLayer[]> {
   const entries = await unzipArchive(data);
   const kmlFiles = readKmlEntries(entries);
@@ -1343,7 +1369,7 @@ async function loadKmzLayers(
   if (layers.length === 0) {
     if (cancellation) throw cancellation;
     throw new Error(
-      "The KMZ archive did not contain readable placemarks, ground overlays, or 3D models.",
+      "The KMZ archive did not contain readable placemarks, ground overlays, or 3D models."
     );
   }
   return layers;
@@ -1351,7 +1377,7 @@ async function loadKmzLayers(
 
 async function parseKmz(
   data: ArrayBuffer | Uint8Array,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<FeatureCollection> {
   const kmlFiles = await readKmzKmlFiles(data);
   // Load each KML independently so declining one large KML inside a multi-KML
@@ -1366,12 +1392,12 @@ async function parseKmz(
           if (!isVectorLoadCancelled(error)) throw error;
           cancellation = error;
           return null;
-        },
-      ),
-    ),
+        }
+      )
+    )
   );
   const collections = settled.filter(
-    (collection): collection is FeatureCollection => collection !== null,
+    (collection): collection is FeatureCollection => collection !== null
   );
   // Every KML was declined: propagate the cancellation so the caller skips the
   // whole archive rather than adding an empty layer.
@@ -1381,7 +1407,7 @@ async function parseKmz(
 
 async function loadDuckDbVector(
   file: DuckDbVectorFile,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ) {
   const { loadDuckDbVectorFile } = await import("./duckdb-vector-loader");
   return loadDuckDbVectorFile(file, options);
@@ -1398,7 +1424,7 @@ interface NativeDuckDbVectorAttempt {
 }
 
 function nativeDuckDbInvokeOptions(
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): NativeDuckDbVectorInvokeOptions {
   return {
     ...(options?.layer?.trim() ? { layer: options.layer.trim() } : {}),
@@ -1410,7 +1436,7 @@ function nativeDuckDbInvokeOptions(
 
 async function tryLoadNativeDuckDbVectorPath(
   path: string,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<NativeDuckDbVectorAttempt> {
   if (!isTauri()) return { data: null, featureCountChecked: false };
 
@@ -1423,11 +1449,11 @@ async function tryLoadNativeDuckDbVectorPath(
         {
           path,
           ...invokeOptions,
-        },
+        }
       );
       await confirmLargeDataset(
         { name: browserSafeFileName(path), featureCount },
-        options.onLargeDataset,
+        options.onLargeDataset
       );
       featureCountChecked = true;
     }
@@ -1444,7 +1470,7 @@ async function tryLoadNativeDuckDbVectorPath(
     if (isVectorLoadCancelled(error)) throw error;
     console.warn(
       "[geoIM3D] Native DuckDB vector load failed; falling back to DuckDB-WASM.",
-      error,
+      error
     );
     return { data: null, featureCountChecked };
   }
@@ -1458,7 +1484,7 @@ function confirmPickedNativeVectorDataset({
     i18next.t("toolbar.item.largeVectorDesc", {
       name,
       count: featureCount.toLocaleString(),
-    }),
+    })
   );
 }
 
@@ -1470,7 +1496,7 @@ function confirmPickedNativeVectorDataset({
  */
 async function loadKmlFile(
   file: DuckDbVectorFile,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<FeatureCollection> {
   try {
     return parseKmlText(new TextDecoder("utf-8").decode(file.data));
@@ -1486,9 +1512,7 @@ async function loadKmlFile(
  * lazy dynamic import instead of being pulled into this module's chunk.
  */
 function isVectorLoadCancelled(error: unknown): boolean {
-  return (
-    error instanceof Error && error.name === "VectorLoadCancelledError"
-  );
+  return error instanceof Error && error.name === "VectorLoadCancelledError";
 }
 
 async function fileToDuckDbVectorFile(file: File): Promise<DuckDbVectorFile> {
@@ -1502,7 +1526,7 @@ async function fileToDuckDbVectorFile(file: File): Promise<DuckDbVectorFile> {
 async function loadBrowserVectorFile(
   file: File,
   siblingFiles: DuckDbVectorFile[] = [],
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<LoadedVectorLayer> {
   const extension = fileExtension(file.name);
   if (extension === "geojson" || extension === "json") {
@@ -1566,14 +1590,14 @@ async function loadBrowserVectorFile(
         data: new Uint8Array(await file.arrayBuffer()),
         siblingFiles,
       },
-      options,
+      options
     ),
     path: file.name,
   };
 }
 
 async function openVectorFileBrowser(
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<{
   data: FeatureCollection;
   path: string;
@@ -1598,9 +1622,7 @@ async function openVectorFileBrowser(
   });
 }
 
-async function openVectorFileTauri(
-  options?: DuckDbVectorLoadOptions,
-): Promise<{
+async function openVectorFileTauri(options?: DuckDbVectorLoadOptions): Promise<{
   data: FeatureCollection;
   path: string;
 } | null> {
@@ -1642,7 +1664,9 @@ export interface PickedVectorFile {
  *
  * @returns The picked vector files, each with its shapefile sidecars.
  */
-export async function pickVectorFilesWithSidecars(): Promise<PickedVectorFile[]> {
+export async function pickVectorFilesWithSidecars(): Promise<
+  PickedVectorFile[]
+> {
   const selected = await open({
     filters: vectorFileDialogFilters(),
     multiple: true,
@@ -1651,7 +1675,7 @@ export async function pickVectorFilesWithSidecars(): Promise<PickedVectorFile[]>
   // `isVectorFileName` drops rasters, project files, and shapefile sidecars, so
   // a sidecar picked on its own never becomes its own (unreadable) layer.
   const paths = (Array.isArray(selected) ? selected : [selected]).filter(
-    isVectorFileName,
+    isVectorFileName
   );
   const picked: PickedVectorFile[] = [];
   for (const path of paths) {
@@ -1660,12 +1684,12 @@ export async function pickVectorFilesWithSidecars(): Promise<PickedVectorFile[]>
     try {
       const file = new File(
         [toArrayBuffer(await readFile(path))],
-        browserSafeFileName(path),
+        browserSafeFileName(path)
       );
       const companionFiles =
         fileExtension(path) === "shp"
           ? (await readShapefileSiblings(path)).map(
-              (sibling) => new File([toArrayBuffer(sibling.data)], sibling.name),
+              (sibling) => new File([toArrayBuffer(sibling.data)], sibling.name)
             )
           : [];
       picked.push({
@@ -1693,9 +1717,7 @@ export async function pickVectorFilesWithSidecars(): Promise<PickedVectorFile[]>
  * @returns The file with its sidecars, or null off the desktop host or when it
  *   can no longer be read (moved or deleted).
  */
-export async function readVectorFileWithSidecars(
-  path: string,
-): Promise<{
+export async function readVectorFileWithSidecars(path: string): Promise<{
   file: File;
   companionFiles: File[];
   nativeData?: FeatureCollection;
@@ -1713,12 +1735,12 @@ export async function readVectorFileWithSidecars(
     // `readFile` would throw — silently dropping the vector-control layer.
     const file = new File(
       [toArrayBuffer(await readLocalFileBytes(path))],
-      browserSafeFileName(path),
+      browserSafeFileName(path)
     );
     const companionFiles =
       fileExtension(path) === "shp"
         ? (await readShapefileSiblings(path)).map(
-            (sibling) => new File([toArrayBuffer(sibling.data)], sibling.name),
+            (sibling) => new File([toArrayBuffer(sibling.data)], sibling.name)
           )
         : [];
     return {
@@ -1727,7 +1749,7 @@ export async function readVectorFileWithSidecars(
       nativeData: await tryLoadPickedNativeVectorPath(path, {
         onLargeDataset: ({ name, featureCount }) => {
           console.warn(
-            `[geoIM3D] Skipping native vector restore for "${name}" because it contains ${featureCount.toLocaleString()} features; re-add the file to confirm loading it as GeoJSON.`,
+            `[geoIM3D] Skipping native vector restore for "${name}" because it contains ${featureCount.toLocaleString()} features; re-add the file to confirm loading it as GeoJSON.`
           );
           return false;
         },
@@ -1741,7 +1763,7 @@ export async function readVectorFileWithSidecars(
 
 async function tryLoadPickedNativeVectorPath(
   path: string,
-  options: DuckDbVectorLoadOptions,
+  options: DuckDbVectorLoadOptions
 ): Promise<FeatureCollection | undefined> {
   const extension = fileExtension(path);
   if (
@@ -1775,7 +1797,7 @@ export function isAbsoluteLocalPath(path: string): boolean {
 
 async function loadTauriVectorFile(
   path: string,
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<{
   data: FeatureCollection;
   path: string;
@@ -1868,7 +1890,7 @@ async function loadTauriVectorFile(
           data: await readLocalFileBytes(path),
           siblingFiles,
         },
-        wasmOptions,
+        wasmOptions
       ),
       path,
     };
@@ -1876,13 +1898,13 @@ async function loadTauriVectorFile(
     if (isVectorLoadCancelled(error)) throw error;
     const detail = error instanceof Error ? error.message : "Unknown error";
     throw new Error(
-      `Could not convert this vector file with DuckDB-WASM. ${detail}`,
+      `Could not convert this vector file with DuckDB-WASM. ${detail}`
     );
   }
 }
 
 async function readShapefileSiblings(
-  path: string,
+  path: string
 ): Promise<DuckDbVectorFile[]> {
   // Read the sidecars through a Tauri command rather than the JS `fs` plugin:
   // `fs` can only read paths the user explicitly picked or dropped, so a sidecar
@@ -1892,7 +1914,7 @@ async function readShapefileSiblings(
   if (!isTauri()) return [];
   const siblings = await invoke<Array<{ name: string; data: number[] }>>(
     "read_shapefile_siblings",
-    { path },
+    { path }
   );
   return siblings.map((sibling) => ({
     name: sibling.name,
@@ -1968,10 +1990,10 @@ export function browserSaveFallsBackToDownload(): boolean {
 
 async function saveProjectFileBrowser(
   content: string,
-  defaultName?: string,
+  defaultName?: string
 ): Promise<string | null> {
   const fileName = ensureProjectFileName(
-    browserSafeFileName(defaultName ?? `project${PROJECT_FILE_SUFFIX}`),
+    browserSafeFileName(defaultName ?? `project${PROJECT_FILE_SUFFIX}`)
   );
   const pickerWindow = window as BrowserFilePickerWindow;
 
@@ -2010,7 +2032,7 @@ async function saveProjectFileBrowser(
 
 async function saveTextFileBrowser(
   content: string,
-  options: SaveTextFileOptions,
+  options: SaveTextFileOptions
 ): Promise<string | null> {
   const fileName = browserSafeFileName(options.defaultName);
   const pickerWindow = window as BrowserFilePickerWindow;
@@ -2047,7 +2069,7 @@ async function saveTextFileBrowser(
 
 async function saveBinaryFileBrowser(
   content: Uint8Array | Blob,
-  options: SaveBinaryFileOptions,
+  options: SaveBinaryFileOptions
 ): Promise<string | null> {
   const fileName = browserSafeFileName(options.defaultName);
   const pickerWindow = window as BrowserFilePickerWindow;
@@ -2090,7 +2112,7 @@ async function saveBinaryFileBrowser(
 }
 
 export async function openLocalDataFileWithFallback(
-  options: LocalDataFileOptions,
+  options: LocalDataFileOptions
 ): Promise<{
   data?: ArrayBuffer;
   path: string;
@@ -2135,7 +2157,7 @@ export async function openLocalDataFileWithFallback(
 }
 
 export async function pickLocalPathWithFallback(
-  options: PickLocalPathOptions = {},
+  options: PickLocalPathOptions = {}
 ): Promise<string | null> {
   if (isTauri()) {
     const selected = await open({
@@ -2171,7 +2193,7 @@ export async function pickLocalDirectory(): Promise<string | null> {
 }
 
 export async function pickSavePathWithFallback(
-  options: PickSavePathOptions,
+  options: PickSavePathOptions
 ): Promise<string | null> {
   if (isTauri()) {
     return save({
@@ -2239,8 +2261,10 @@ export async function openProjectFile(): Promise<{
   if (!isCanonicalProjectFileName(selected)) {
     throw new Error(`Project files must end in ${PROJECT_FILE_SUFFIX}.`);
   }
-  const text = await readTextFile(selected);
-  const project = parseProject(text);
+  const bytes = await invoke<ArrayBuffer>("read_project_file", {
+    path: selected,
+  });
+  const project = await parseBoundedLocalProjectBytes(bytes);
   return { project, path: selected };
 }
 
@@ -2266,7 +2290,7 @@ function isFileMissingError(error: unknown): boolean {
   // "not found" / "cannot find" that also appear in transient IPC errors
   // (e.g. "Command not found", Windows os error 3 for a disconnected drive).
   return /no such file|os error 2|\benoent\b|cannot find the file|file not found|does not exist/i.test(
-    message,
+    message
   );
 }
 
@@ -2282,7 +2306,7 @@ export async function takeStartupProjectPath(): Promise<string | null> {
 export async function openRecentProjectFile(
   path: string,
   signal?: AbortSignal,
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch
 ): Promise<{
   project: GeoLibreProject;
   path: string;
@@ -2318,7 +2342,7 @@ export async function openRecentProjectFile(
     const contentType = response.headers.get("content-type") ?? "";
     if (/\bhtml\b/i.test(contentType)) {
       throw new Error(
-        `Unexpected content type "${contentType}" - the URL does not appear to be a project file.`,
+        `Unexpected content type "${contentType}" - the URL does not appear to be a project file.`
       );
     }
 
@@ -2327,30 +2351,47 @@ export async function openRecentProjectFile(
 
   if (!isTauri()) {
     throw new Error(
-      "Recent local projects can only be reopened in geoIM3D Desktop.",
+      "Recent local projects can only be reopened in geoIM3D Desktop."
     );
   }
 
-  let text: string;
+  let bytes: ArrayBuffer;
   try {
-    text = await invoke<string>("read_project_file", { path });
+    bytes = await invoke<ArrayBuffer>("read_project_file", { path });
   } catch (error) {
     if (isFileMissingError(error)) {
-      throw new RecentProjectGoneError(
-        `Project file no longer exists: ${path}`,
-      );
+      throw new RecentProjectGoneError("PROJECT_FILE_NOT_FOUND");
     }
-    throw error;
+    throw new Error("PROJECT_FILE_UNREADABLE");
   }
+  return { project: await parseBoundedLocalProjectBytes(bytes), path };
+}
 
-  return { project: parseProject(text), path };
+export type ProjectFileContent = string | Uint8Array;
+
+async function writeProjectContent(
+  path: string,
+  content: ProjectFileContent
+): Promise<void> {
+  if (typeof content === "string") {
+    await writeTextFile(path, content);
+  } else {
+    await writeFile(path, content);
+  }
 }
 
 export async function saveProjectFile(
-  content: string,
-  defaultName?: string,
+  content: ProjectFileContent,
+  defaultName?: string
 ): Promise<string | null> {
   if (!isTauri()) {
+    if (typeof content !== "string")
+      throw new Error(
+        typeof __WINDOWS_TAURI_BUILD__ !== "undefined" &&
+        __WINDOWS_TAURI_BUILD__
+          ? "VIEWSHED_PRIVATE_CONTENT_BLOCKED"
+          : "PROJECT_PRIVATE_CONTENT_REJECTED"
+      );
     return saveProjectFileBrowser(content, defaultName);
   }
 
@@ -2362,12 +2403,12 @@ export async function saveProjectFile(
       },
     ],
     defaultPath: ensureProjectFileName(
-      defaultName ?? `project${PROJECT_FILE_SUFFIX}`,
+      defaultName ?? `project${PROJECT_FILE_SUFFIX}`
     ),
   });
   if (!path) return null;
   const canonicalPath = ensureProjectFileName(path);
-  await writeTextFile(canonicalPath, content);
+  await writeProjectContent(canonicalPath, content);
   return canonicalPath;
 }
 
@@ -2377,13 +2418,13 @@ export async function saveProjectFile(
  * has a writable filesystem path) or when the path is an HTTP(S) URL.
  */
 export async function saveProjectFileToPath(
-  content: string,
-  path: string,
+  content: ProjectFileContent,
+  path: string
 ): Promise<string | null> {
   if (!isTauri() || isHttpUrl(path) || !isCanonicalProjectFileName(path)) {
     return saveProjectFile(content, path);
   }
-  await writeTextFile(path, content);
+  await writeProjectContent(path, content);
   return path;
 }
 
@@ -2395,14 +2436,14 @@ export async function saveProjectFileToPath(
  */
 export async function writeTextFileToPath(
   path: string,
-  content: string,
+  content: string
 ): Promise<void> {
   await writeTextFile(path, content);
 }
 
 export async function saveTextFileWithFallback(
   content: string,
-  options: SaveTextFileOptions,
+  options: SaveTextFileOptions
 ): Promise<string | null> {
   if (!isTauri()) {
     return saveTextFileBrowser(content, options);
@@ -2419,7 +2460,7 @@ export async function saveTextFileWithFallback(
 
 export async function saveBinaryFileWithFallback(
   content: Uint8Array | Blob,
-  options: SaveBinaryFileOptions,
+  options: SaveBinaryFileOptions
 ): Promise<string | null> {
   if (!isTauri()) {
     return saveBinaryFileBrowser(content, options);
@@ -2476,7 +2517,7 @@ export async function openGeoJsonFileWithFallback(): Promise<{
 }
 
 export async function openVectorFileWithFallback(
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<{
   data: FeatureCollection;
   path: string;
@@ -2487,7 +2528,7 @@ export async function openVectorFileWithFallback(
 
 export async function loadDroppedVectorFiles(
   droppedFiles: FileList | File[],
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<LoadedLayer[]> {
   const droppedFileArray = Array.from(droppedFiles);
   const files = droppedFileArray.filter((file) => isVectorFileName(file.name));
@@ -2515,7 +2556,7 @@ export async function loadDroppedVectorFiles(
     if (extension === "kmz") {
       try {
         layers.push(
-          ...(await loadKmzLayers(await file.arrayBuffer(), file.name, options)),
+          ...(await loadKmzLayers(await file.arrayBuffer(), file.name, options))
         );
       } catch (error) {
         if (isVectorLoadCancelled(error)) continue;
@@ -2551,7 +2592,7 @@ export async function loadDroppedVectorFiles(
           if (!overlays.length && !models.length) throw error;
           console.warn(
             `Loaded ground overlays/models from "${file.name}" but could not read its vector placemarks.`,
-            error,
+            error
           );
         }
       }
@@ -2563,15 +2604,15 @@ export async function loadDroppedVectorFiles(
         ? await Promise.all(
             (
               filesByBaseName.get(
-                pathWithoutExtension(file.name).toLowerCase(),
+                pathWithoutExtension(file.name).toLowerCase()
               ) ?? []
             )
               .filter((candidate) =>
                 SHAPEFILE_SIDECAR_EXTENSIONS.includes(
-                  fileExtension(candidate.name),
-                ),
+                  fileExtension(candidate.name)
+                )
               )
-              .map(fileToDuckDbVectorFile),
+              .map(fileToDuckDbVectorFile)
           )
         : [];
     try {
@@ -2602,7 +2643,7 @@ function fileBaseName(path: string): string {
 
 /** Collect dropped browser File objects that are rasters the map can load. */
 export function loadDroppedRasterFiles(
-  droppedFiles: FileList | File[],
+  droppedFiles: FileList | File[]
 ): DroppedRaster[] {
   return Array.from(droppedFiles)
     .filter((file) => isRasterFileName(file.name))
@@ -2615,7 +2656,7 @@ export function loadDroppedRasterFiles(
  * in a File, matching how local vector files are loaded.
  */
 export async function loadDroppedRasterPaths(
-  paths: string[],
+  paths: string[]
 ): Promise<DroppedRaster[]> {
   const rasterPaths = paths.filter(isRasterFileName);
   const rasters: DroppedRaster[] = [];
@@ -2644,7 +2685,7 @@ export async function pickImageFilesWithFallback(): Promise<File[]> {
     });
     if (!selected) return [];
     const paths = (Array.isArray(selected) ? selected : [selected]).filter(
-      isPhotoFileName,
+      isPhotoFileName
     );
     const files: File[] = [];
     for (const path of paths) {
@@ -2654,8 +2695,8 @@ export async function pickImageFilesWithFallback(): Promise<File[]> {
         files.push(
           new File(
             [toArrayBuffer(await readFile(path))],
-            browserSafeFileName(path),
-          ),
+            browserSafeFileName(path)
+          )
         );
       } catch (error) {
         console.warn(`Could not read the selected image "${path}".`, error);
@@ -2685,10 +2726,10 @@ export async function pickImageFilesWithFallback(): Promise<File[]> {
  * excluded here and handled as a raster instead.
  */
 export async function loadDroppedPhotoFiles(
-  droppedFiles: FileList | File[],
+  droppedFiles: FileList | File[]
 ): Promise<GeotaggedPhotoResult | null> {
   const photos = Array.from(droppedFiles).filter((file) =>
-    isPhotoDropFileName(file.name),
+    isPhotoDropFileName(file.name)
   );
   if (!photos.length) return null;
   const { loadGeotaggedPhotos } = await import("./geotagged-photos");
@@ -2701,7 +2742,7 @@ export async function loadDroppedPhotoFiles(
  * dropped (TIFF is excluded and loaded as a raster instead).
  */
 export async function loadDroppedPhotoPaths(
-  paths: string[],
+  paths: string[]
 ): Promise<GeotaggedPhotoResult | null> {
   const photoPaths = paths.filter(isPhotoDropFileName);
   if (!photoPaths.length) return null;
@@ -2709,7 +2750,10 @@ export async function loadDroppedPhotoPaths(
   for (const path of photoPaths) {
     try {
       files.push(
-        new File([toArrayBuffer(await readFile(path))], browserSafeFileName(path)),
+        new File(
+          [toArrayBuffer(await readFile(path))],
+          browserSafeFileName(path)
+        )
       );
     } catch (error) {
       console.warn(`Could not read dropped image "${path}".`, error);
@@ -2722,7 +2766,7 @@ export async function loadDroppedPhotoPaths(
 
 export async function loadDroppedVectorPaths(
   paths: string[],
-  options?: DuckDbVectorLoadOptions,
+  options?: DuckDbVectorLoadOptions
 ): Promise<LoadedLayer[]> {
   const vectorPaths = paths.filter(isVectorFileName);
   if (!vectorPaths.length) return [];
@@ -2746,7 +2790,11 @@ export async function loadDroppedVectorPaths(
     if (extension === "kmz") {
       try {
         layers.push(
-          ...(await loadKmzLayers(await readLocalFileBytes(path), path, options)),
+          ...(await loadKmzLayers(
+            await readLocalFileBytes(path),
+            path,
+            options
+          ))
         );
       } catch (error) {
         if (isVectorLoadCancelled(error)) continue;
@@ -2780,7 +2828,7 @@ export async function loadDroppedVectorPaths(
           if (!overlays.length && !models.length) throw error;
           console.warn(
             `Loaded ground overlays/models from "${path}" but could not read its vector placemarks.`,
-            error,
+            error
           );
         }
       }
@@ -2813,7 +2861,7 @@ export function parseCsvHeaderLine(line: string): string[] {
   for (const delimiter of DELIMITER_CANDIDATES) {
     try {
       const fields = parseDelimitedTextFields(header, delimiter).filter(
-        (name) => name.trim().length > 0,
+        (name) => name.trim().length > 0
       );
       if (fields.length > best.length) best = fields;
     } catch {
@@ -2828,7 +2876,7 @@ export function parseCsvHeaderLine(line: string): string[] {
  * Reads only the first line so large CSVs are not loaded into memory.
  */
 export async function readCsvHeaderColumns(
-  source: File | string,
+  source: File | string
 ): Promise<string[]> {
   try {
     if (typeof source !== "string") {

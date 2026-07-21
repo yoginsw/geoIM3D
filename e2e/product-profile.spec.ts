@@ -1,21 +1,25 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function expectMenuItemHidden(page: Page, name: string) {
-  await expect(page.getByRole("menuitem", { name, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name, exact: true })).toHaveCount(
+    0
+  );
 }
 
-test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async ({ page }) => {
+test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async ({
+  page,
+}) => {
   await page.goto("/?locale=ko&geoim3dProfile=1");
 
   await expect(page.locator("html")).toHaveAttribute("lang", "ko");
   await expect(page.locator("html")).not.toHaveClass(/(^|\s)dark(\s|$)/);
   await expect(page.locator("html")).toHaveAttribute("style", /light/);
-  await expect(page.getByRole("textbox", { name: "프로젝트 이름" })).toHaveValue(
-    "제목 없는 프로젝트",
-  );
+  await expect(
+    page.getByRole("textbox", { name: "프로젝트 이름" })
+  ).toHaveValue("제목 없는 프로젝트");
 
-  const mapLibreTab = page.getByRole("tab", { name: "MapLibre 2D Pane" });
-  const cesiumTab = page.getByRole("tab", { name: "Cesium 3D Globe" });
+  const mapLibreTab = page.getByRole("tab", { name: "MapLibre", exact: true });
+  const cesiumTab = page.getByRole("tab", { name: "Cesium", exact: true });
   const cesiumCanvas = page.getByTestId("cesium-canvas");
   await expect(page.getByTestId("map-canvas")).toHaveCount(1);
   await expect(cesiumCanvas).toHaveCount(1);
@@ -50,13 +54,13 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
   expect(renderBox).not.toBeNull();
   await page.mouse.move(
     renderBox!.x + renderBox!.width / 2,
-    renderBox!.y + renderBox!.height / 2,
+    renderBox!.y + renderBox!.height / 2
   );
   await page.mouse.down();
   await page.mouse.move(
     renderBox!.x + renderBox!.width / 2 + 120,
     renderBox!.y + renderBox!.height / 2,
-    { steps: 8 },
+    { steps: 8 }
   );
   await page.mouse.up();
   await page.waitForTimeout(1_000);
@@ -76,7 +80,7 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
     .getByRole("menuitem", { name: "새로 만들기...", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "현재 프로젝트를 저장하시겠습니까?" }),
+    page.getByRole("heading", { name: "현재 프로젝트를 저장하시겠습니까?" })
   ).toBeVisible();
   await page.keyboard.press("Escape");
 
@@ -103,6 +107,6 @@ test("switches the geoIM3D Korean light workspace between 3D and 2D tabs", async
   await expect(search).toBeVisible();
   await search.fill("Python 콘솔");
   await expect(
-    page.getByText("일치하는 명령이 없습니다", { exact: true }),
+    page.getByText("일치하는 명령이 없습니다", { exact: true })
   ).toBeVisible();
 });

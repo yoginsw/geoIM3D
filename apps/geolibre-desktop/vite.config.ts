@@ -23,7 +23,7 @@ const EARTH_ENGINE_BROWSER_BUNDLE = "@google/earthengine/build/browser.js";
 const GIS_CHUNK_WARNING_LIMIT_KB = 14000;
 const APP_BASE = process.env.GEOLIBRE_APP_BASE;
 const APP_VERSION = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+  readFileSync(new URL("./package.json", import.meta.url), "utf8")
 ).version as string;
 
 // Vite resolves `mode` from the `--mode` CLI flag (defaulting to `development`
@@ -74,7 +74,7 @@ function publicClientEnvDefines(): Record<string, string> {
         `import.meta.env.${name}`,
         value === undefined ? "undefined" : JSON.stringify(value),
       ];
-    }),
+    })
   );
 }
 
@@ -130,9 +130,9 @@ const pgliteCdnRequire = createRequire(import.meta.url);
 // historical PGlite layout, if neither is declared.
 function esmEntry(manifest: Record<string, unknown>): string {
   if (typeof manifest.module === "string") return manifest.module;
-  const exportsRoot = (manifest.exports as Record<string, unknown> | undefined)?.[
-    "."
-  ];
+  const exportsRoot = (
+    manifest.exports as Record<string, unknown> | undefined
+  )?.["."];
   const importEntry = (exportsRoot as Record<string, unknown> | undefined)
     ?.import;
   const importDefault =
@@ -149,13 +149,13 @@ function esmEntry(manifest: Record<string, unknown>): string {
 // hardcoding paths.
 function findPackageManifest(
   startFile: string,
-  pkg: string,
+  pkg: string
 ): { dir: string; manifest: Record<string, unknown> } {
   let dir = path.dirname(startFile);
   while (dir !== path.dirname(dir)) {
     try {
       const parsed = JSON.parse(
-        readFileSync(path.join(dir, "package.json"), "utf8"),
+        readFileSync(path.join(dir, "package.json"), "utf8")
       );
       if (parsed.name === pkg) return { dir, manifest: parsed };
     } catch {
@@ -216,7 +216,7 @@ function gdal3CdnPaths(): { wasm: string; data: string } | null {
   if (!GDAL_CDN) return null;
   const { manifest } = findPackageManifest(
     pgliteCdnRequire.resolve("gdal3.js"),
-    "gdal3.js",
+    "gdal3.js"
   );
   const base = `https://cdn.jsdelivr.net/npm/gdal3.js@${manifest.version}/dist/package`;
   return {
@@ -306,7 +306,7 @@ function manualChunks(id: string): string | undefined {
 
 function onwarn(
   warning: RollupLog,
-  defaultHandler: WarningHandlerWithDefault,
+  defaultHandler: WarningHandlerWithDefault
 ): void {
   if (
     warning.code === "EVAL" &&
@@ -405,11 +405,11 @@ function stripDuckDbWorkerSourcemapPlugin(): Plugin {
         const workerFile = path.join(
           __dirname,
           "../../node_modules",
-          decodedPath.slice(decodedPath.indexOf(DUCKDB_WORKER_PATH_PART) + 1),
+          decodedPath.slice(decodedPath.indexOf(DUCKDB_WORKER_PATH_PART) + 1)
         );
         const source = readFileSync(workerFile, "utf8").replace(
           DUCKDB_WORKER_SOURCE_MAP_RE,
-          "",
+          ""
         );
         res.statusCode = 200;
         res.setHeader("content-type", "application/javascript");
@@ -454,7 +454,7 @@ function selectiveJsMinifyPlugin(): Plugin {
             target: "esnext",
           });
           asset.code = result.code;
-        }),
+        })
       );
     },
   };
@@ -462,7 +462,7 @@ function selectiveJsMinifyPlugin(): Plugin {
 
 function shouldPreserveEarthEngineChunk(
   fileName: string,
-  code: string,
+  code: string
 ): boolean {
   return (
     fileName.includes("earth-engine") ||
@@ -491,6 +491,45 @@ function pgliteCdnLoaderPlugin(): Plugin {
     resolveId(source) {
       // Match `./pglite-loader` (and `.ts`) but never `pglite-loader.cdn`.
       return /(?:^|\/)pglite-loader(?:\.ts)?$/.test(source) ? cdnLoader : null;
+    },
+  };
+}
+
+// Vite/Rolldown emits modules referenced by import() even when the surrounding
+// compile-time branch is false. Never resolve the Windows-only strict private
+// analysis sanitizer on Web or non-Windows Tauri builds; those targets reject
+// the payload through the central detector before this defensive stub can run.
+// A neutral virtual id also prevents feature-named orphan chunks.
+function privateAnalysisTargetStubPlugin(): Plugin {
+  const projectVirtualId = "\0geoim3d-private-analysis-disabled";
+  const serializerVirtualId = "\0geoim3d-private-serializer-disabled";
+  return {
+    name: "geoim3d-private-analysis-target-stub",
+    enforce: "pre",
+    resolveId(source) {
+      if (/(?:^|\/)viewshed-project-serializer(?:\.ts)?$/.test(source)) {
+        return serializerVirtualId;
+      }
+      return /(?:^|\/)viewshed-project(?:\.ts)?$/.test(source)
+        ? projectVirtualId
+        : null;
+    },
+    load(id) {
+      if (id === projectVirtualId) {
+        return [
+          "export function sanitizeIncomingViewshedProject() {",
+          "  throw new Error('PROJECT_PRIVATE_CONTENT_REJECTED');",
+          "}",
+        ].join("\n");
+      }
+      if (id === serializerVirtualId) {
+        return [
+          "export function serializeViewshedProjectUtf8() {",
+          "  throw new Error('PROJECT_PRIVATE_CONTENT_REJECTED');",
+          "}",
+        ].join("\n");
+      }
+      return null;
     },
   };
 }
@@ -528,7 +567,7 @@ function cereusCdnLoaderPlugin(): Plugin {
         this.warn(
           `${CEREUS_WASM_GLUE} no longer contains the expected default wasm URL ` +
             `expression; the ~40 MB wasm may be silently re-emitted into dist. ` +
-            `Update CEREUS_WASM_GLUE / CEREUS_DEFAULT_WASM_URL in vite.config.ts.`,
+            `Update CEREUS_WASM_GLUE / CEREUS_DEFAULT_WASM_URL in vite.config.ts.`
         );
         return null;
       }
@@ -541,7 +580,7 @@ function cereusCdnLoaderPlugin(): Plugin {
       return {
         code: code.replaceAll(
           CEREUS_DEFAULT_WASM_URL,
-          "(()=>{throw new Error('CereusDB must be initialised with an explicit wasmUrl (GEOLIBRE_CEREUS_CDN build)')})()",
+          "(()=>{throw new Error('CereusDB must be initialised with an explicit wasmUrl (GEOLIBRE_CEREUS_CDN build)')})()"
         ),
         map: null,
       };
@@ -554,7 +593,7 @@ function duckdbWasmBundlesPlugin(): Plugin {
     __dirname,
     IS_TAURI_BUILD
       ? "src/lib/duckdb-wasm-bundles.tauri.ts"
-      : "src/lib/duckdb-wasm-bundles.ts",
+      : "src/lib/duckdb-wasm-bundles.ts"
   );
   return {
     name: "geolibre-duckdb-wasm-bundles",
@@ -572,7 +611,7 @@ function vworldPluginHostTargetPlugin(): Plugin {
     __dirname,
     IS_TAURI_BUILD
       ? "src/lib/vworld-plugin-host.tauri.ts"
-      : "src/lib/vworld-plugin-host.ts",
+      : "src/lib/vworld-plugin-host.ts"
   );
   return {
     name: "geoim3d-vworld-plugin-host-target",
@@ -644,7 +683,7 @@ function safeDecodeURIComponent(value: string): string {
 
 async function proxyWmsRequest(
   req: IncomingMessage,
-  res: ServerResponse,
+  res: ServerResponse
 ): Promise<void> {
   await proxyBinaryRequest(req, res, WMS_PROXY_PATH);
 }
@@ -652,7 +691,7 @@ async function proxyWmsRequest(
 async function proxyBinaryRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  proxyPath: string,
+  proxyPath: string
 ): Promise<void> {
   const requestUrl = new URL(req.url ?? "", `http://localhost${proxyPath}`);
   const target = requestUrl.searchParams.get("url");
@@ -792,7 +831,11 @@ function pwaPlugin(): Plugin[] {
       navigateFallback: "index.html",
       // Never SPA-fallback the sidecar proxy or any asset request; let those hit
       // the network/precache directly.
-      navigateFallbackDenylist: [/^\/sidecar\//, /^\/__geolibre_/, /\/[^/?]+\.[^/]+$/],
+      navigateFallbackDenylist: [
+        /^\/sidecar\//,
+        /^\/__geolibre_/,
+        /\/[^/?]+\.[^/]+$/,
+      ],
       runtimeCaching: [
         {
           // Hashed build assets under /assets/ that the precache skips: the
@@ -804,7 +847,13 @@ function pwaPlugin(): Plugin[] {
           // non-hashed public files (e.g. pyodide-worker.js, dropped-in plugin
           // bundles) are not pinned by hash-immutable CacheFirst — those are
           // served from the revisioned precache and refresh on a SW update.
-          urlPattern: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+          urlPattern: ({
+            url,
+            sameOrigin,
+          }: {
+            url: URL;
+            sameOrigin: boolean;
+          }) =>
             sameOrigin &&
             url.pathname.includes("/assets/") &&
             /\.(?:js|css|wasm|data|woff2?)$/.test(url.pathname),
@@ -871,6 +920,7 @@ function pwaPlugin(): Plugin[] {
 export default defineConfig({
   base: APP_BASE,
   plugins: [
+    ...(!IS_WINDOWS_TAURI_BUILD ? [privateAnalysisTargetStubPlugin()] : []),
     ...(PGLITE_CDN ? [pgliteCdnLoaderPlugin()] : []),
     ...(CEREUS_CDN ? [cereusCdnLoaderPlugin()] : []),
     duckdbWasmBundlesPlugin(),
@@ -881,12 +931,12 @@ export default defineConfig({
     copyVectorOps(
       path.resolve(
         __dirname,
-        "../../backend/geolibre_server/geolibre_server/vector_ops.py",
+        "../../backend/geolibre_server/geolibre_server/vector_ops.py"
       ),
-      path.resolve(__dirname, "src/lib/pyodide/vector_ops.generated.py"),
+      path.resolve(__dirname, "src/lib/pyodide/vector_ops.generated.py")
     ),
     copyRtlText(
-      path.resolve(__dirname, "src/lib/vendor/mapbox-gl-rtl-text.generated.js"),
+      path.resolve(__dirname, "src/lib/vendor/mapbox-gl-rtl-text.generated.js")
     ),
     copyCesiumAssets(path.resolve(__dirname, "public/cesium")),
     react(),

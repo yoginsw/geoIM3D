@@ -12,7 +12,7 @@ const ADDRESS_PATH: &str = "/req/address";
 const DATA_PATH: &str = "/req/data";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_JSON_BYTES: usize = 1_048_576;
-const MAX_PNG_BYTES: usize = 8 * 1024 * 1024;
+const MAX_TILE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_QUERY_CHARS: usize = 200;
 const MAX_ADDRESS_CHARS: usize = 300;
 const MAX_DATA_FEATURES: usize = 1_000;
@@ -31,7 +31,7 @@ const ERR_NETWORK: &str = "vworld_network_error";
 const ERR_TIMEOUT: &str = "vworld_timeout";
 const ERR_HTTP: &str = "vworld_http_error";
 const ERR_RESPONSE: &str = "vworld_invalid_response";
-const ERR_PNG: &str = "vworld_invalid_tile";
+const ERR_TILE: &str = "vworld_invalid_tile";
 const ERR_RATE_LIMIT: &str = "vworld_rate_limit";
 
 #[derive(Default)]
@@ -236,16 +236,52 @@ fn valid_search_category(search_type: &str, category: Option<&str>) -> bool {
         _ => false,
     }
 }
-fn valid_keyed_layer(layer: &str) -> bool {
-    matches!(layer, "Base" | "white" | "midnight" | "Hybrid")
+#[derive(Clone, Copy)]
+struct TileSpec {
+    extension: &'static str,
+    content_type: &'static str,
+    max_zoom: u8,
+}
+fn tile_spec(layer: &str) -> Option<TileSpec> {
+    match layer {
+        "Base" | "Hybrid" => Some(TileSpec {
+            extension: "png",
+            content_type: "image/png",
+            max_zoom: 19,
+        }),
+        "white" | "midnight" => Some(TileSpec {
+            extension: "png",
+            content_type: "image/png",
+            max_zoom: 18,
+        }),
+        "Satellite" => Some(TileSpec {
+            extension: "jpeg",
+            content_type: "image/jpeg",
+            max_zoom: 19,
+        }),
+        _ => None,
+    }
 }
 fn valid_tile(req: &TileRequest) -> bool {
-    let max_zoom = if req.layer == "Base" { 19 } else { 18 };
-    if !valid_keyed_layer(&req.layer) || req.z < 6 || req.z > max_zoom {
+    let Some(spec) = tile_spec(&req.layer) else {
+        return false;
+    };
+    if req.z < 6 || req.z > spec.max_zoom {
         return false;
     }
     let dimension = 1_u64 << req.z;
     u64::from(req.x) < dimension && u64::from(req.y) < dimension
+}
+fn valid_tile_bytes(content_type: &str, bytes: &[u8]) -> bool {
+    match content_type {
+        "image/png" => bytes.starts_with(&[137, 80, 78, 71, 13, 10, 26, 10]),
+        "image/jpeg" => {
+            bytes.len() >= 4
+                && bytes.starts_with(&[0xff, 0xd8, 0xff])
+                && bytes.ends_with(&[0xff, 0xd9])
+        }
+        _ => false,
+    }
 }
 
 fn endpoint_url(path: &str) -> String {
@@ -836,11 +872,12 @@ pub async fn vworld_tile(
     if !valid_tile(&request) {
         return invalid();
     }
+    let spec = tile_spec(&request.layer).ok_or_else(|| ERR_INVALID_REQUEST.to_string())?;
     let (key, client) = with_credential(credential_key, |key| Ok((key, client()?)))?;
     let mut cancel = register(&state, &request_id)?;
     let url = format!(
-        "{API_BASE}/req/wmts/1.0.0/{key}/{}/{}/{}/{}.png",
-        request.layer, request.z, request.y, request.x
+        "{API_BASE}/req/wmts/1.0.0/{key}/{}/{}/{}/{}.{}",
+        request.layer, request.z, request.y, request.x, spec.extension
     );
     let result = async {
         let response = tokio::select! {
@@ -859,13 +896,13 @@ pub async fn vworld_tile(
         }
         let bytes = tokio::select! {
             _ = &mut cancel => return Err(ERR_CANCELLED.into()),
-            bytes = read_limited(response, MAX_PNG_BYTES) => bytes?,
+            bytes = read_limited(response, MAX_TILE_BYTES) => bytes?,
         };
-        if bytes.len() < 8 || bytes[..8] != [137, 80, 78, 71, 13, 10, 26, 10] {
-            return Err(ERR_PNG.into());
+        if !valid_tile_bytes(spec.content_type, &bytes) {
+            return Err(ERR_TILE.into());
         }
         Ok(TileResponse {
-            content_type: "image/png",
+            content_type: spec.content_type,
             bytes,
         })
     }
@@ -1178,7 +1215,7 @@ mod tests {
             .contains_key("quota-rejected"));
     }
     #[test]
-    fn tile_allowlist_rejects_satellite_and_out_of_range_coordinates() {
+    fn tile_allowlist_accepts_satellite_and_rejects_out_of_range_coordinates() {
         let satellite = TileRequest {
             layer: "Satellite".into(),
             z: 10,
@@ -1209,18 +1246,52 @@ mod tests {
             x: 0,
             y: 0,
         };
-        let hybrid_above_max_zoom = TileRequest {
+        let hybrid_at_documented_max_zoom = TileRequest {
             layer: "Hybrid".into(),
             z: 19,
             x: 0,
             y: 0,
         };
-        assert!(!valid_tile(&satellite));
+        let satellite_at_max_zoom = TileRequest {
+            layer: "Satellite".into(),
+            z: 19,
+            x: 0,
+            y: 0,
+        };
+        let above_max_zoom = TileRequest {
+            layer: "Satellite".into(),
+            z: 20,
+            x: 0,
+            y: 0,
+        };
+        assert!(valid_tile(&satellite));
+        assert!(valid_tile(&satellite_at_max_zoom));
+        assert!(!valid_tile(&above_max_zoom));
         assert!(!valid_tile(&out_of_range));
         assert!(valid_tile(&valid));
         assert!(valid_tile(&base_at_max_zoom));
         assert!(valid_tile(&hybrid_at_max_zoom));
-        assert!(!valid_tile(&hybrid_above_max_zoom));
+        assert!(valid_tile(&hybrid_at_documented_max_zoom));
+    }
+    #[test]
+    fn tile_specs_bind_satellite_to_jpeg_and_other_layers_to_png() {
+        let satellite = tile_spec("Satellite").unwrap();
+        assert_eq!(satellite.extension, "jpeg");
+        assert_eq!(satellite.content_type, "image/jpeg");
+        assert_eq!(satellite.max_zoom, 19);
+        assert!(tile_spec("Satellite/themes/cities/2025/Oslo").is_none());
+        assert!(valid_tile_bytes(
+            "image/png",
+            &[137, 80, 78, 71, 13, 10, 26, 10]
+        ));
+        assert!(valid_tile_bytes(
+            "image/jpeg",
+            &[0xff, 0xd8, 0xff, 0xe0, 0xff, 0xd9]
+        ));
+        assert!(!valid_tile_bytes(
+            "image/jpeg",
+            &[137, 80, 78, 71, 13, 10, 26, 10]
+        ));
     }
     #[test]
     fn coordinate_and_bbox_validation_is_bounded() {
@@ -1252,6 +1323,12 @@ mod tests {
         .unwrap();
         assert_eq!(tile["contentType"], "image/png");
         assert!(tile.get("content_type").is_none());
+        let satellite_tile = serde_json::to_value(TileResponse {
+            content_type: "image/jpeg",
+            bytes: vec![255, 216, 255, 217],
+        })
+        .unwrap();
+        assert_eq!(satellite_tile["contentType"], "image/jpeg");
     }
 
     #[test]
@@ -1325,7 +1402,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    async fn mock_http_maps_timeout_network_and_png_limit() {
+    async fn mock_http_maps_timeout_network_and_tile_limit() {
         let delayed = mock_response(
             "200 OK",
             vec![],

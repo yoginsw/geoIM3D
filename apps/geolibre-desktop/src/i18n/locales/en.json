@@ -1252,8 +1252,8 @@
   },
   "mapGrid": {
     "viewMode": "Map view mode",
-    "mapLibre2d": "MapLibre 2D Pane",
-    "cesium3d": "Cesium 3D Globe",
+    "mapLibre2d": "MapLibre",
+    "cesium3d": "Cesium",
     "layers": "Layers",
     "layersLabel": "Layer visibility for map {{number}}",
     "noLayers": "No layers yet",

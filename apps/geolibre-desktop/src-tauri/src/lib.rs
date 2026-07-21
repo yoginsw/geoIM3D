@@ -3,8 +3,11 @@ mod earth_engine_oauth;
 mod earthwork_file;
 #[cfg(feature = "native-duckdb")]
 mod native_duckdb;
+mod project_file;
 #[cfg(target_os = "windows")]
 mod terrain_safety_file;
+#[cfg(target_os = "windows")]
+mod viewshed_file;
 mod vworld;
 #[cfg(not(feature = "native-duckdb"))]
 mod native_duckdb {
@@ -30,6 +33,7 @@ use earth_engine_oauth::{
     poll_earth_engine_oauth, start_earth_engine_oauth, EarthEngineOAuthState,
 };
 use flate2::read::{GzDecoder, ZlibDecoder};
+use project_file::{is_allowed_project_path, read_project_file_bytes};
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -233,6 +237,8 @@ pub fn run() {
             earthwork_file::read_earthwork_geotiff,
             #[cfg(target_os = "windows")]
             terrain_safety_file::pick_and_read_terrain_safety_geotiff,
+            #[cfg(target_os = "windows")]
+            viewshed_file::pick_and_read_viewshed_geotiff,
             native_duckdb::count_native_vector_file_features,
             ensure_martin_binary,
             fetch_url_bytes,
@@ -291,66 +297,9 @@ fn take_startup_project_path(
         .map(|mut path| path.take())
 }
 
-/// Whether `read_project_file` may read `path`: an absolute local path (POSIX
-/// `/...` or a Windows drive-letter `C:\...`, never a UNC `\\host\share`), free
-/// of `..` traversal, ending in the canonical geoIM3D project extension
-/// `.geoim3d.json`. Legacy upstream extensions are intentionally not imported.
-///
-/// Without this, the command was an arbitrary local-file reader: any webview JS
-/// or loaded plugin could `invoke("read_project_file", { path: "~/.ssh/id_rsa" })`
-/// and receive the contents. A bare `.json` extension is deliberately NOT
-/// accepted: plenty of real secrets are JSON (GCP service-account keys,
-/// `application_default_credentials.json`, editor/CLI configs with tokens), so
-/// requiring the `.geoim3d` marker keeps those out while still reading every
-/// canonical project. Byte-oriented like `is_allowed_local_vector_path` so Windows
-/// paths behave the same on any host.
-pub(crate) fn is_allowed_project_path(path: &str) -> bool {
-    let bytes = path.as_bytes();
-    let is_separator = |byte: u8| byte == b'/' || byte == b'\\';
-
-    // Reject UNC paths ("\\server\share" and "//server/share").
-    if bytes.len() >= 2 && is_separator(bytes[0]) && is_separator(bytes[1]) {
-        return false;
-    }
-
-    let is_posix_absolute = bytes.first() == Some(&b'/');
-    let is_windows_drive = bytes.len() >= 3
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':'
-        && is_separator(bytes[2]);
-    if !is_posix_absolute && !is_windows_drive {
-        return false;
-    }
-
-    if path.split(['/', '\\']).any(|segment| segment == "..") {
-        return false;
-    }
-
-    let lower = path.to_ascii_lowercase();
-    lower.ends_with(".geoim3d.json")
-}
-
 #[tauri::command]
-fn read_project_file(path: String) -> Result<String, String> {
-    if !is_allowed_project_path(&path) {
-        return Err(format!(
-            "Refusing to read \"{path}\": not an absolute local project file path"
-        ));
-    }
-    // Resolve symlinks and re-check the extension, so a symlink named
-    // `*.geoim3d.json` can't redirect the read to an arbitrary target (e.g.
-    // `~/notes.geoim3d.json -> ~/.ssh/id_rsa`). Only the resolved
-    // extension is re-checked (not the full guard): `canonicalize` yields a
-    // `\\?\C:\…` verbatim path on Windows, which the UNC check would reject.
-    let canonical =
-        fs::canonicalize(&path).map_err(|error| format!("Could not read project file: {error}"))?;
-    let resolved = canonical.to_string_lossy().to_ascii_lowercase();
-    if !resolved.ends_with(".geoim3d.json") {
-        return Err(format!(
-            "Refusing to read \"{path}\": resolves to a non-project file"
-        ));
-    }
-    fs::read_to_string(&canonical).map_err(|error| format!("Could not read project file: {error}"))
+fn read_project_file(path: String) -> Result<tauri::ipc::Response, String> {
+    Ok(tauri::ipc::Response::new(read_project_file_bytes(&path)?))
 }
 
 /// Local vector file extensions the restore path may re-read (lowercased, no
@@ -838,7 +787,9 @@ fn client_identity() -> Result<Option<ClientIdentity>, String> {
         Ok(value) => Some(value),
         Err(env::VarError::NotPresent) => None,
         Err(env::VarError::NotUnicode(_)) => {
-            return Err(format!("{HTTP_CLIENT_CERT_PASSWORD_ENV} is not valid UTF-8"));
+            return Err(format!(
+                "{HTTP_CLIENT_CERT_PASSWORD_ENV} is not valid UTF-8"
+            ));
         }
     };
     // A set-but-empty cert path is likewise treated as unset, so it does not
@@ -860,13 +811,15 @@ fn client_identity() -> Result<Option<ClientIdentity>, String> {
         )
     })?;
     if client_cert_is_pkcs12(&path, password.is_some()) {
-        let identity = reqwest::Identity::from_pkcs12_der(&bytes, password.as_deref().unwrap_or(""))
-            .map_err(|error| {
-                format!(
-                    "Could not load PKCS#12 client certificate {}: {error}",
-                    path.display()
-                )
-            })?;
+        let identity =
+            reqwest::Identity::from_pkcs12_der(&bytes, password.as_deref().unwrap_or("")).map_err(
+                |error| {
+                    format!(
+                        "Could not load PKCS#12 client certificate {}: {error}",
+                        path.display()
+                    )
+                },
+            )?;
         Ok(Some(ClientIdentity::Pkcs12(identity)))
     } else {
         let identity = reqwest::Identity::from_pem(&bytes).map_err(|error| {
@@ -3251,9 +3204,7 @@ mod tests {
     #[test]
     fn project_path_guard_allows_projects_and_blocks_secrets() {
         assert!(is_allowed_project_path("/home/u/map.geoim3d.json"));
-        assert!(is_allowed_project_path(
-            "C:\\Users\\u\\map.geoim3d.json"
-        ));
+        assert!(is_allowed_project_path("C:\\Users\\u\\map.geoim3d.json"));
         // Legacy project names are not imported before an explicit compatibility decision.
         assert!(!is_allowed_project_path("/home/u/map.geolibre.json"));
         assert!(!is_allowed_project_path("/home/u/map.geolibre"));

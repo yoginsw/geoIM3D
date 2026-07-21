@@ -174,7 +174,7 @@ interface TopToolbarProps {
   onOpenCadAlignment: () => void;
   onOpenPrivateModelImport: () => void;
   onOpenPrivateTerrainAnalysis: () => void;
-  onOpenWindowsPrivateAnalysis: () => void;
+  onOpenWindowsPrivateAnalysis: (slot: 0 | 1) => void;
 }
 
 export function TopToolbar({
@@ -385,17 +385,17 @@ export function TopToolbar({
   const setSegmentationOpen = useAppStore((s) => s.setSegmentationOpen);
   const setObjectDetectionOpen = useAppStore((s) => s.setObjectDetectionOpen);
   const setSegmentEverythingOpen = useAppStore(
-    (s) => s.setSegmentEverythingOpen,
+    (s) => s.setSegmentEverythingOpen
   );
   const setSqlWorkspaceOpen = useAppStore((s) => s.setSqlWorkspaceOpen);
   const setLoadEditorFeaturesOpen = useAppStore(
-    (s) => s.setLoadEditorFeaturesOpen,
+    (s) => s.setLoadEditorFeaturesOpen
   );
   const loadEditorFeaturesOpen = useAppStore(
-    (s) => s.ui.loadEditorFeaturesOpen,
+    (s) => s.ui.loadEditorFeaturesOpen
   );
   const loadEditorFeaturesLayerId = useAppStore(
-    (s) => s.ui.loadEditorFeaturesLayerId,
+    (s) => s.ui.loadEditorFeaturesLayerId
   );
   const setPythonConsoleOpen = useAppStore((s) => s.setPythonConsoleOpen);
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
@@ -408,7 +408,7 @@ export function TopToolbar({
   // The dialog itself is rendered by DesktopShell (not here) so it survives
   // toolbar-hidden layouts; the toolbar only triggers it via this setter.
   const setCollaborateDialogOpen = useAppStore(
-    (s) => s.setCollaborateDialogOpen,
+    (s) => s.setCollaborateDialogOpen
   );
 
   const {
@@ -424,16 +424,16 @@ export function TopToolbar({
   // Plugin ids hidden by the active UI profile (issue #500). Recompute only when
   // the profile changes so the Plugins menu can drop them.
   const uiProfile = useDesktopSettingsStore(
-    (state) => state.desktopSettings.uiProfile,
+    (state) => state.desktopSettings.uiProfile
   );
   const hiddenPluginIds = useMemo(
     () =>
       new Set(
         plugins
           .filter((plugin) => !isPluginVisible(uiProfile, plugin.id))
-          .map((plugin) => plugin.id),
+          .map((plugin) => plugin.id)
       ),
-    [plugins, uiProfile],
+    [plugins, uiProfile]
   );
   // Plugins the user can toggle from the Plugins menu, offered as visibility
   // checkboxes in Settings → Interface. Excludes the four plugins that are
@@ -444,12 +444,15 @@ export function TopToolbar({
       plugins
         .filter((plugin) => !MENU_MANAGED_PLUGIN_IDS.has(plugin.id))
         .map((plugin) => ({ id: plugin.id, name: plugin.name })),
-    [plugins],
+    [plugins]
   );
   // mapControllerRef is a stable ref object and createAppAPI dereferences
   // `.current` lazily, so memoizing on the ref keeps a single appApi identity
   // across renders without going stale.
-  const appApi = useMemo(() => createAppAPI(mapControllerRef), [mapControllerRef]);
+  const appApi = useMemo(
+    () => createAppAPI(mapControllerRef),
+    [mapControllerRef]
+  );
 
   const panels = useToolbarPanels(appApi);
   const osmPbf = useOsmPbfLoader(appApi, projectFiles.setActionError);
@@ -457,7 +460,7 @@ export function TopToolbar({
   const viewportHistory = useViewportHistory(
     mapControllerRef,
     mapReadyGeneration,
-    projectGeneration,
+    projectGeneration
   );
 
   // Tracks an active IME composition so pressing Enter to confirm a CJK
@@ -467,13 +470,10 @@ export function TopToolbar({
   const [controlsVisible, setControlsVisible] = useState<
     Record<ToolbarMapControl, boolean>
   >(() =>
-    MAP_CONTROL_ITEMS.reduce(
-      (acc, { id }) => {
-        acc[id] = DEFAULT_BUILT_IN_CONTROL_VISIBILITY[id];
-        return acc;
-      },
-      {} as Record<ToolbarMapControl, boolean>,
-    ),
+    MAP_CONTROL_ITEMS.reduce((acc, { id }) => {
+      acc[id] = DEFAULT_BUILT_IN_CONTROL_VISIBILITY[id];
+      return acc;
+    }, {} as Record<ToolbarMapControl, boolean>)
   );
   const [addDataKind, setAddDataKind] = useState<AddDataKind | null>(null);
   // PostgreSQL prefill (saved connection / clicked table) from the Browser panel.
@@ -540,7 +540,7 @@ export function TopToolbar({
     for (const control of ALL_BUILT_IN_CONTROL_IDS) {
       mapControllerRef.current?.setBuiltInControlVisible(
         control,
-        NEW_PROJECT_VISIBLE_BUILT_IN_CONTROLS.has(control),
+        NEW_PROJECT_VISIBLE_BUILT_IN_CONTROLS.has(control)
       );
     }
     setControlsVisible(newProjectToolbarControlVisibility());
@@ -806,7 +806,8 @@ export function TopToolbar({
       id: "proc.segmentEverything",
       title: t("toolbar.command.segmentEverything"),
       group: t("toolbar.commandGroup.processing"),
-      keywords: "segment everything slimsam sam automatic mask imagery polygons",
+      keywords:
+        "segment everything slimsam sam automatic mask imagery polygons",
       icon: Sparkles,
       run: () => setSegmentEverythingOpen(true),
     },
@@ -985,7 +986,8 @@ export function TopToolbar({
       id: "view.set-view",
       title: t("toolbar.command.setView"),
       group: t("toolbar.commandGroup.view"),
-      keywords: "set view go to coordinates center zoom pitch bearing camera location longitude latitude",
+      keywords:
+        "set view go to coordinates center zoom pitch bearing camera location longitude latitude",
       icon: Crosshair,
       run: () => setSetViewOpen(true),
     },
@@ -1059,7 +1061,7 @@ export function TopToolbar({
           plugin.id !== GRATICULE_PLUGIN_ID &&
           plugin.id !== CLOUDS_PLUGIN_ID &&
           plugin.id !== PRECIPITATION_PLUGIN_ID &&
-          plugin.id !== DECK_VIZ_PLUGIN_ID,
+          plugin.id !== DECK_VIZ_PLUGIN_ID
       )
       .map((plugin) => ({
         id: `plugin.${plugin.id}`,
@@ -1088,7 +1090,7 @@ export function TopToolbar({
   });
   const fieldCollectionAllowed = isMenuItemVisible(
     uiProfile,
-    "controls.fieldCollection",
+    "controls.fieldCollection"
   );
 
   useGlobalShortcuts({
@@ -1105,7 +1107,7 @@ export function TopToolbar({
   // its trigger Button this class instead of `toolbarButtonClass`.
   const toolbarSecondaryButtonClass = cn(
     toolbarButtonClass,
-    "hidden md:inline-flex",
+    "hidden md:inline-flex"
   );
   const toolbarIconClassName = cn("h-3.5 w-3.5", showLabels && "sm:me-1");
   const appTitle = BRAND.productName;
@@ -1126,7 +1128,7 @@ export function TopToolbar({
         compact
           ? "flex-nowrap overflow-x-auto px-1.5"
           : // Wrap below md; scroll a single row at md+ so tablets reach every menu (#871).
-            "flex-wrap px-2 md:flex-nowrap md:overflow-x-auto",
+            "flex-wrap px-2 md:flex-nowrap md:overflow-x-auto"
       )}
     >
       <span className="me-1 flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary md:me-2">
@@ -1184,7 +1186,7 @@ export function TopToolbar({
             if (!map) return;
             const center = map.getCenter();
             void openExternalLink(
-              googleEarthUrl(center.lat, center.lng, map.getZoom()),
+              googleEarthUrl(center.lat, center.lng, map.getZoom())
             );
           }}
           onViewInGoogleMaps={() => {
@@ -1192,7 +1194,7 @@ export function TopToolbar({
             if (!map) return;
             const center = map.getCenter();
             void openExternalLink(
-              googleMapsUrl(center.lat, center.lng, map.getZoom()),
+              googleMapsUrl(center.lat, center.lng, map.getZoom())
             );
           }}
           onZoomIn={() => mapControllerRef.current?.zoomIn()}
@@ -1343,7 +1345,7 @@ export function TopToolbar({
             // non-printing and rejected by some filesystems and HTTP servers.
             // eslint-disable-next-line no-control-regex
             /[\u0000-\u001f\u007f/\\:*?"<>|]/g,
-            "_",
+            "_"
           );
           return { content, filename: ensureProjectFileName(safeName) };
         }}

@@ -71,6 +71,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { isTauri } from "../../lib/tauri-io";
+import { assertNoPrivateAnalysisContent } from "../../lib/project-private-content";
 import {
   addColumn,
   calculateField,
@@ -207,13 +208,13 @@ function isInvalidObjectDraft(draft: string, previousValue: unknown): boolean {
 
 function hasDraftEdits(drafts: AttributeDrafts): boolean {
   return Object.values(drafts).some(
-    (columns) => Object.keys(columns).length > 0,
+    (columns) => Object.keys(columns).length > 0
   );
 }
 
 function applyDraftsToFeatures(
   features: Feature[],
-  drafts: AttributeDrafts,
+  drafts: AttributeDrafts
 ): Feature[] {
   return features.map((feature, index) => {
     const featureId = String(feature.id ?? index);
@@ -234,7 +235,7 @@ function applyDraftsToFeatures(
 }
 
 function duckDBRowsToAttributeRows(
-  rows: DuckDBAttributeRow[],
+  rows: DuckDBAttributeRow[]
 ): AttributeTableRow[] {
   return rows.map((row) => ({
     featureId: row.featureId,
@@ -244,7 +245,7 @@ function duckDBRowsToAttributeRows(
 
 function applyDraftsToDuckDBRows(
   rows: AttributeTableRow[],
-  drafts: AttributeDrafts,
+  drafts: AttributeDrafts
 ): Record<string, Record<string, unknown>> {
   const rowById = new Map(rows.map((row) => [row.featureId, row]));
   const updates: Record<string, Record<string, unknown>> = {};
@@ -291,11 +292,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   const setAttributeTableOpen = useAppStore((s) => s.setAttributeTableOpen);
   const setDashboardOpen = useAppStore((s) => s.setDashboardOpen);
   const updateLayer = useAppStore((s) => s.updateLayer);
-  const zoomToSelectedFeature = useAppStore(
-    (s) => s.ui.zoomToSelectedFeature,
-  );
+  const zoomToSelectedFeature = useAppStore((s) => s.ui.zoomToSelectedFeature);
   const setZoomToSelectedFeature = useAppStore(
-    (s) => s.setZoomToSelectedFeature,
+    (s) => s.setZoomToSelectedFeature
   );
   const [sort, setSort] = useState<{
     key: SortKey;
@@ -326,7 +325,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   // from a stale closure (mirrors LayerPanel's rename guard).
   const suppressColumnBlurRef = useRef(false);
   const [columnPendingDelete, setColumnPendingDelete] = useState<string | null>(
-    null,
+    null
   );
   // New-field creation dialog state.
   const [addingColumn, setAddingColumn] = useState(false);
@@ -376,10 +375,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   // race the editor's geometry write-back, so the inline editor is disabled.
   const geometryEditLayerId = useSyncExternalStore(
     subscribeGeometryEdit,
-    getGeometryEditTargetLayerId,
+    getGeometryEditTargetLayerId
   );
-  const isGeometryEditing =
-    layer != null && geometryEditLayerId === layer.id;
+  const isGeometryEditing = layer != null && geometryEditLayerId === layer.id;
 
   // Vector layers added via the Add Vector Layer control keep their features in
   // a MapLibre GeoJSON source rather than in `layer.geojson`. Read the data back
@@ -437,7 +435,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     const rowDrafts = drafts[row.featureId];
     if (!rowDrafts) return false;
     return Object.entries(rowDrafts).some(([column, draft]) =>
-      isInvalidObjectDraft(draft, row.properties[column]),
+      isInvalidObjectDraft(draft, row.properties[column])
     );
   });
 
@@ -486,7 +484,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   // O(1) lookups for the multi-selection while rendering thousands of rows.
   const selectedIdSet = useMemo(
     () => new Set(selectedFeatureIds),
-    [selectedFeatureIds],
+    [selectedFeatureIds]
   );
 
   const filterLower = attributeFilter.toLowerCase();
@@ -500,13 +498,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   });
   const sorted = [...filtered].sort((a, b) => {
     const aValue =
-      sort.key === "__featureId"
-        ? a.featureId
-        : a.properties[sort.key];
+      sort.key === "__featureId" ? a.featureId : a.properties[sort.key];
     const bValue =
-      sort.key === "__featureId"
-        ? b.featureId
-        : b.properties[sort.key];
+      sort.key === "__featureId" ? b.featureId : b.properties[sort.key];
     const result = compareAttributeValues(aValue, bValue);
     return sort.direction === "asc" ? result : -result;
   });
@@ -516,7 +510,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   // helper so it can be unit-tested; here we just feed it the current state.
   const handleRowClick = (
     featureId: string,
-    event: ReactMouseEvent<HTMLTableRowElement>,
+    event: ReactMouseEvent<HTMLTableRowElement>
   ) => {
     const additive = event.ctrlKey || event.metaKey;
     const range = event.shiftKey;
@@ -580,7 +574,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   useEffect(() => {
     if (!attributeTableOpen || !selectedFeatureId) return;
     const index = sorted.findIndex(
-      (row) => row.featureId === selectedFeatureId,
+      (row) => row.featureId === selectedFeatureId
     );
     if (index >= 0) rowVirtualizer.scrollToIndex(index, { align: "auto" });
     // `sorted`/`rowVirtualizer` are rebuilt every render and so are intentionally
@@ -625,7 +619,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
       : DEFAULT_ATTRIBUTE_COLUMN_WIDTH);
   const tableWidth = tableColumns.reduce(
     (width, column) => width + columnWidth(column),
-    0,
+    0
   );
 
   const columnWidthLimits = (key: SortKey) =>
@@ -641,7 +635,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
 
   const startColumnResize = (
     key: SortKey,
-    event: ReactMouseEvent<HTMLDivElement>,
+    event: ReactMouseEvent<HTMLDivElement>
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -659,7 +653,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     const onMouseMove = (moveEvent: MouseEvent) => {
       const nextWidth = Math.min(
         max,
-        Math.max(min, startWidth + directionSign * (moveEvent.clientX - startX)),
+        Math.max(min, startWidth + directionSign * (moveEvent.clientX - startX))
       );
       setColumnWidths((current) => ({ ...current, [key]: nextWidth }));
     };
@@ -690,12 +684,12 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     const onMouseMove = (moveEvent: MouseEvent) => {
       const availableHeight = Math.max(
         MIN_TABLE_HEIGHT,
-        window.innerHeight - 180,
+        window.innerHeight - 180
       );
       const maxHeight = Math.min(MAX_TABLE_HEIGHT, availableHeight);
       nextHeight = Math.min(
         maxHeight,
-        Math.max(MIN_TABLE_HEIGHT, startHeight + startY - moveEvent.clientY),
+        Math.max(MIN_TABLE_HEIGHT, startHeight + startY - moveEvent.clientY)
       );
       if (resizeFrame !== null) return;
       resizeFrame = window.requestAnimationFrame(() => {
@@ -757,7 +751,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     featureId: string,
     column: string,
     value: string,
-    previousValue: unknown,
+    previousValue: unknown
   ) => {
     setDrafts((current) => {
       const next = { ...current };
@@ -801,7 +795,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     if (isDuckDBLayer) {
       updateDuckDBLayerRows(
         layer.id,
-        applyDraftsToDuckDBRows(attributeRows, drafts),
+        applyDraftsToDuckDBRows(attributeRows, drafts)
       );
       setIsEditing(false);
       setDrafts({});
@@ -837,9 +831,14 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
       setExportWarning(null);
       const exportGeojson = geojsonWithDrafts();
       if (!exportGeojson) return;
+      assertNoPrivateAnalysisContent(exportGeojson);
 
       const baseName = sanitizeExportFileName(layer.name);
-      const savedPath = await exportVectorLayer(exportGeojson, format, baseName);
+      const savedPath = await exportVectorLayer(
+        exportGeojson,
+        format,
+        baseName
+      );
       // Surface Shapefile field-name limitations (10-char truncation and any
       // resulting collisions) only when a file was actually written; a null
       // path means the user cancelled the save dialog.
@@ -852,7 +851,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
       setExportError(
         error instanceof Error
           ? error.message
-          : t("attributeTable.exportFailed"),
+          : t("attributeTable.exportFailed")
       );
     }
   };
@@ -890,7 +889,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
         return { ...rest, [newKey]: width };
       });
       setSort((current) =>
-        current.key === oldKey ? { ...current, key: newKey } : current,
+        current.key === oldKey ? { ...current, key: newKey } : current
       );
     }
     // Always close the editor when committing, even on a no-op (empty,
@@ -926,7 +925,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     setSort((current) =>
       current.key === columnPendingDelete
         ? { key: "__featureId", direction: "asc" }
-        : current,
+        : current
     );
     // Drop the deleted column's width so columnWidths doesn't accumulate stale
     // entries across a session (mirrors the migration in commitColumnRename).
@@ -970,7 +969,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
       discoveredColumns,
       newColumnName,
       newColumnType,
-      newColumnDefault,
+      newColumnDefault
     );
     if (patch) updateLayer(layer.id, patch);
     setAddingColumn(false);
@@ -1028,7 +1027,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
     // is modal, so geometry cannot be edited while it is open). eslint can't see
     // that the array identity of `features` alone is not a meaningful dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layer?.id, features.length, calcOpen],
+    [layer?.id, features.length, calcOpen]
   );
   const calcAvailableMetrics = useMemo<GeometryMetric[]>(() => {
     // Offer only metrics the layer's geometry actually supports, so a mixed
@@ -1042,17 +1041,19 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
   // not valid for this layer (e.g. an "area" choice carried over to a line layer).
   const calcEffectiveMetric = calcAvailableMetrics.includes(calcGeomMetric)
     ? calcGeomMetric
-    : (calcAvailableMetrics[0] ?? "length");
+    : calcAvailableMetrics[0] ?? "length";
   const calcGeomUnitOptions =
     calcEffectiveMetric === "area" ? AREA_UNITS : DISTANCE_UNITS;
-  const calcEffectiveUnit = (
-    calcGeomUnitOptions as readonly string[]
-  ).includes(calcGeomUnit)
+  const calcEffectiveUnit = (calcGeomUnitOptions as readonly string[]).includes(
+    calcGeomUnit
+  )
     ? calcGeomUnit
     : calcGeomUnitOptions[0];
 
   const insertGeometrySnippet = () => {
-    const snippet = `$${calcEffectiveMetric}(${JSON.stringify(calcEffectiveUnit)})`;
+    const snippet = `$${calcEffectiveMetric}(${JSON.stringify(
+      calcEffectiveUnit
+    )})`;
     insertExpressionSnippet(snippet);
   };
 
@@ -1111,7 +1112,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
         const raw = compiled.evaluate(
           calcSampleRow.properties,
           calcSampleIndex,
-          features[calcSampleIndex]?.geometry,
+          features[calcSampleIndex]?.geometry
         );
         return { kind: "ok", value: coerceComputedValue(raw, calcOutputType) };
       } catch (error) {
@@ -1164,7 +1165,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
       calcMode === "create",
       calcExpression,
       calcOutputType,
-      scope,
+      scope
     );
     if (!result) {
       setCalcError(t("attributeTable.calcCouldNotApply"));
@@ -1183,7 +1184,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
         t("attributeTable.calcAppliedWithErrors", {
           errors: result.errors,
           evaluated: result.evaluated,
-        }),
+        })
       );
       return;
     }
@@ -1378,14 +1379,14 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             isGeometryEditing
               ? t("attributeTable.editTitleFinishGeometry")
               : isReadOnlyVectorLayer
-                ? t("attributeTable.editTitleReadOnly")
-                : isEditing
-                  ? hasEdits
-                    ? t("attributeTable.editTitleUseSaveCancel")
-                    : t("attributeTable.exitEditMode")
-                  : isDuckDBLayer
-                    ? t("attributeTable.editTitleDuckdb")
-                    : t("attributeTable.editValues")
+              ? t("attributeTable.editTitleReadOnly")
+              : isEditing
+              ? hasEdits
+                ? t("attributeTable.editTitleUseSaveCancel")
+                : t("attributeTable.exitEditMode")
+              : isDuckDBLayer
+              ? t("attributeTable.editTitleDuckdb")
+              : t("attributeTable.editValues")
           }
           aria-label={
             isEditing && !hasEdits
@@ -1401,7 +1402,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
           onClick={toggleEditing}
         >
           <Pencil className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{t("attributeTable.buttons.edit")}</span>
+          <span className="hidden sm:inline">
+            {t("attributeTable.buttons.edit")}
+          </span>
         </Button>
         <Button
           variant="default"
@@ -1411,8 +1414,8 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             hasInvalidDrafts
               ? t("attributeTable.saveTitleInvalid")
               : isDuckDBLayer
-                ? t("attributeTable.saveTitleDuckdb")
-                : t("attributeTable.saveEdits")
+              ? t("attributeTable.saveTitleDuckdb")
+              : t("attributeTable.saveEdits")
           }
           aria-label={t("attributeTable.saveEdits")}
           disabled={!isEditing || !hasEdits || hasInvalidDrafts}
@@ -1431,7 +1434,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={openAddColumn}
           >
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.addField")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.addField")}
+            </span>
           </Button>
         ) : null}
         {canManageColumns && !isEditing ? (
@@ -1444,7 +1449,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={openCalculator}
           >
             <Calculator className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.buttons.calculate")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.buttons.calculate")}
+            </span>
           </Button>
         ) : null}
         {canManageColumns && !isEditing ? (
@@ -1458,14 +1465,23 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                 aria-label={t("attributeTable.manageFields")}
               >
                 <Columns3 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("attributeTable.buttons.fields")}</span>
+                <span className="hidden sm:inline">
+                  {t("attributeTable.buttons.fields")}
+                </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
-              <DropdownMenuLabel>{t("attributeTable.showFields")}</DropdownMenuLabel>
+            <DropdownMenuContent
+              align="end"
+              className="max-h-72 overflow-y-auto"
+            >
+              <DropdownMenuLabel>
+                {t("attributeTable.showFields")}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {discoveredColumns.length === 0 ? (
-                <DropdownMenuItem disabled>{t("attributeTable.noFields")}</DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  {t("attributeTable.noFields")}
+                </DropdownMenuItem>
               ) : (
                 discoveredColumns.map((col) => (
                   <DropdownMenuCheckboxItem
@@ -1505,7 +1521,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={() => setExplorerOpen(true)}
           >
             <Telescope className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.buttons.explore")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.buttons.explore")}
+            </span>
           </Button>
         ) : null}
         {!isEditing ? (
@@ -1523,7 +1541,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={() => setStatsOpen(true)}
           >
             <Sigma className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.buttons.statistics")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.buttons.statistics")}
+            </span>
           </Button>
         ) : null}
         {!isEditing ? (
@@ -1541,7 +1561,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={() => setChartOpen(true)}
           >
             <ChartColumn className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.charts")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.charts")}
+            </span>
           </Button>
         ) : null}
         {!isEditing ? (
@@ -1554,7 +1576,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
             onClick={() => setDashboardOpen(true)}
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("attributeTable.dashboard")}</span>
+            <span className="hidden sm:inline">
+              {t("attributeTable.dashboard")}
+            </span>
           </Button>
         ) : null}
         <DropdownMenu>
@@ -1572,7 +1596,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
               disabled={!layer?.geojson}
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("attributeTable.buttons.export")}</span>
+              <span className="hidden sm:inline">
+                {t("attributeTable.buttons.export")}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -1616,9 +1642,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
           <input
             type="checkbox"
             checked={zoomToSelectedFeature}
-            onChange={(event) =>
-              setZoomToSelectedFeature(event.target.checked)
-            }
+            onChange={(event) => setZoomToSelectedFeature(event.target.checked)}
           />
           {t("attributeTable.zoomToSelection")}
         </label>
@@ -1729,7 +1753,10 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
               <TableBody>
                 {paddingTop > 0 ? (
                   <tr aria-hidden="true">
-                    <td colSpan={tableColumns.length} style={{ height: paddingTop }} />
+                    <td
+                      colSpan={tableColumns.length}
+                      style={{ height: paddingTop }}
+                    />
                   </tr>
                 ) : null}
                 {virtualRows.map((virtualRow) => {
@@ -1762,8 +1789,8 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                         const inputClassName = invalid
                           ? "h-7 min-w-0 border-destructive bg-destructive/10 px-2 text-xs"
                           : changed
-                            ? "h-7 min-w-0 border-primary/60 bg-primary/10 px-2 text-xs"
-                            : "h-7 min-w-0 px-2 text-xs";
+                          ? "h-7 min-w-0 border-primary/60 bg-primary/10 px-2 text-xs"
+                          : "h-7 min-w-0 px-2 text-xs";
                         return (
                           <TableCell
                             key={col}
@@ -1790,7 +1817,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                                     featureId,
                                     col,
                                     event.target.value,
-                                    value,
+                                    value
                                   )
                                 }
                               />
@@ -1897,9 +1924,7 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                 }
               >
                 <option value="text">{t("attributeTable.typeText")}</option>
-                <option value="number">
-                  {t("attributeTable.typeNumber")}
-                </option>
+                <option value="number">{t("attributeTable.typeNumber")}</option>
                 <option value="boolean">
                   {t("attributeTable.typeBoolean")}
                 </option>
@@ -2034,13 +2059,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                   setCalcOutputType(event.target.value as CalcOutputType)
                 }
               >
-                <option value="auto">
-                  {t("attributeTable.outputAuto")}
-                </option>
+                <option value="auto">{t("attributeTable.outputAuto")}</option>
                 <option value="text">{t("attributeTable.typeText")}</option>
-                <option value="number">
-                  {t("attributeTable.typeNumber")}
-                </option>
+                <option value="number">{t("attributeTable.typeNumber")}</option>
                 <option value="boolean">
                   {t("attributeTable.typeBoolean")}
                 </option>
@@ -2069,7 +2090,9 @@ export function AttributeTable({ mapControllerRef }: AttributeTableProps) {
                       type="button"
                       className="rounded border border-input bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] hover:bg-muted"
                       title={t("attributeTable.insertField", { name: col })}
-                      onClick={() => insertExpressionSnippet(fieldReference(col))}
+                      onClick={() =>
+                        insertExpressionSnippet(fieldReference(col))
+                      }
                     >
                       {col}
                     </button>

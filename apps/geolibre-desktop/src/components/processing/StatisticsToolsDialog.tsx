@@ -1,4 +1,5 @@
 import { useAppStore } from "@geolibre/core";
+import { selectLayersWithoutPrivateEarthwork } from "../../lib/project-private-content";
 import { detectGeometryProfile, type MapController } from "@geolibre/map";
 import {
   STATISTICS_TOOLS,
@@ -69,12 +70,14 @@ export function StatisticsToolsDialog({
   const { t } = useTranslation();
   const openTool = useAppStore((s) => s.ui.statisticsToolOpen);
   const setStatisticsToolOpen = useAppStore((s) => s.setStatisticsToolOpen);
-  const layers = useAppStore((s) => s.layers);
+  const layers = useAppStore((s) =>
+    selectLayersWithoutPrivateEarthwork(s.layers)
+  );
   const addGeoJsonLayer = useAppStore((s) => s.addGeoJsonLayer);
 
   const open = openTool !== null;
   const [selectedId, setSelectedId] = useState<string>(
-    openTool ?? STATISTICS_TOOLS[0].id,
+    openTool ?? STATISTICS_TOOLS[0].id
   );
   const [params, setParams] = useState<Record<string, unknown>>({});
   const [log, setLog] = useState<string[]>([]);
@@ -83,7 +86,7 @@ export function StatisticsToolsDialog({
 
   const tool = useMemo(
     () => getStatisticsTool(selectedId) ?? STATISTICS_TOOLS[0],
-    [selectedId],
+    [selectedId]
   );
 
   // When the menu opens the dialog with a specific tool, preselect it.
@@ -108,7 +111,7 @@ export function StatisticsToolsDialog({
 
   const appendLog = useCallback(
     (message: string) => setLog((prev) => [...prev, message]),
-    [],
+    []
   );
 
   const layerOptions = useCallback(
@@ -122,10 +125,10 @@ export function StatisticsToolsDialog({
           (family) =>
             (family === "point" && profile.hasPoint) ||
             (family === "line" && profile.hasLine) ||
-            (family === "polygon" && profile.hasPolygon),
+            (family === "polygon" && profile.hasPolygon)
         );
       }),
-    [layers],
+    [layers]
   );
 
   // Attribute-field names per layer, sampled from the first features (GeoJSON is
@@ -138,7 +141,10 @@ export function StatisticsToolsDialog({
       if (containsPersistedPrivateAnalysis(layer)) continue;
       if (layer.type !== "geojson" || !layer.geojson) continue;
       const keys = new Set<string>();
-      for (const feature of layer.geojson.features.slice(0, FIELD_SCAN_SAMPLE)) {
+      for (const feature of layer.geojson.features.slice(
+        0,
+        FIELD_SCAN_SAMPLE
+      )) {
         for (const key of Object.keys(feature.properties ?? {})) keys.add(key);
       }
       map.set(layer.id, [...keys]);
@@ -153,7 +159,7 @@ export function StatisticsToolsDialog({
         | undefined;
       return (sourceId && fieldsByLayer.get(sourceId)) || [];
     },
-    [fieldsByLayer, params],
+    [fieldsByLayer, params]
   );
 
   const addResultLayer = useCallback(
@@ -168,7 +174,7 @@ export function StatisticsToolsDialog({
         .layers.find((item) => item.id === layerId);
       if (layer) mapControllerRef.current?.fitLayer(layer);
     },
-    [addGeoJsonLayer, appendLog, mapControllerRef],
+    [addGeoJsonLayer, appendLog, mapControllerRef]
   );
 
   // When a layer parameter changes, clear any field parameter that draws its
@@ -185,7 +191,7 @@ export function StatisticsToolsDialog({
         return next;
       });
     },
-    [tool],
+    [tool]
   );
 
   const isParamVisible = useCallback(
@@ -196,22 +202,22 @@ export function StatisticsToolsDialog({
       if ("in" in vw) return current != null && vw.in.includes(current);
       return current == null || !vw.notIn.includes(current);
     },
-    [params],
+    [params]
   );
 
   // All required parameters; used for the asterisk legend condition.
   const requiredParams = useMemo(
     () => tool.parameters.filter((param) => param.required),
-    [tool],
+    [tool]
   );
   // Visible required params that are still unset — disables the Run button.
   const missingRequired = useMemo(
     () =>
       requiredParams.some(
         (param) =>
-          isParamVisible(param) && isValueEmpty(param, params[param.id]),
+          isParamVisible(param) && isValueEmpty(param, params[param.id])
       ),
-    [requiredParams, isParamVisible, params],
+    [requiredParams, isParamVisible, params]
   );
 
   const handleRun = useCallback(async () => {
@@ -283,7 +289,7 @@ export function StatisticsToolsDialog({
                   className={cn(
                     "w-full rounded-md px-2 py-1.5 text-start text-sm transition-colors hover:bg-accent",
                     entry.id === selectedId &&
-                      "bg-accent font-medium text-accent-foreground",
+                      "bg-accent font-medium text-accent-foreground"
                   )}
                 >
                   {entry.name}

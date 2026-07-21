@@ -10,9 +10,16 @@ export const VWORLD_ATTRIBUTION_HTML =
 
 const SOURCE_ID = "geoim3d-vworld-source";
 const LAYER_ID = "geoim3d-vworld-layer";
+const HYBRID_SOURCE_ID = "geoim3d-vworld-hybrid-source";
+const HYBRID_LAYER_ID = "geoim3d-vworld-hybrid-layer";
 const MIN_ZOOM = 6;
 
-export type VWorldRasterLayer = "Base" | "white" | "midnight" | "Hybrid";
+export type VWorldRasterLayer =
+  | "Base"
+  | "white"
+  | "midnight"
+  | "Hybrid"
+  | "Satellite";
 
 export interface VWorldTileRequest {
   layer: VWorldRasterLayer;
@@ -22,13 +29,13 @@ export interface VWorldTileRequest {
 }
 
 export interface VWorldTileResult {
-  contentType: "image/png";
+  contentType: "image/png" | "image/jpeg";
   bytes: readonly number[];
 }
 
 export type VWorldTileTransport = (
   request: VWorldTileRequest,
-  signal: AbortSignal,
+  signal: AbortSignal
 ) => Promise<VWorldTileResult>;
 
 export interface VWorldProtocolRuntime {
@@ -68,7 +75,13 @@ const defaultProtocolRuntime: VWorldProtocolRuntime = {
 let protocolLease: ProtocolLease | null = null;
 
 function maxZoom(layer: VWorldRasterLayer): number {
-  return layer === "Base" ? 19 : 18;
+  return layer === "white" || layer === "midnight" ? 18 : 19;
+}
+
+function contentType(
+  layer: VWorldRasterLayer
+): VWorldTileResult["contentType"] {
+  return layer === "Satellite" ? "image/jpeg" : "image/png";
 }
 
 function isLayer(value: string): value is VWorldRasterLayer {
@@ -76,7 +89,8 @@ function isLayer(value: string): value is VWorldRasterLayer {
     value === "Base" ||
     value === "white" ||
     value === "midnight" ||
-    value === "Hybrid"
+    value === "Hybrid" ||
+    value === "Satellite"
   );
 }
 
@@ -119,7 +133,7 @@ export function parseVWorldTileUrl(url: string): VWorldTileRequest | null {
 
 function acquireProtocol(
   protocol: VWorldProtocolRuntime,
-  transport: VWorldTileTransport,
+  transport: VWorldTileTransport
 ): void {
   if (protocolLease) {
     if (
@@ -134,19 +148,19 @@ function acquireProtocol(
 
   const handler: AddProtocolAction = async (
     requestParameters,
-    abortController,
+    abortController
   ) => {
     const request = parseVWorldTileUrl(requestParameters.url);
     if (!request) throw new Error("vworld_invalid_request");
     const result = await transport(request, abortController.signal);
-    if (result.contentType !== "image/png") {
+    if (result.contentType !== contentType(request.layer)) {
       throw new Error("vworld_invalid_response");
     }
     const bytes = Uint8Array.from(result.bytes);
     return {
       data: bytes.buffer.slice(
         bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength,
+        bytes.byteOffset + bytes.byteLength
       ),
     };
   };
@@ -157,7 +171,7 @@ function acquireProtocol(
 
 function releaseProtocol(
   protocol: VWorldProtocolRuntime,
-  transport: VWorldTileTransport,
+  transport: VWorldTileTransport
 ): void {
   if (
     !protocolLease ||
@@ -226,29 +240,44 @@ export class VWorldEphemeralLayerController {
     if (!layer || this.mounting) return;
     this.mounting = true;
     try {
-      if (!this.map.getSource(SOURCE_ID)) {
-        this.map.addSource(SOURCE_ID, {
-          type: "raster",
-          tiles: [`${VWORLD_PROTOCOL}://tile/${layer}/{z}/{x}/{y}`],
-          tileSize: 256,
-          minzoom: MIN_ZOOM,
-          maxzoom: maxZoom(layer),
-          attribution: VWORLD_ATTRIBUTION_HTML,
-        });
-      }
-      if (!this.map.getLayer(LAYER_ID)) {
-        this.map.addLayer({
-          id: LAYER_ID,
-          type: "raster",
-          source: SOURCE_ID,
-        });
+      this.mountRaster(SOURCE_ID, LAYER_ID, layer);
+      if (layer === "Satellite") {
+        this.mountRaster(HYBRID_SOURCE_ID, HYBRID_LAYER_ID, "Hybrid");
       }
     } finally {
       this.mounting = false;
     }
   }
 
+  private mountRaster(
+    sourceId: string,
+    layerId: string,
+    layer: VWorldRasterLayer
+  ): void {
+    if (!this.map.getSource(sourceId)) {
+      this.map.addSource(sourceId, {
+        type: "raster",
+        tiles: [`${VWORLD_PROTOCOL}://tile/${layer}/{z}/{x}/{y}`],
+        tileSize: 256,
+        minzoom: MIN_ZOOM,
+        maxzoom: maxZoom(layer),
+        attribution: VWORLD_ATTRIBUTION_HTML,
+      });
+    }
+    if (!this.map.getLayer(layerId)) {
+      this.map.addLayer({
+        id: layerId,
+        type: "raster",
+        source: sourceId,
+      });
+    }
+  }
+
   private removeMapState(): void {
+    if (this.map.getLayer(HYBRID_LAYER_ID))
+      this.map.removeLayer(HYBRID_LAYER_ID);
+    if (this.map.getSource(HYBRID_SOURCE_ID))
+      this.map.removeSource(HYBRID_SOURCE_ID);
     if (this.map.getLayer(LAYER_ID)) this.map.removeLayer(LAYER_ID);
     if (this.map.getSource(SOURCE_ID)) this.map.removeSource(SOURCE_ID);
   }

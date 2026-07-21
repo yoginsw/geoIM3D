@@ -3,7 +3,12 @@ import { isTauri } from "./is-tauri";
 export type VWorldSearchType = "PLACE" | "ADDRESS" | "DISTRICT" | "ROAD";
 export type VWorldAddressType = "ROAD" | "PARCEL";
 export type VWorldReverseAddressType = VWorldAddressType | "BOTH";
-export type VWorldLayer = "Base" | "white" | "midnight" | "Hybrid";
+export type VWorldLayer =
+  | "Base"
+  | "white"
+  | "midnight"
+  | "Hybrid"
+  | "Satellite";
 export type VWorldDataService =
   | "LP_PA_CBND_BUBUN"
   | "LT_C_UQ111"
@@ -59,7 +64,7 @@ export interface VWorldResponse {
 }
 
 export interface VWorldTileResponse {
-  contentType: "image/png";
+  contentType: "image/png" | "image/jpeg";
   bytes: number[];
 }
 
@@ -95,14 +100,20 @@ function errorCode(error: unknown): string {
     typeof error === "string"
       ? error
       : error instanceof Error
-        ? error.message
-        : "";
+      ? error.message
+      : "";
   return ERROR_CODES.has(candidate) ? candidate : "vworld_request_failed";
 }
 
 export interface VWorldDesktopClient {
-  search(request: VWorldSearchRequest, signal?: AbortSignal): Promise<VWorldResponse>;
-  geocode(request: VWorldGeocodeRequest, signal?: AbortSignal): Promise<VWorldResponse>;
+  search(
+    request: VWorldSearchRequest,
+    signal?: AbortSignal
+  ): Promise<VWorldResponse>;
+  geocode(
+    request: VWorldGeocodeRequest,
+    signal?: AbortSignal
+  ): Promise<VWorldResponse>;
   reverseGeocode(
     request: VWorldReverseGeocodeRequest,
     signal?: AbortSignal

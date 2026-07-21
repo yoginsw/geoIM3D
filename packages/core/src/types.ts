@@ -432,7 +432,7 @@ export const DEFAULT_LAYER_STYLE: LayerStyle = {
  */
 export function styleValue<K extends keyof LayerStyle>(
   style: LayerStyle,
-  key: K,
+  key: K
 ): LayerStyle[K] {
   return style[key] ?? DEFAULT_LAYER_STYLE[key];
 }
@@ -455,11 +455,9 @@ export const LARGE_VECTOR_FEATURE_THRESHOLD = 50_000;
  *   {@link LARGE_VECTOR_FEATURE_THRESHOLD} features.
  */
 export function shouldUseTiledRendering(
-  geojson: GeoJSON.FeatureCollection | undefined,
+  geojson: GeoJSON.FeatureCollection | undefined
 ): boolean {
-  return (
-    (geojson?.features.length ?? 0) > LARGE_VECTOR_FEATURE_THRESHOLD
-  );
+  return (geojson?.features.length ?? 0) > LARGE_VECTOR_FEATURE_THRESHOLD;
 }
 
 export interface GeoLibreLayer {
@@ -471,6 +469,8 @@ export interface GeoLibreLayer {
   opacity: number;
   style: LayerStyle;
   metadata: Record<string, unknown>;
+  /** Local-only analysis layers may opt out of temporal snapshots. */
+  excludeFromHistory?: true;
   beforeId?: string;
   geojson?: FeatureCollection;
   /**
@@ -565,7 +565,7 @@ export interface LayerGroup {
  * app so the detection criteria cannot drift.
  */
 export function isDuckDBQueryLayer(
-  layer: Pick<GeoLibreLayer, "metadata" | "type"> | undefined,
+  layer: Pick<GeoLibreLayer, "metadata" | "type"> | undefined
 ): boolean {
   return (
     layer?.type === "duckdb-query" &&

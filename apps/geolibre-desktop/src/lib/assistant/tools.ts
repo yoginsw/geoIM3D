@@ -20,11 +20,9 @@ import {
 } from "../sql-workspace";
 import { createXyzTileUrlTemplate } from "../xyz-url";
 import { assertNoEarthworkPrivateContent } from "../project-private-content";
-import {
-  findNamedTileBasemap,
-  NAMED_TILE_BASEMAPS,
-} from "./basemaps";
+import { findNamedTileBasemap, NAMED_TILE_BASEMAPS } from "./basemaps";
 import { buildSymbologyStyle } from "./symbology";
+import { assertAssistantLayerContextSafe } from "./private-layer-guard";
 import { webSearch } from "./web-search";
 
 /** Dependencies the assistant tools need beyond the global store. */
@@ -116,7 +114,7 @@ function assertPublicHttpUrl(raw: string): void {
  */
 async function readTextCapped(
   response: Response,
-  maxBytes: number,
+  maxBytes: number
 ): Promise<string> {
   if (!response.body) {
     const text = await response.text();
@@ -139,7 +137,7 @@ async function readTextCapped(
     }
   }
   return new TextDecoder().decode(
-    chunks.length === 1 ? chunks[0] : concatBytes(chunks, total),
+    chunks.length === 1 ? chunks[0] : concatBytes(chunks, total)
   );
 }
 
@@ -183,6 +181,7 @@ function summarizeLayer(layer: GeoLibreLayer): LayerSummary {
  * and schemas only — never full datasets.
  */
 export function describeLayers(layers: GeoLibreLayer[]): string {
+  assertAssistantLayerContextSafe(layers);
   if (layers.length === 0) return "No layers are currently loaded.";
   // previewLayerTables returns one entry per layer in order, so align by index —
   // keying by name would collapse layers that share a name onto one table.
@@ -233,7 +232,7 @@ function resolveBasemap(reference: string): string | null {
   const preset = OPENFREEMAP_BASEMAPS.find(
     (basemap) =>
       basemap.id.toLowerCase() === target ||
-      basemap.name.toLowerCase() === target,
+      basemap.name.toLowerCase() === target
   );
   return preset?.styleUrl ?? null;
 }
@@ -260,7 +259,7 @@ function asFeatureCollection(data: unknown): FeatureCollection {
  * @returns The tools to register on the agent.
  */
 export function createAssistantTools(
-  deps: AssistantToolDeps,
+  deps: AssistantToolDeps
 ): InvokableTool<unknown, unknown>[] {
   const store = () => useAppStore.getState();
   const assistantLayers = () => {
@@ -281,7 +280,7 @@ export function createAssistantTools(
    */
   const approveCodeExecution = (
     toolName: "run_python" | "run_maplibre_js",
-    code: string,
+    code: string
   ): Promise<boolean> =>
     deps.confirmCodeExecution
       ? deps.confirmCodeExecution({ tool: toolName, code })
@@ -289,6 +288,7 @@ export function createAssistantTools(
 
   /** The current map viewport as [west, south, east, north], or null. */
   const viewBbox = (): [number, number, number, number] | null => {
+    assistantLayers();
     const map = deps.getMapController()?.getMap();
     if (!map) return null;
     const b = map.getBounds();
@@ -300,8 +300,8 @@ export function createAssistantTools(
     bbox.length >= 6
       ? [bbox[0], bbox[1], bbox[3], bbox[4]]
       : bbox.length >= 4
-        ? [bbox[0], bbox[1], bbox[2], bbox[3]]
-        : null;
+      ? [bbox[0], bbox[1], bbox[2], bbox[3]]
+      : null;
 
   // Lazily load the shared processing executor (Phase 2). It pulls in the
   // algorithm registries (Turf, DuckDB), so it is imported only when used.
@@ -318,7 +318,7 @@ export function createAssistantTools(
       ({ createScriptingHandlers }) =>
         createScriptingHandlers({
           getController: deps.getMapController,
-        }) as unknown as ScriptingHandlers,
+        }) as unknown as ScriptingHandlers
     );
     return scriptingPromise;
   };
@@ -336,11 +336,15 @@ export function createAssistantTools(
     description:
       "Run a single read-only DuckDB Spatial SQL statement against the loaded layers (use the SQL table names from list_layers) and/or remote files. Returns column names, the row count, and a small preview. Set add_as_layer to add a geometry result to the map.",
     inputSchema: z.object({
-      sql: z.string().describe("A single SELECT statement (no trailing semicolon needed)."),
+      sql: z
+        .string()
+        .describe("A single SELECT statement (no trailing semicolon needed)."),
       add_as_layer: z
         .boolean()
         .optional()
-        .describe("When the result has geometry, add it to the map as a new layer."),
+        .describe(
+          "When the result has geometry, add it to the map as a new layer."
+        ),
       layer_name: z
         .string()
         .optional()
@@ -355,7 +359,7 @@ export function createAssistantTools(
       if (input.add_as_layer && result.geojson) {
         addedLayerId = store().addGeoJsonLayer(
           input.layer_name?.trim() || "SQL result",
-          result.geojson,
+          result.geojson
         );
       }
       return json({
@@ -385,7 +389,7 @@ export function createAssistantTools(
         const response = await fetch(input.url, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(
-            `Fetch failed: ${response.status} ${response.statusText}`,
+            `Fetch failed: ${response.status} ${response.statusText}`
           );
         }
         // Check the advertised length first (cheap), then stream the body with
@@ -395,7 +399,7 @@ export function createAssistantTools(
           throw new Error(`Response too large (${length} bytes).`);
         }
         const geojson = asFeatureCollection(
-          JSON.parse(await readTextCapped(response, MAX_BYTES)),
+          JSON.parse(await readTextCapped(response, MAX_BYTES))
         );
         const name =
           input.name?.trim() ||
@@ -444,7 +448,8 @@ export function createAssistantTools(
 
   const setLayerOpacity = tool({
     name: "set_layer_opacity",
-    description: "Set a layer's opacity (0 transparent to 1 opaque) by name or id.",
+    description:
+      "Set a layer's opacity (0 transparent to 1 opaque) by name or id.",
     inputSchema: z.object({
       layer: z.string().describe("Layer name or id."),
       opacity: z.number().min(0).max(1),
@@ -459,18 +464,26 @@ export function createAssistantTools(
 
   const addTileLayer = tool({
     name: "add_tile_layer",
-    description: `Add an XYZ raster tile basemap/layer to the map. Use a known name (${NAMED_TILE_BASEMAPS.map((basemap) => basemap.id).join(", ")}) or a custom XYZ url template containing {z}/{x}/{y}. The layer is placed underneath existing layers so it acts as a basemap.`,
+    description: `Add an XYZ raster tile basemap/layer to the map. Use a known name (${NAMED_TILE_BASEMAPS.map(
+      (basemap) => basemap.id
+    ).join(
+      ", "
+    )}) or a custom XYZ url template containing {z}/{x}/{y}. The layer is placed underneath existing layers so it acts as a basemap.`,
     inputSchema: z.object({
       basemap: z
         .string()
         .optional()
         .describe(
-          `Known basemap name, one of: ${NAMED_TILE_BASEMAPS.map((basemap) => basemap.id).join(", ")}.`,
+          `Known basemap name, one of: ${NAMED_TILE_BASEMAPS.map(
+            (basemap) => basemap.id
+          ).join(", ")}.`
         ),
       url: z
         .string()
         .optional()
-        .describe("Custom XYZ tile URL template with {z}, {x}, {y} placeholders."),
+        .describe(
+          "Custom XYZ tile URL template with {z}, {x}, {y} placeholders."
+        ),
       name: z.string().optional(),
       attribution: z.string().optional(),
     }),
@@ -486,13 +499,17 @@ export function createAssistantTools(
           attribution = attribution || found.attribution;
         } else if (!url) {
           throw new Error(
-            `Unknown basemap "${input.basemap}". Known: ${NAMED_TILE_BASEMAPS.map((basemap) => basemap.id).join(", ")} — or pass a url.`,
+            `Unknown basemap "${
+              input.basemap
+            }". Known: ${NAMED_TILE_BASEMAPS.map((basemap) => basemap.id).join(
+              ", "
+            )} — or pass a url.`
           );
         }
       }
       if (!url) {
         throw new Error(
-          "Provide a known basemap name or an XYZ url template with {z}/{x}/{y}.",
+          "Provide a known basemap name or an XYZ url template with {z}/{x}/{y}."
         );
       }
       const tileUrl = createXyzTileUrlTemplate(url);
@@ -552,7 +569,9 @@ export function createAssistantTools(
 
   const setBasemap = tool({
     name: "set_basemap",
-    description: `Switch the basemap. Accepts a known name (${OPENFREEMAP_BASEMAPS.map((basemap) => basemap.id).join(", ")}) or a full style URL.`,
+    description: `Switch the basemap. Accepts a known name (${OPENFREEMAP_BASEMAPS.map(
+      (basemap) => basemap.id
+    ).join(", ")}) or a full style URL.`,
     inputSchema: z.object({
       basemap: z.string().describe("A basemap name/id or a style URL."),
     }),
@@ -577,9 +596,12 @@ export function createAssistantTools(
           .optional()
           .describe("Bounding box [west, south, east, north] in WGS84."),
       })
-      .refine((value) => value.layer !== undefined || value.bbox !== undefined, {
-        message: "Provide either a layer or a bbox.",
-      }),
+      .refine(
+        (value) => value.layer !== undefined || value.bbox !== undefined,
+        {
+          message: "Provide either a layer or a bbox.",
+        }
+      ),
     callback: (input) => {
       const controller = deps.getMapController();
       if (!controller) throw new Error("The map is not ready yet.");
@@ -632,20 +654,23 @@ export function createAssistantTools(
       code: z
         .string()
         .describe(
-          "JavaScript function body; `map` and `maplibregl` are in scope.",
+          "JavaScript function body; `map` and `maplibregl` are in scope."
         ),
     }),
     callback: async (input) => {
       assistantLayers();
       if (!(await approveCodeExecution("run_maplibre_js", input.code))) {
-        return json({ ok: false, error: "The user declined to run this code." });
+        return json({
+          ok: false,
+          error: "The user declined to run this code.",
+        });
       }
       const map = deps.getMapController()?.getMap();
       if (!map) throw new Error("The map is not ready yet.");
       // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
       const run = new Function("map", "maplibregl", input.code) as (
         map: unknown,
-        maplibregl: unknown,
+        maplibregl: unknown
       ) => unknown;
       const result = run(map, maplibregl);
       // Coerce to a JSON-safe value so non-serializable returns (e.g. the map
@@ -668,8 +693,14 @@ export function createAssistantTools(
       layer: z.string().describe("Layer name or id."),
       property: z.string().describe("Attribute field to style by."),
       mode: z.enum(["graduated", "categorized"]),
-      color_ramp: z.string().optional().describe("Color ramp id (e.g. reds, viridis)."),
-      class_count: z.number().optional().describe("Number of classes for graduated mode."),
+      color_ramp: z
+        .string()
+        .optional()
+        .describe("Color ramp id (e.g. reds, viridis)."),
+      class_count: z
+        .number()
+        .optional()
+        .describe("Number of classes for graduated mode."),
       scheme: z.enum(["equal-interval", "quantile"]).optional(),
     }),
     callback: (input) => {
@@ -697,7 +728,8 @@ export function createAssistantTools(
     description:
       "List the available client-side processing algorithms (vector geometry/overlay tools like buffer, clip, dissolve, intersection, difference, union, spatial-join; plus H3 grids) with their id, name, group, and typed parameters. Call this before run_algorithm.",
     inputSchema: z.object({}),
-    callback: async () => json({ algorithms: (await getScripting()).listAlgorithms() }),
+    callback: async () =>
+      json({ algorithms: (await getScripting()).listAlgorithms() }),
   });
 
   const runAlgorithm = tool({
@@ -705,14 +737,20 @@ export function createAssistantTools(
     description:
       "Run a processing algorithm by id (from list_algorithms) and add its result as a new layer. `params` is an object keyed by parameter id; a 'layer' parameter takes a layer id (from list_layers). Build a pipeline by running one algorithm, then passing its returned result layer id into the next. Returns the run log and the new layer id(s).",
     inputSchema: z.object({
-      id: z.string().describe("Algorithm id, e.g. 'buffer', 'clip', 'dissolve'."),
+      id: z
+        .string()
+        .describe("Algorithm id, e.g. 'buffer', 'clip', 'dissolve'."),
       params: z
         .record(z.string(), z.unknown())
         .optional()
-        .describe("Parameter values keyed by parameter id; layer params take a layer id."),
+        .describe(
+          "Parameter values keyed by parameter id; layer params take a layer id."
+        ),
     }),
     callback: async (input) => {
-      const result = await (await getScripting()).runAlgorithm({
+      const result = await (
+        await getScripting()
+      ).runAlgorithm({
         id: input.id,
         params: (input.params as Record<string, unknown>) ?? {},
       });
@@ -728,7 +766,9 @@ export function createAssistantTools(
     description:
       "Search the Microsoft Planetary Computer STAC catalog for earth-observation items in a collection (e.g. 'sentinel-2-l2a', 'landsat-c2-l2', 'naip', 'cop-dem-glo-30'). Defaults the bounding box to the current map view and sorts newest-first. Returns matching items (id, datetime, cloud cover, bbox).",
     inputSchema: z.object({
-      collection: z.string().describe("STAC collection id, e.g. 'sentinel-2-l2a'."),
+      collection: z
+        .string()
+        .describe("STAC collection id, e.g. 'sentinel-2-l2a'."),
       bbox: z
         .array(z.number())
         .length(4)
@@ -770,11 +810,15 @@ export function createAssistantTools(
     description:
       "Add a Planetary Computer STAC item as a raster tile layer (tiles are signed server-side — no credentials needed). Give a collection and optionally a specific itemId from search_stac; otherwise the newest item over the current view is used. Renders with the collection's default band/colormap preset.",
     inputSchema: z.object({
-      collection: z.string().describe("STAC collection id, e.g. 'sentinel-2-l2a'."),
+      collection: z
+        .string()
+        .describe("STAC collection id, e.g. 'sentinel-2-l2a'."),
       itemId: z
         .string()
         .optional()
-        .describe("A specific item id; otherwise the latest over the view is used."),
+        .describe(
+          "A specific item id; otherwise the latest over the view is used."
+        ),
       bbox: z.array(z.number()).length(4).optional(),
       datetime: z.string().optional(),
       name: z.string().optional(),
@@ -801,7 +845,7 @@ export function createAssistantTools(
         });
         if (!items.length) {
           throw new Error(
-            `No ${input.collection} items found for the given area/time.`,
+            `No ${input.collection} items found for the given area/time.`
           );
         }
         item = items[0];
@@ -810,7 +854,7 @@ export function createAssistantTools(
       const tileUrl = new TiTilerClient().getItemTileUrl(
         input.collection,
         item.id,
-        preset?.params,
+        preset?.params
       );
       const bounds = bbox2d(item.bbox);
       const layer: GeoLibreLayer = {

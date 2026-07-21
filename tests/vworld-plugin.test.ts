@@ -94,7 +94,9 @@ function setup(desktop: boolean, withSearch = false, withData = false) {
       ? {
           getFeatures: async () => ({
             status: "OK",
-            result: { featureCollection: { type: "FeatureCollection", features: [] } },
+            result: {
+              featureCollection: { type: "FeatureCollection", features: [] },
+            },
           }),
         }
       : undefined,
@@ -172,22 +174,31 @@ describe("VWorld 2D built-in plugin", () => {
     assert.equal(subject.map.sources.size, 0);
   });
 
-  it("registers only the four approved desktop layers", () => {
+  it("registers the five approved desktop layers including Satellite", () => {
     const subject = setup(true);
     assert.equal(subject.plugin.activate(subject.app), true);
     assert.ok(subject.menu);
-    const actions = subject.menu.items.filter((item) => item.type !== "separator");
+    const actions = subject.menu.items.filter(
+      (item) => item.type !== "separator"
+    );
     assert.deepEqual(
       actions.map((item) => item.id),
-      ["base", "white", "midnight", "hybrid", "remove"],
+      ["base", "white", "midnight", "hybrid", "satellite", "remove"]
     );
-    assert.equal(JSON.stringify(subject.menu).includes("Satellite"), false);
+    assert.equal(JSON.stringify(subject.menu).includes("위성 지도"), true);
 
-    const hybrid = actions.find((item) => item.id === "hybrid");
-    assert.ok(hybrid && "onSelect" in hybrid);
-    hybrid.onSelect();
-    assert.equal(subject.map.sources.size, 1);
-    assert.equal(subject.map.layers.size, 1);
+    const satellite = actions.find((item) => item.id === "satellite");
+    assert.ok(satellite && "onSelect" in satellite);
+    satellite.onSelect();
+    assert.equal(subject.map.sources.size, 2);
+    assert.equal(subject.map.layers.size, 2);
+    assert.deepEqual(
+      [...subject.map.sources.values()].map((source) => source.tiles),
+      [
+        ["geoim3d-vworld://tile/Satellite/{z}/{x}/{y}"],
+        ["geoim3d-vworld://tile/Hybrid/{z}/{x}/{y}"],
+      ]
+    );
   });
 
   it("removes menu, source, layer, and protocol on deactivate", () => {
@@ -247,7 +258,9 @@ describe("VWorld 2D built-in plugin", () => {
     const subject = setup(true, true);
     subject.plugin.activate(subject.app);
     assert.equal(subject.floatingPanel?.id, "geoim3d-vworld-search-panel");
-    const search = subject.menu?.items.find((item) => item.id === "search-address");
+    const search = subject.menu?.items.find(
+      (item) => item.id === "search-address"
+    );
     assert.ok(search && "onSelect" in search);
     search.onSelect();
     assert.equal(subject.floatingPanelOpened, 1);

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { assertNoPrivateAnalysisContent } from "../../lib/project-private-content";
 import { useFileNamePrompt } from "../../hooks/useFileNamePrompt";
 import {
   browserSaveFallsBackToDownload,
@@ -89,7 +90,12 @@ function round(value: number, digits: number): number {
 }
 
 /** Clamp a number into a range, returning the fallback when not finite. */
-function clamp(value: number, min: number, max: number, fallback: number): number {
+function clamp(
+  value: number,
+  min: number,
+  max: number,
+  fallback: number
+): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
 }
@@ -144,13 +150,13 @@ export function RecordTourDialog({
   const savingConfigRef = useRef(false);
   const [pathLayerId, setPathLayerId] = useState("");
   const [pathKeyframeCount, setPathKeyframeCount] = useState(
-    DEFAULT_PATH_KEYFRAMES,
+    DEFAULT_PATH_KEYFRAMES
   );
   const [pathZoom, setPathZoom] = useState(DEFAULT_PATH_ZOOM);
   const [pathPitch, setPathPitch] = useState(DEFAULT_PATH_PITCH);
   const [pathHoldSeconds, setPathHoldSeconds] = useState(DEFAULT_HOLD_SECONDS);
   const [pathTransitionSeconds, setPathTransitionSeconds] = useState(
-    DEFAULT_SEGMENT_SECONDS,
+    DEFAULT_SEGMENT_SECONDS
   );
 
   // Drag-to-reposition. `pos` is null until first dragged, when the default
@@ -164,7 +170,7 @@ export function RecordTourDialog({
   // pixels. The bottom-left handle keeps the right edge fixed (so it adjusts
   // `pos.x` too); the bottom-right handle keeps the left edge fixed.
   const [size, setSize] = useState<{ width: number; height: number } | null>(
-    null,
+    null
   );
   const resizeRef = useRef<{
     corner: "sw" | "se";
@@ -193,7 +199,7 @@ export function RecordTourDialog({
           return { layer, count };
         })
         .filter((item) => item.count >= 2),
-    [layers],
+    [layers]
   );
   const selectedPathLayer =
     pathLayers.find((item) => item.layer.id === pathLayerId) ?? pathLayers[0];
@@ -220,7 +226,10 @@ export function RecordTourDialog({
     if ((event.target as Element).closest("button, a, [role='button']")) return;
     const rect = panelRef.current?.getBoundingClientRect();
     if (!rect) return;
-    dragOffset.current = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    dragOffset.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
     setPos({ x: rect.left, y: rect.top });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -232,11 +241,14 @@ export function RecordTourDialog({
     // Keep the panel within the viewport so it can't be dragged off-screen.
     const x = Math.max(
       0,
-      Math.min(event.clientX - dragOffset.current.x, window.innerWidth - width),
+      Math.min(event.clientX - dragOffset.current.x, window.innerWidth - width)
     );
     const y = Math.max(
       0,
-      Math.min(event.clientY - dragOffset.current.y, window.innerHeight - height),
+      Math.min(
+        event.clientY - dragOffset.current.y,
+        window.innerHeight - height
+      )
     );
     setPos({ x, y });
   };
@@ -257,20 +269,20 @@ export function RecordTourDialog({
     corner: "sw" | "se",
     base: { width: number; height: number; left: number; top: number },
     dx: number,
-    dy: number,
+    dy: number
   ) => {
     // Height grows downward from a fixed top for both corners.
     const maxHeight = window.innerHeight - base.top;
     const height = Math.max(
       MIN_PANEL_HEIGHT,
-      Math.min(base.height + dy, maxHeight),
+      Math.min(base.height + dy, maxHeight)
     );
     if (corner === "se") {
       // Left edge fixed; the right edge follows, capped at the viewport edge.
       const maxWidth = window.innerWidth - base.left;
       const width = Math.max(
         MIN_PANEL_WIDTH,
-        Math.min(base.width + dx, maxWidth),
+        Math.min(base.width + dx, maxWidth)
       );
       setPos({ x: base.left, y: base.top });
       setSize({ width, height });
@@ -282,7 +294,7 @@ export function RecordTourDialog({
       const maxWidthBeforeEdge = base.left + base.width;
       const width = Math.max(
         MIN_PANEL_WIDTH,
-        Math.min(base.width + dx, maxWidthBeforeEdge),
+        Math.min(base.width + dx, maxWidthBeforeEdge)
       );
       setPos({ x: maxWidthBeforeEdge - width, y: base.top });
       setSize({ width, height });
@@ -324,7 +336,7 @@ export function RecordTourDialog({
         top: start.startTop,
       },
       event.clientX - start.startX,
-      event.clientY - start.startY,
+      event.clientY - start.startY
     );
   };
 
@@ -336,37 +348,41 @@ export function RecordTourDialog({
   // Keyboard equivalent of dragging a corner: arrow keys nudge the panel size by
   // a fixed step so the resize feature is operable without a pointer. Left/Right
   // grow the side the handle is on; Up/Down adjust the bottom edge.
-  const onResizeKey =
-    (corner: "sw" | "se") => (event: React.KeyboardEvent) => {
-      let dx = 0;
-      let dy = 0;
-      switch (event.key) {
-        case "ArrowDown":
-          dy = RESIZE_KEY_STEP;
-          break;
-        case "ArrowUp":
-          dy = -RESIZE_KEY_STEP;
-          break;
-        case "ArrowLeft":
-          // For the left handle, pressing Left extends the panel leftward.
-          dx = corner === "sw" ? RESIZE_KEY_STEP : -RESIZE_KEY_STEP;
-          break;
-        case "ArrowRight":
-          dx = corner === "sw" ? -RESIZE_KEY_STEP : RESIZE_KEY_STEP;
-          break;
-        default:
-          return;
-      }
-      event.preventDefault();
-      const rect = panelRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      applyResize(
-        corner,
-        { width: rect.width, height: rect.height, left: rect.left, top: rect.top },
-        dx,
-        dy,
-      );
-    };
+  const onResizeKey = (corner: "sw" | "se") => (event: React.KeyboardEvent) => {
+    let dx = 0;
+    let dy = 0;
+    switch (event.key) {
+      case "ArrowDown":
+        dy = RESIZE_KEY_STEP;
+        break;
+      case "ArrowUp":
+        dy = -RESIZE_KEY_STEP;
+        break;
+      case "ArrowLeft":
+        // For the left handle, pressing Left extends the panel leftward.
+        dx = corner === "sw" ? RESIZE_KEY_STEP : -RESIZE_KEY_STEP;
+        break;
+      case "ArrowRight":
+        dx = corner === "sw" ? -RESIZE_KEY_STEP : RESIZE_KEY_STEP;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    applyResize(
+      corner,
+      {
+        width: rect.width,
+        height: rect.height,
+        left: rect.left,
+        top: rect.top,
+      },
+      dx,
+      dy
+    );
+  };
 
   /** Read the live map camera, rounded for compact display. */
   const captureView = () => {
@@ -375,7 +391,7 @@ export function RecordTourDialog({
     return {
       center: [round(view.center[0], 6), round(view.center[1], 6)] as [
         number,
-        number,
+        number
       ],
       zoom: round(view.zoom, 3),
       pitch: round(view.pitch, 1),
@@ -412,7 +428,7 @@ export function RecordTourDialog({
     // "Saved …" banner shouldn't keep implying the modified tour was saved.
     clearResultMessages();
     setKeyframes((current) =>
-      current.map((kf) => (kf.id === id ? { ...kf, ...view } : kf)),
+      current.map((kf) => (kf.id === id ? { ...kf, ...view } : kf))
     );
   };
 
@@ -459,7 +475,7 @@ export function RecordTourDialog({
     clearResultMessages();
     setKeyframes(generated.map((kf) => ({ ...kf, id: createId() })));
     setConfigMessage(
-      t("recordTour.pathGenerated", { count: generated.length }),
+      t("recordTour.pathGenerated", { count: generated.length })
     );
   };
 
@@ -470,7 +486,7 @@ export function RecordTourDialog({
     const current = keyframes.find((kf) => kf.id === id);
     if (current && current.holdMs !== holdMs) clearResultMessages();
     setKeyframes((prev) =>
-      prev.map((kf) => (kf.id === id ? { ...kf, holdMs } : kf)),
+      prev.map((kf) => (kf.id === id ? { ...kf, holdMs } : kf))
     );
   };
 
@@ -479,7 +495,7 @@ export function RecordTourDialog({
     const current = keyframes.find((kf) => kf.id === id);
     if (current && current.transitionMs !== transitionMs) clearResultMessages();
     setKeyframes((prev) =>
-      prev.map((kf) => (kf.id === id ? { ...kf, transitionMs } : kf)),
+      prev.map((kf) => (kf.id === id ? { ...kf, transitionMs } : kf))
     );
   };
 
@@ -492,6 +508,16 @@ export function RecordTourDialog({
     });
 
   const handleRecord = async () => {
+    try {
+      assertNoPrivateAnalysisContent(useAppStore.getState().layers);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "PROJECT_PRIVATE_CONTENT_REJECTED"
+      );
+      return;
+    }
     const map = mapControllerRef.current?.getMap();
     if (!map || keyframes.length < 2) return;
     setError(null);
@@ -530,7 +556,7 @@ export function RecordTourDialog({
       setError(
         err instanceof TourRecordingUnsupportedError
           ? t("recordTour.unsupported")
-          : t("recordTour.recordError"),
+          : t("recordTour.recordError")
       );
       setStatus("idle");
     } finally {
@@ -686,7 +712,7 @@ export function RecordTourDialog({
       setFps(config.fps);
       setFpsText(String(config.fps));
       setConfigMessage(
-        t("recordTour.configLoaded", { count: config.keyframes.length }),
+        t("recordTour.configLoaded", { count: config.keyframes.length })
       );
     } catch (err) {
       console.warn("Tour configuration load failed", err);
@@ -715,7 +741,7 @@ export function RecordTourDialog({
         pos ? "" : "left-4 top-16",
         // Default width / height cap only until the panel is explicitly resized,
         // after which the inline pixel size takes over.
-        size ? "" : "max-h-[calc(100dvh-6rem)] w-96 max-w-[95vw]",
+        size ? "" : "max-h-[calc(100dvh-6rem)] w-96 max-w-[95vw]"
       )}
     >
       {/* Drag handle / title bar. */}
@@ -952,7 +978,11 @@ export function RecordTourDialog({
                 const text = event.target.value;
                 setFpsText(text);
                 const next = Number(text);
-                if (Number.isFinite(next) && next >= MIN_FPS && next <= MAX_FPS) {
+                if (
+                  Number.isFinite(next) &&
+                  next >= MIN_FPS &&
+                  next <= MAX_FPS
+                ) {
                   setFps(Math.round(next));
                 }
               }}
@@ -1050,11 +1080,7 @@ export function RecordTourDialog({
               </div>
             </div>
             <div className="flex gap-2">
-              <Button
-                type="button"
-                className="flex-1"
-                onClick={handleSave}
-              >
+              <Button type="button" className="flex-1" onClick={handleSave}>
                 <Save className="me-1.5 h-4 w-4" />
                 {t("recordTour.saveVideo")}
               </Button>
@@ -1286,9 +1312,9 @@ function KeyframeRow({
   const { t } = useTranslation();
   const isFirst = index === 0;
   // Full camera, shown as a hover tooltip so the visible row stays uncluttered.
-  const coords = `${keyframe.center[1].toFixed(4)}, ${keyframe.center[0].toFixed(
-    4,
-  )} · z${keyframe.zoom.toFixed(1)}`;
+  const coords = `${keyframe.center[1].toFixed(
+    4
+  )}, ${keyframe.center[0].toFixed(4)} · z${keyframe.zoom.toFixed(1)}`;
 
   return (
     <li className="flex flex-col gap-2 rounded-md border border-input p-2 text-xs">

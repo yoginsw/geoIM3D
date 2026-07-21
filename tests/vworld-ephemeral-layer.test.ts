@@ -60,7 +60,7 @@ function fakeProtocolRuntime() {
     string,
     (
       request: { url: string },
-      abortController: AbortController,
+      abortController: AbortController
     ) => Promise<{ data: ArrayBuffer }>
   >();
   let addCount = 0;
@@ -91,23 +91,24 @@ describe("VWorld ephemeral raster layer", () => {
   it("accepts only fixed keyless tile URLs", () => {
     assert.deepEqual(
       parseVWorldTileUrl("geoim3d-vworld://tile/Base/10/12/34"),
-      { layer: "Base", z: 10, x: 12, y: 34 },
+      { layer: "Base", z: 10, x: 12, y: 34 }
     );
-    assert.equal(
+    assert.deepEqual(
       parseVWorldTileUrl("geoim3d-vworld://tile/Satellite/10/12/34"),
-      null,
+      { layer: "Satellite", z: 10, x: 12, y: 34 }
     );
+    assert.equal(parseVWorldTileUrl("geoim3d-vworld://tile/Base/5/0/0"), null);
     assert.equal(
-      parseVWorldTileUrl("geoim3d-vworld://tile/Base/5/0/0"),
-      null,
+      parseVWorldTileUrl("geoim3d-vworld://tile/Satellite/20/0/0"),
+      null
     );
-    assert.equal(
+    assert.deepEqual(
       parseVWorldTileUrl("geoim3d-vworld://tile/Hybrid/19/0/0"),
-      null,
+      { layer: "Hybrid", z: 19, x: 0, y: 0 }
     );
     assert.equal(
       parseVWorldTileUrl("https://api.vworld.kr/req/wmts/key/Base/10/0/0.png"),
-      null,
+      null
     );
   });
 
@@ -180,12 +181,103 @@ describe("VWorld ephemeral raster layer", () => {
     controller.activate("Hybrid");
 
     const abortController = new AbortController();
-    const response = await protocol.handlers.get(VWORLD_PROTOCOL)! (
+    const response = await protocol.handlers.get(VWORLD_PROTOCOL)!(
       { url: `${VWORLD_PROTOCOL}://tile/Hybrid/10/12/34` },
-      abortController,
+      abortController
     );
     assert.deepEqual([...new Uint8Array(response.data)], [1, 2, 3, 4]);
     assert.equal(seenSignal, abortController.signal);
+  });
+
+  it("routes Satellite as JPEG and rejects a mismatched response type", async () => {
+    resetVWorldProtocolForTests();
+    const protocol = fakeProtocolRuntime();
+    const map = new FakeMap();
+    const controller = new VWorldEphemeralLayerController({
+      desktop: true,
+      map,
+      protocol: protocol.runtime,
+      transport: async (request) => {
+        assert.deepEqual(request, { layer: "Satellite", z: 19, x: 0, y: 0 });
+        return { contentType: "image/jpeg", bytes: [255, 216, 255, 217] };
+      },
+    });
+    assert.equal(controller.activate("Satellite"), true);
+    assert.equal(map.sources.size, 2);
+    assert.equal(map.layers.size, 2);
+    const sources = [...map.sources.values()];
+    assert.deepEqual(sources[0].tiles, [
+      `${VWORLD_PROTOCOL}://tile/Satellite/{z}/{x}/{y}`,
+    ]);
+    assert.deepEqual(sources[1].tiles, [
+      `${VWORLD_PROTOCOL}://tile/Hybrid/{z}/{x}/{y}`,
+    ]);
+    assert.equal(sources[0].maxzoom, 19);
+    assert.equal(sources[1].maxzoom, 19);
+    assert.deepEqual(
+      [...map.layers.values()].map((layer) => layer.source),
+      ["geoim3d-vworld-source", "geoim3d-vworld-hybrid-source"]
+    );
+
+    const response = await protocol.handlers.get(VWORLD_PROTOCOL)!(
+      { url: `${VWORLD_PROTOCOL}://tile/Satellite/19/0/0` },
+      new AbortController()
+    );
+    assert.deepEqual([...new Uint8Array(response.data)], [255, 216, 255, 217]);
+
+    controller.dispose();
+    resetVWorldProtocolForTests();
+    const mismatchProtocol = fakeProtocolRuntime();
+    const mismatch = new VWorldEphemeralLayerController({
+      desktop: true,
+      map: new FakeMap(),
+      protocol: mismatchProtocol.runtime,
+      transport: async () => ({
+        contentType: "image/png",
+        bytes: [137, 80, 78, 71],
+      }),
+    });
+    mismatch.activate("Satellite");
+    await assert.rejects(
+      mismatchProtocol.handlers.get(VWORLD_PROTOCOL)!(
+        { url: `${VWORLD_PROTOCOL}://tile/Satellite/10/0/0` },
+        new AbortController()
+      ),
+      /vworld_invalid_response/
+    );
+  });
+
+  it("restores and removes the Satellite Hybrid overlay with map lifecycle", () => {
+    resetVWorldProtocolForTests();
+    const map = new FakeMap();
+    const controller = new VWorldEphemeralLayerController({
+      desktop: true,
+      map,
+      protocol: fakeProtocolRuntime().runtime,
+      transport: async () => ({
+        contentType: "image/png",
+        bytes: [137, 80, 78, 71],
+      }),
+    });
+    controller.activate("Satellite");
+    assert.equal(map.sources.size, 2);
+    assert.equal(map.layers.size, 2);
+
+    map.sources.clear();
+    map.layers.clear();
+    map.emit("style.load");
+    assert.equal(map.sources.size, 2);
+    assert.equal(map.layers.size, 2);
+
+    controller.activate("Base");
+    assert.equal(map.sources.size, 1);
+    assert.equal(map.layers.size, 1);
+    assert.deepEqual([...map.sources.values()][0].tiles, [
+      `${VWORLD_PROTOCOL}://tile/Base/{z}/{x}/{y}`,
+    ]);
+    controller.dispose();
+    assert.equal(map.sources.size, 0);
+    assert.equal(map.layers.size, 0);
   });
 
   it("reference-counts the global protocol and cleans map-local state", () => {

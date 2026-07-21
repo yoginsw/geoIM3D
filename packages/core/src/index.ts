@@ -20,6 +20,7 @@ export {
   clearHistory,
   DEFAULT_COLLABORATION_STATE,
   projectPathLabel,
+  registerTemporalHistoryLayerGuard,
   redo,
   undo,
   useAppStore,

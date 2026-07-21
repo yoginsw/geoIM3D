@@ -1,3 +1,4 @@
+import { useAppStore } from "@geolibre/core";
 import type { MapController } from "@geolibre/map";
 import { Button, cn, Input, Label, Select } from "@geolibre/ui";
 import {
@@ -14,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { saveBinaryFileWithFallback } from "../../lib/tauri-io";
+import { assertNoPrivateAnalysisContent } from "../../lib/project-private-content";
 import {
   CAPTION_POSITIONS,
   type CaptionPosition,
@@ -56,7 +58,7 @@ function clamp(
   value: number,
   min: number,
   max: number,
-  fallback: number,
+  fallback: number
 ): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
@@ -97,7 +99,7 @@ export function RecordVideoDialog({
   const [captionTitle, setCaptionTitle] = useState("");
   const [captionText, setCaptionText] = useState("");
   const [captionPosition, setCaptionPosition] = useState<CaptionPosition>(
-    DEFAULT_CAPTION_POSITION,
+    DEFAULT_CAPTION_POSITION
   );
   const [status, setStatus] = useState<Status>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -150,14 +152,14 @@ export function RecordVideoDialog({
     // Keep the panel within the viewport so it can't be dragged off-screen.
     const x = Math.max(
       0,
-      Math.min(event.clientX - dragOffset.current.x, window.innerWidth - width),
+      Math.min(event.clientX - dragOffset.current.x, window.innerWidth - width)
     );
     const y = Math.max(
       0,
       Math.min(
         event.clientY - dragOffset.current.y,
-        window.innerHeight - height,
-      ),
+        window.innerHeight - height
+      )
     );
     setPos({ x, y });
   };
@@ -193,6 +195,16 @@ export function RecordVideoDialog({
   };
 
   const startRecording = async () => {
+    try {
+      assertNoPrivateAnalysisContent(useAppStore.getState().layers);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "PROJECT_PRIVATE_CONTENT_REJECTED"
+      );
+      return;
+    }
     const map = mapControllerRef.current?.getMap();
     if (!map || busy) return;
     if (mode === "region" && !region) {
@@ -232,7 +244,7 @@ export function RecordVideoDialog({
       setError(
         err instanceof MapRecordingUnsupportedError
           ? t("recordVideo.unsupported")
-          : t("recordVideo.recordError"),
+          : t("recordVideo.recordError")
       );
       setStatus("idle");
     } finally {
@@ -330,7 +342,7 @@ export function RecordVideoDialog({
         style={pos ? { left: pos.x, top: pos.y } : undefined}
         className={cn(
           "fixed z-40 flex w-80 max-w-[95vw] flex-col rounded-lg border bg-card text-card-foreground shadow-xl",
-          pos ? "" : "left-4 top-16",
+          pos ? "" : "left-4 top-16"
         )}
       >
         {/* Drag handle / title bar. */}

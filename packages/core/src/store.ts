@@ -138,6 +138,28 @@ export type RasterToolKind =
   | "mosaic"
   | "focal";
 
+const temporalHistoryLayerGuards: Array<(layer: GeoLibreLayer) => boolean> = [];
+
+export function registerTemporalHistoryLayerGuard(
+  guard: (layer: GeoLibreLayer) => boolean
+): void {
+  if (!temporalHistoryLayerGuards.includes(guard))
+    temporalHistoryLayerGuards.push(guard);
+}
+
+function excludeLayerFromTemporalHistory(layer: GeoLibreLayer): boolean {
+  if (
+    layer.excludeFromHistory === true ||
+    layer.metadata.excludeFromHistory === true
+  )
+    return true;
+  try {
+    return temporalHistoryLayerGuards.some((guard) => guard(layer));
+  } catch {
+    return true;
+  }
+}
+
 export interface AppState {
   projectName: string;
   projectPath: string | null;
@@ -336,7 +358,7 @@ export interface AppState {
   setStorymapPanelOpen: (open: boolean) => void;
   setStorymapPresenting: (
     presenting: boolean,
-    returnToEditor?: boolean,
+    returnToEditor?: boolean
   ) => void;
   setStorymapComposing: (chapterId: string | null) => void;
   setModelBuilderOpen: (open: boolean) => void;
@@ -351,7 +373,10 @@ export interface AppState {
   /** Append a new dashboard widget. */
   addWidget: (widget: DashboardWidget) => void;
   /** Patch an existing dashboard widget by id (no-op if absent). */
-  updateWidget: (id: string, patch: Partial<Omit<DashboardWidget, "id">>) => void;
+  updateWidget: (
+    id: string,
+    patch: Partial<Omit<DashboardWidget, "id">>
+  ) => void;
   /** Remove a dashboard widget by id. */
   removeWidget: (id: string) => void;
   /** Move a widget to a new index, clamped into range, preserving the rest. */
@@ -360,9 +385,7 @@ export interface AppState {
   setDashboardColumns: (columns: number) => void;
 
   setStorymap: (storymap: StoryMap | null) => void;
-  updateStorymapSettings: (
-    patch: Partial<Omit<StoryMap, "chapters">>
-  ) => void;
+  updateStorymapSettings: (patch: Partial<Omit<StoryMap, "chapters">>) => void;
   addStoryChapter: (chapter: StoryChapter, atIndex?: number) => void;
   updateStoryChapter: (id: string, patch: Partial<StoryChapter>) => void;
   removeStoryChapter: (id: string) => void;
@@ -433,7 +456,10 @@ export interface AppState {
   ) => string;
 
   addLayerGroup: (name?: string, layerIds?: string[]) => string;
-  removeLayerGroup: (id: string, options?: { removeChildren?: boolean }) => void;
+  removeLayerGroup: (
+    id: string,
+    options?: { removeChildren?: boolean }
+  ) => void;
   renameLayerGroup: (id: string, name: string) => void;
   setLayerGroupVisibility: (id: string, visible: boolean) => void;
   setLayerGroupOpacity: (id: string, opacity: number) => void;
@@ -463,13 +489,16 @@ export const DEFAULT_COLLABORATION_STATE: CollaborationState = Object.freeze({
   mode: "co-edit",
   selfName: "",
   selfColor: "",
-  participants: Object.freeze([] as CollaborationParticipant[]) as CollaborationParticipant[],
-  presence: Object.freeze({} as Record<string, CollaborationPresence>) as Record<
-    string,
-    CollaborationPresence
-  >,
+  participants: Object.freeze(
+    [] as CollaborationParticipant[]
+  ) as CollaborationParticipant[],
+  presence: Object.freeze(
+    {} as Record<string, CollaborationPresence>
+  ) as Record<string, CollaborationPresence>,
   followHost: false,
-  chat: Object.freeze([] as CollaborationChatMessage[]) as CollaborationChatMessage[],
+  chat: Object.freeze(
+    [] as CollaborationChatMessage[]
+  ) as CollaborationChatMessage[],
   error: null,
 });
 
@@ -525,10 +554,7 @@ function nextDefaultGroupName(groups: LayerGroup[]): string {
  * history entry. Every other field — order, name, visibility, opacity — is
  * still compared, so real edits are tracked.
  */
-function layerGroupsEqualForHistory(
-  a: LayerGroup[],
-  b: LayerGroup[]
-): boolean {
+function layerGroupsEqualForHistory(a: LayerGroup[], b: LayerGroup[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     const x = a[i];
@@ -578,11 +604,15 @@ function clampGridDim(value: number): number {
  */
 function fitGrid(
   total: number,
-  preferredCols: number,
+  preferredCols: number
 ): { rows: number; cols: number } {
   if (total <= 1) return { rows: 1, cols: 1 };
-  let best: { rows: number; cols: number; empty: number; score: number } | null =
-    null;
+  let best: {
+    rows: number;
+    cols: number;
+    empty: number;
+    score: number;
+  } | null = null;
   for (let rows = 1; rows <= MAX_MAP_GRID_DIM; rows++) {
     for (let cols = 1; cols <= MAX_MAP_GRID_DIM; cols++) {
       const capacity = rows * cols;
@@ -596,8 +626,7 @@ function fitGrid(
         best === null ||
         empty < best.empty ||
         (empty === best.empty &&
-          (score < best.score ||
-            (score === best.score && cols > best.cols)));
+          (score < best.score || (score === best.score && cols > best.cols)));
       if (better) best = { rows, cols, empty, score };
     }
   }
@@ -884,7 +913,11 @@ export const useAppStore = create<AppState>()(
           isDirty: shouldMarkDirty || s.isDirty,
         })),
       selectLayer: (id) =>
-        set({ selectedLayerId: id, selectedFeatureId: null, selectedFeatureIds: [] }),
+        set({
+          selectedLayerId: id,
+          selectedFeatureId: null,
+          selectedFeatureIds: [],
+        }),
       selectFeature: (id) =>
         set({ selectedFeatureId: id, selectedFeatureIds: id ? [id] : [] }),
       selectFeatures: (ids, anchorId) =>
@@ -897,7 +930,7 @@ export const useAppStore = create<AppState>()(
           selectedFeatureId:
             anchorId != null && ids.includes(anchorId)
               ? anchorId
-              : (ids.at(-1) ?? null),
+              : ids.at(-1) ?? null,
         }),
       setIdentifyLayer: (id) => set({ identifyLayerId: id }),
       setAttributeFilter: (filter) => set({ attributeFilter: filter }),
@@ -930,7 +963,7 @@ export const useAppStore = create<AppState>()(
           ui: {
             ...s.ui,
             loadEditorFeaturesOpen: open,
-            loadEditorFeaturesLayerId: open ? (layerId ?? null) : null,
+            loadEditorFeaturesLayerId: open ? layerId ?? null : null,
           },
         })),
       setPythonConsoleOpen: (open) =>
@@ -1000,7 +1033,7 @@ export const useAppStore = create<AppState>()(
           if (!exists) return s;
           return {
             widgets: s.widgets.map((w) =>
-              w.id === id ? { ...w, ...patch, id: w.id } : w,
+              w.id === id ? { ...w, ...patch, id: w.id } : w
             ),
             isDirty: true,
           };
@@ -1028,7 +1061,7 @@ export const useAppStore = create<AppState>()(
           return {
             dashboardColumns: Math.max(
               MIN_DASHBOARD_COLUMNS,
-              Math.min(MAX_DASHBOARD_COLUMNS, Math.trunc(columns)),
+              Math.min(MAX_DASHBOARD_COLUMNS, Math.trunc(columns))
             ),
             isDirty: true,
           };
@@ -1089,7 +1122,9 @@ export const useAppStore = create<AppState>()(
           if (!chapter) return s;
           const next = Math.min(Math.max(targetIndex, 0), chapters.length);
           chapters.splice(next, 0, chapter);
-          if (chapters.every((item, i) => item.id === s.storymap?.chapters[i]?.id)) {
+          if (
+            chapters.every((item, i) => item.id === s.storymap?.chapters[i]?.id)
+          ) {
             return s;
           }
           return { storymap: { ...s.storymap, chapters }, isDirty: true };
@@ -1231,7 +1266,11 @@ export const useAppStore = create<AppState>()(
           id,
           name,
           type: "image",
-          source: { type: "image", url: source.url, coordinates: source.coordinates },
+          source: {
+            type: "image",
+            url: source.url,
+            coordinates: source.coordinates,
+          },
           visible: options?.visible ?? true,
           opacity: options?.opacity ?? 1,
           style: { ...DEFAULT_LAYER_STYLE },
@@ -1527,7 +1566,7 @@ export const useAppStore = create<AppState>()(
       // is excluded, so changing them never creates a history entry.
       partialize: (s) => ({
         layers: s.layers.filter(
-          (layer) => layer.metadata.excludeFromHistory !== true,
+          (layer) => !excludeLayerFromTemporalHistory(layer)
         ),
         layerGroups: s.layerGroups,
         basemapStyleUrl: s.basemapStyleUrl,
@@ -1599,7 +1638,8 @@ function restoreHistoryExcludedLayers(layers: GeoLibreLayer[]): void {
   const restored = useAppStore.getState().layers;
   const ids = new Set(restored.map((layer) => layer.id));
   const missing = layers.filter((layer) => !ids.has(layer.id));
-  if (missing.length > 0) useAppStore.setState({ layers: [...restored, ...missing] });
+  if (missing.length > 0)
+    useAppStore.setState({ layers: [...restored, ...missing] });
 }
 
 function finishHistoryStep(previousBasemapStyleUrl: string): void {
@@ -1636,7 +1676,7 @@ function finishHistoryStep(previousBasemapStyleUrl: string): void {
           selectedFeatureIds: [],
           ...ellipsoidPatch,
         }
-      : { isDirty: true, ...ellipsoidPatch },
+      : { isDirty: true, ...ellipsoidPatch }
   );
   // The setState above must not leave a coalesce window open for the next edit.
   cancelHistoryCoalesce();
@@ -1655,7 +1695,11 @@ export function undo(): void {
   const previousBasemapStyleUrl = useAppStore.getState().basemapStyleUrl;
   const excludedLayers = useAppStore
     .getState()
-    .layers.filter((layer) => layer.metadata.excludeFromHistory === true);
+    .layers.filter(
+      (layer) =>
+        layer.excludeFromHistory === true ||
+        layer.metadata.excludeFromHistory === true
+    );
   temporal.undo();
   restoreHistoryExcludedLayers(excludedLayers);
   finishHistoryStep(previousBasemapStyleUrl);
@@ -1669,7 +1713,11 @@ export function redo(): void {
   const previousBasemapStyleUrl = useAppStore.getState().basemapStyleUrl;
   const excludedLayers = useAppStore
     .getState()
-    .layers.filter((layer) => layer.metadata.excludeFromHistory === true);
+    .layers.filter(
+      (layer) =>
+        layer.excludeFromHistory === true ||
+        layer.metadata.excludeFromHistory === true
+    );
   temporal.redo();
   restoreHistoryExcludedLayers(excludedLayers);
   finishHistoryStep(previousBasemapStyleUrl);

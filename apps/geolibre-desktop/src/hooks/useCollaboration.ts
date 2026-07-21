@@ -14,7 +14,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import i18n from "../i18n";
 import { buildProjectSnapshot } from "../lib/build-project-snapshot";
 import { preparePortableProject } from "../lib/project-file-contract";
-import { sanitizeIncomingDesktopProject } from "../lib/desktop-project-ingress";
+import { sanitizeRemoteCollaborationProject } from "../lib/desktop-project-ingress";
 import { assertProjectSafeForExternalTransfer } from "../lib/project-private-content";
 import {
   CollabConnection,
@@ -39,10 +39,14 @@ export interface CollaborationApi {
   start: (
     displayName: string,
     color: string,
-    mode: CollaborationMode,
+    mode: CollaborationMode
   ) => Promise<string>;
   /** Join an existing session by its code. */
-  join: (sessionId: string, displayName: string, color: string) => Promise<void>;
+  join: (
+    sessionId: string,
+    displayName: string,
+    color: string
+  ) => Promise<void>;
   /** Leave the active session and tear everything down. */
   leave: () => void;
   /** Host-only: switch the session between view-only and co-edit. */
@@ -58,7 +62,7 @@ export interface CollaborationApi {
    */
   sendChat: (
     text: string,
-    coordinate?: { lng: number; lat: number } | null,
+    coordinate?: { lng: number; lat: number } | null
   ) => boolean;
 }
 
@@ -76,10 +80,10 @@ export interface CollaborationApi {
  * @returns The session control API consumed by the Collaborate dialog.
  */
 export function useCollaboration(
-  mapControllerRef: RefObject<MapController | null>,
+  mapControllerRef: RefObject<MapController | null>
 ): CollaborationApi {
   const uiProfile = useDesktopSettingsStore(
-    (state) => state.desktopSettings.uiProfile,
+    (state) => state.desktopSettings.uiProfile
   );
   const baseUrl = useMemo(() => resolveCollabBaseUrl(), []);
   const enabled =
@@ -123,7 +127,7 @@ export function useCollaboration(
       useAppStore.getState().resetCollaboration();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    []
   );
 
   const canEdit = (): boolean => {
@@ -136,13 +140,15 @@ export function useCollaboration(
     // A host-set per-participant override wins over the session mode (#754);
     // fall back to the mode when there is no override for us.
     const self = c.participants.find((p) => p.clientId === c.clientId);
-    return self?.editOverride ?? (c.mode === "co-edit");
+    return self?.editOverride ?? c.mode === "co-edit";
   };
 
   const sendSnapshot = (): void => {
     const conn = connRef.current;
     if (!conn || !canEdit() || syncPausedRef.current) return;
-    const project = preparePortableProject(buildProjectSnapshot(mapControllerRef));
+    const project = preparePortableProject(
+      buildProjectSnapshot(mapControllerRef)
+    );
     try {
       assertProjectSafeForExternalTransfer(project);
     } catch {
@@ -177,53 +183,58 @@ export function useCollaboration(
 
   const applyRemoteSnapshot = (
     project: GeoLibreProject,
-    initial: boolean,
+    initial: boolean
   ): Promise<void> => {
     // Keep each participant's own camera: replace the incoming view with the
     // local one before applying, so a peer's edit never yanks our viewport.
     // Where others are looking is conveyed by presence viewport rectangles.
     const localView =
       mapControllerRef.current?.readView() ?? useAppStore.getState().mapView;
-    return sanitizeIncomingDesktopProject(
-      preparePortableProject({ ...project, mapView: localView }),
-      "remote",
+    return sanitizeRemoteCollaborationProject(
+      preparePortableProject({ ...project, mapView: localView })
     ).then((merged) => {
-    if (initial) {
-      // First bootstrap (the welcome snapshot): a one-time full loadProject is
-      // fine and runs the plugin/native-layer restoration so the joiner sees
-      // the host's existing 3D-tiles/deck/raster layers.
-      useAppStore
-        .getState()
-        .loadProject(merged, null, { rememberRecent: false, presenting: false });
-    } else {
-      // Incremental remote edit: apply the project slice immediately so
-      // MapLibre-native layers (geojson, vector/raster tiles, …) reconcile via
-      // MapCanvas's syncLayers without flicker. We apply directly rather than
-      // via loadProject so the local user's selectedLayerId isn't reset to the
-      // first layer on every remote edit.
-      const applied = applyProjectToStore(merged);
-      useAppStore.setState({ ...applied });
-      clearHistory();
-      // Plugin-rendered layer types (raster-COG, LiDAR, 3D-tiles, deck) are NOT
-      // handled by syncLayers — DesktopShell's restoration effect (keyed on
-      // projectGeneration) renders them. Bump it, debounced, so a burst of edits
-      // triggers that heavier restoration once after it settles rather than on
-      // every snapshot.
-      scheduleRestore();
-    }
-    // Cache the POST-normalization serialization (mirrors useEmbedBridge): the
-    // store update we just made re-serializes to this exact string and is
-    // suppressed, so a remote apply never echoes back as a new snapshot.
-    // Serializing `merged` (the pre-normalization input) instead would mismatch
-    // applyProjectToStore's normalized output (deduped styles, defaults,
-    // reordering) and create a broadcast feedback loop.
-    lastContentRef.current = serializeProject(
-      preparePortableProject(buildProjectSnapshot(mapControllerRef)),
-    );
+      if (initial) {
+        // First bootstrap (the welcome snapshot): a one-time full loadProject is
+        // fine and runs the plugin/native-layer restoration so the joiner sees
+        // the host's existing 3D-tiles/deck/raster layers.
+        useAppStore
+          .getState()
+          .loadProject(merged, null, {
+            rememberRecent: false,
+            presenting: false,
+          });
+      } else {
+        // Incremental remote edit: apply the project slice immediately so
+        // MapLibre-native layers (geojson, vector/raster tiles, …) reconcile via
+        // MapCanvas's syncLayers without flicker. We apply directly rather than
+        // via loadProject so the local user's selectedLayerId isn't reset to the
+        // first layer on every remote edit.
+        const applied = applyProjectToStore(merged);
+        useAppStore.setState({ ...applied });
+        clearHistory();
+        // Plugin-rendered layer types (raster-COG, LiDAR, 3D-tiles, deck) are NOT
+        // handled by syncLayers — DesktopShell's restoration effect (keyed on
+        // projectGeneration) renders them. Bump it, debounced, so a burst of edits
+        // triggers that heavier restoration once after it settles rather than on
+        // every snapshot.
+        scheduleRestore();
+      }
+      // Cache the POST-normalization serialization (mirrors useEmbedBridge): the
+      // store update we just made re-serializes to this exact string and is
+      // suppressed, so a remote apply never echoes back as a new snapshot.
+      // Serializing `merged` (the pre-normalization input) instead would mismatch
+      // applyProjectToStore's normalized output (deduped styles, defaults,
+      // reordering) and create a broadcast feedback loop.
+      lastContentRef.current = serializeProject(
+        preparePortableProject(buildProjectSnapshot(mapControllerRef))
+      );
     });
   };
 
-  const enqueueRemoteSnapshot = (project: GeoLibreProject, initial: boolean): void => {
+  const enqueueRemoteSnapshot = (
+    project: GeoLibreProject,
+    initial: boolean
+  ): void => {
     remoteApplyQueueRef.current = remoteApplyQueueRef.current
       .then(() => applyRemoteSnapshot(project, initial))
       .catch(() => {
@@ -258,10 +269,11 @@ export function useCollaboration(
         for (const [clientId, entry] of Object.entries(message.presence)) {
           if (clientId === message.clientId) continue;
           const participant = message.participants.find(
-            (p) => p.clientId === clientId,
+            (p) => p.clientId === clientId
           );
           store.updateCollaborationPresence(clientId, {
-            displayName: participant?.displayName ?? i18n.t("collaborate.guest"),
+            displayName:
+              participant?.displayName ?? i18n.t("collaborate.guest"),
             color: participant?.color ?? "#888888",
             cursor: entry.cursor,
             view: entry.view,
@@ -284,7 +296,7 @@ export function useCollaboration(
         if (message.clientId === selfIdRef.current) break;
         const collab = useAppStore.getState().collaboration;
         const participant = collab.participants.find(
-          (p) => p.clientId === message.clientId,
+          (p) => p.clientId === message.clientId
         );
         const presence: CollaborationPresence = {
           displayName: participant?.displayName ?? i18n.t("collaborate.guest"),
@@ -294,11 +306,7 @@ export function useCollaboration(
         };
         store.updateCollaborationPresence(message.clientId, presence);
         // Follow mode: mirror the host's camera onto the local map.
-        if (
-          collab.followHost &&
-          participant?.role === "host" &&
-          message.view
-        ) {
+        if (collab.followHost && participant?.role === "host" && message.view) {
           mapControllerRef.current?.applyView(message.view);
         }
         break;
@@ -335,7 +343,7 @@ export function useCollaboration(
   const attach = (
     displayName: string,
     color: string,
-    hostToken: string | undefined,
+    hostToken: string | undefined
   ): void => {
     const conn = connRef.current;
     if (!conn) return;
@@ -375,7 +383,10 @@ export function useCollaboration(
     };
   };
 
-  const bindPresence = (map: MapLibreMap, conn: CollabConnection): (() => void) => {
+  const bindPresence = (
+    map: MapLibreMap,
+    conn: CollabConnection
+  ): (() => void) => {
     let lastCursor = 0;
     const onMouseMove = (e: { lngLat: { lng: number; lat: number } }) => {
       const now = Date.now();
@@ -411,7 +422,7 @@ export function useCollaboration(
     sessionId: string,
     displayName: string,
     color: string,
-    hostToken: string | undefined,
+    hostToken: string | undefined
   ): Promise<void> => {
     // Unreachable when disabled (the UI is hidden), but guard so `baseUrl` is
     // a string below without a non-null assertion.
@@ -484,22 +495,27 @@ export function useCollaboration(
   const start = useCallback(
     async (displayName: string, color: string, mode: CollaborationMode) => {
       assertProjectSafeForExternalTransfer(
-        preparePortableProject(buildProjectSnapshot(mapControllerRef)),
+        preparePortableProject(buildProjectSnapshot(mapControllerRef))
       );
       const session = await createSession(mode, baseUrl);
       await connect(session.sessionId, displayName, color, session.hostToken);
       return session.sessionId;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseUrl],
+    [baseUrl]
   );
 
   const join = useCallback(
     async (sessionId: string, displayName: string, color: string) => {
-      await connect(sessionId.trim().toUpperCase(), displayName, color, undefined);
+      await connect(
+        sessionId.trim().toUpperCase(),
+        displayName,
+        color,
+        undefined
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseUrl],
+    [baseUrl]
   );
 
   const leave = useCallback(() => {
@@ -519,7 +535,7 @@ export function useCollaboration(
         canEdit: canEditFlag,
       });
     },
-    [],
+    []
   );
 
   const sendChat = useCallback(
@@ -531,7 +547,7 @@ export function useCollaboration(
         false
       );
     },
-    [],
+    []
   );
 
   const setFollowHost = useCallback((enabled: boolean) => {
@@ -541,7 +557,7 @@ export function useCollaboration(
     // Jump to the host's last-known viewport immediately so following takes
     // effect now rather than only on the host's next move.
     const host = store.collaboration.participants.find(
-      (p) => p.role === "host",
+      (p) => p.role === "host"
     );
     const view = host
       ? store.collaboration.presence[host.clientId]?.view
@@ -575,7 +591,7 @@ export function useCollaboration(
 // (viewport rectangles + opt-in follow-host) instead.
 function projectChanged(
   a: ReturnType<typeof useAppStore.getState>,
-  b: ReturnType<typeof useAppStore.getState>,
+  b: ReturnType<typeof useAppStore.getState>
 ): boolean {
   return (
     a.projectName !== b.projectName ||

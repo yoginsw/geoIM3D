@@ -3,6 +3,7 @@ import type maplibregl from "maplibre-gl";
 import { type RefObject, useEffect } from "react";
 import type { MapController } from "@geolibre/map";
 import { createScriptingHandlers } from "../lib/scripting/scriptingApi";
+import { assertNoPrivateAnalysisContent } from "../lib/project-private-content";
 
 // The host side of the notebook scripting bridge. This is the MIRROR of
 // useCommandBridge: there, the app is the embedded iframe talking up to a host;
@@ -40,7 +41,7 @@ interface CommandMessage {
  */
 export function useNotebookBridge(
   iframeRef: RefObject<HTMLIFrameElement | null>,
-  mapControllerRef: RefObject<MapController | null>,
+  mapControllerRef: RefObject<MapController | null>
 ): void {
   useEffect(() => {
     const controller = () => mapControllerRef.current;
@@ -73,11 +74,23 @@ export function useNotebookBridge(
       if (!win) return;
       win.postMessage(
         { type: "geolibre:result", requestId, ok, ...extra },
-        frameOrigin,
+        frameOrigin
       );
     };
 
     const handleCommand = async (message: CommandMessage) => {
+      try {
+        assertNoPrivateAnalysisContent(useAppStore.getState().layers);
+      } catch {
+        reply(message.requestId, false, {
+          error:
+            typeof __WINDOWS_TAURI_BUILD__ !== "undefined" &&
+            __WINDOWS_TAURI_BUILD__
+              ? "VIEWSHED_PRIVATE_CONTENT_BLOCKED"
+              : "PROJECT_PRIVATE_CONTENT_REJECTED",
+        });
+        return;
+      }
       // Own-property only, so an inherited member ("constructor", …) can never
       // be invoked as a command.
       const handler = Object.hasOwn(handlers, message.method)
@@ -107,9 +120,7 @@ export function useNotebookBridge(
       const allowed = expectedOrigin();
       if (allowed && event.origin !== allowed) return;
       if (event.origin && event.origin !== "null") frameOrigin = event.origin;
-      const data = event.data as
-        | { type?: string; requestId?: unknown }
-        | null;
+      const data = event.data as { type?: string; requestId?: unknown } | null;
       if (!data || typeof data !== "object") return;
       if (data.type === "geolibre:notebook-ready") {
         connected = true;
@@ -125,11 +136,16 @@ export function useNotebookBridge(
 
     const emit = (eventName: string, payload: unknown) => {
       if (!connected) return;
+      try {
+        assertNoPrivateAnalysisContent(useAppStore.getState().layers);
+      } catch {
+        return;
+      }
       const win = frameWindow();
       if (!win) return;
       win.postMessage(
         { type: "geolibre:event", event: eventName, payload },
-        frameOrigin,
+        frameOrigin
       );
     };
 

@@ -7,6 +7,7 @@ import {
   VECTOR_COLOR_RAMPS,
 } from "@geolibre/core";
 import type { MapController } from "@geolibre/map";
+import { assertNoPrivateAnalysisContent } from "../../lib/project-private-content";
 import { GRATICULE_LABEL_LAYER_ID } from "@geolibre/plugins";
 import {
   Button,
@@ -103,7 +104,10 @@ interface ToggleFieldProps {
 /** A labelled checkbox row for toggling a map element on or off. */
 function ToggleField({ id, label, checked, onChange }: ToggleFieldProps) {
   return (
-    <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-center gap-2 text-sm"
+    >
       <input
         id={id}
         type="checkbox"
@@ -138,10 +142,10 @@ export function PrintLayoutDialog({
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [titlePlacement, setTitlePlacement] = useState<"outside" | "inside">(
-    "outside",
+    "outside"
   );
   const [titleAlign, setTitleAlign] = useState<"left" | "center" | "right">(
-    "center",
+    "center"
   );
   const [paperSize, setPaperSize] = useState<PaperSizeId>("a4");
   const [orientation, setOrientation] = useState<Orientation>("landscape");
@@ -160,7 +164,7 @@ export function PrintLayoutDialog({
   const [dateText, setDateText] = useState("");
   const [showAttribution, setShowAttribution] = useState(true);
   const [pageMargin, setPageMargin] = useState<"normal" | "narrow" | "none">(
-    "normal",
+    "normal"
   );
   const [showPageBorder, setShowPageBorder] = useState(false);
   const [pageBorderColor, setPageBorderColor] = useState("#111827");
@@ -226,7 +230,7 @@ export function PrintLayoutDialog({
         id: `cl-${++customLegendId.current}`,
         label,
         color: String(color),
-      }),
+      })
     );
     if (entries.length === 0) {
       setLegendDictError(t("printLayout.customLegend.importError"));
@@ -247,7 +251,7 @@ export function PrintLayoutDialog({
   const [revision, setRevision] = useState("");
   // Custom print extent drawn on the map (GH #523).
   const [captureMode, setCaptureMode] = useState<"viewport" | "extent">(
-    "viewport",
+    "viewport"
   );
   const [extentBbox, setExtentBbox] = useState<PrintExtent | null>(null);
   const [drawingExtent, setDrawingExtent] = useState(false);
@@ -326,11 +330,11 @@ export function PrintLayoutDialog({
         next = {
           width: Math.max(
             480,
-            Math.min(window.innerWidth - 16, startW + (e.clientX - startX) * 2),
+            Math.min(window.innerWidth - 16, startW + (e.clientX - startX) * 2)
           ),
           height: Math.max(
             360,
-            Math.min(window.innerHeight - 16, startH + (e.clientY - startY) * 2),
+            Math.min(window.innerHeight - 16, startH + (e.clientY - startY) * 2)
           ),
         };
         if (frame !== null) return;
@@ -357,7 +361,7 @@ export function PrintLayoutDialog({
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [],
+    []
   );
 
   // Drag the splitter between the controls column and the preview. Mirrors the
@@ -379,7 +383,7 @@ export function PrintLayoutDialog({
       const onMove = (e: PointerEvent) => {
         nextWidth = Math.max(
           CONTROLS_MIN_WIDTH,
-          Math.min(CONTROLS_MAX_WIDTH, startWidth + e.clientX - startX),
+          Math.min(CONTROLS_MAX_WIDTH, startWidth + e.clientX - startX)
         );
         if (frame !== null) return;
         frame = window.requestAnimationFrame(() => {
@@ -405,45 +409,55 @@ export function PrintLayoutDialog({
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [],
+    []
   );
 
   const isCustom = paperSize === "custom";
   const paperOptions = useMemo(
     () => PAPER_SIZES.filter((p) => p.group === "paper"),
-    [],
+    []
   );
   const screenOptions = useMemo(
     () => PAPER_SIZES.filter((p) => p.group === "screen" && p.id !== "custom"),
-    [],
+    []
   );
 
   const baseLegend = useMemo(() => buildLegend(layers), [layers]);
   const legend = useMemo(
     () => applyLegendConfig(baseLegend, legendConfig),
-    [baseLegend, legendConfig],
+    [baseLegend, legendConfig]
   );
   const editorRows = useMemo(
     () => legendEditorRows(baseLegend, legendConfig),
-    [baseLegend, legendConfig],
+    [baseLegend, legendConfig]
   );
   const entryIdsInOrder = useMemo(
-    () =>
-      editorRows.filter((r) => r.kind === "entry").map((r) => r.layerId),
-    [editorRows],
+    () => editorRows.filter((r) => r.kind === "entry").map((r) => r.layerId),
+    [editorRows]
   );
 
   const moveEntry = useCallback(
     (layerId: string, direction: "up" | "down") => {
       setLegendConfig(
-        reorderLegendEntry(legendConfig, entryIdsInOrder, layerId, direction),
+        reorderLegendEntry(legendConfig, entryIdsInOrder, layerId, direction)
       );
     },
-    [legendConfig, entryIdsInOrder, setLegendConfig],
+    [legendConfig, entryIdsInOrder, setLegendConfig]
   );
 
   const recapture = useCallback(
     (clipOverride?: PrintExtent | null) => {
+      try {
+        assertNoPrivateAnalysisContent(layers);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "PROJECT_PRIVATE_CONTENT_REJECTED"
+        );
+        setCaptured(null);
+        return;
+      }
       const map = mapControllerRef.current?.getMap();
       if (!map) {
         setError(t("printLayout.errors.mapNotReady"));
@@ -467,8 +481,8 @@ export function PrintLayoutDialog({
         clipOverride !== undefined
           ? clipOverride
           : captureMode === "extent"
-            ? extentBbox
-            : null;
+          ? extentBbox
+          : null;
       // An active graticule draws coordinate labels at the map edges; fit the
       // captured map with "contain" so the page crop does not trim them.
       setMapFit(map.getLayer(GRATICULE_LABEL_LAYER_ID) ? "contain" : "cover");
@@ -485,7 +499,7 @@ export function PrintLayoutDialog({
         setPrintExtentVisible(map, true);
       }
     },
-    [mapControllerRef, t, captureMode, extentBbox],
+    [mapControllerRef, t, captureMode, extentBbox, layers]
   );
 
   // Capture the map and seed defaults only on the closed -> open transition, so
@@ -544,7 +558,7 @@ export function PrintLayoutDialog({
         clearPrintExtent(map);
       }
     },
-    [mapControllerRef],
+    [mapControllerRef]
   );
 
   const customSize = useMemo<CustomSize | null>(
@@ -552,7 +566,7 @@ export function PrintLayoutDialog({
       isCustom
         ? { width: customWidth, height: customHeight, unit: customUnit }
         : null,
-    [isCustom, customWidth, customHeight, customUnit],
+    [isCustom, customWidth, customHeight, customUnit]
   );
 
   const options = useMemo<LayoutOptions>(
@@ -677,7 +691,7 @@ export function PrintLayoutDialog({
       captured,
       mapFit,
       t,
-    ],
+    ]
   );
 
   // Current representative fraction (1:N), and whether scale is meaningful for
@@ -723,7 +737,7 @@ export function PrintLayoutDialog({
       setScaleNotice(
         Math.abs(clampedZoom - newZoom) > 1e-3
           ? t("printLayout.errors.scaleOutOfRange")
-          : null,
+          : null
       );
       // Drop a still-pending idle handler / fallback timer from a prior applyScale
       // before registering new ones, so two quick scale changes don't both fire.
@@ -773,7 +787,7 @@ export function PrintLayoutDialog({
         }
       }, 1500);
     },
-    [mapControllerRef, captureMode, currentRatio, recapture, t],
+    [mapControllerRef, captureMode, currentRatio, recapture, t]
   );
 
   // Hide the dialog so the map is interactive, let the user drag an extent box,
@@ -832,7 +846,7 @@ export function PrintLayoutDialog({
       setCaptureMode(mode);
       recapture(mode === "extent" ? extentBbox : null);
     },
-    [recapture, extentBbox, captureMode],
+    [recapture, extentBbox, captureMode]
   );
 
   // Redraw the preview whenever the layout options change, sizing the canvas to
@@ -934,7 +948,9 @@ export function PrintLayoutDialog({
         await exportLayoutPdf(options, `${base}.pdf`);
       }
     } catch {
-      setError(t("printLayout.errors.exportFailed", { format: kind.toUpperCase() }));
+      setError(
+        t("printLayout.errors.exportFailed", { format: kind.toUpperCase() })
+      );
     } finally {
       setExporting(false);
     }
@@ -967,7 +983,11 @@ export function PrintLayoutDialog({
             className="absolute bottom-0 right-0 z-10 hidden h-5 w-5 cursor-nwse-resize touch-none select-none text-muted-foreground hover:text-foreground md:block"
             title={t("printLayout.resizeDialog")}
           >
-            <svg viewBox="0 0 16 16" className="h-full w-full" aria-hidden="true">
+            <svg
+              viewBox="0 0 16 16"
+              className="h-full w-full"
+              aria-hidden="true"
+            >
               <path
                 d="M11 15L15 11M6 15L15 6"
                 stroke="currentColor"
@@ -1000,7 +1020,9 @@ export function PrintLayoutDialog({
             }`}
           >
             <div className="space-y-1.5">
-              <Label htmlFor="layout-title">{t("printLayout.titleLabel")}</Label>
+              <Label htmlFor="layout-title">
+                {t("printLayout.titleLabel")}
+              </Label>
               <Input
                 id="layout-title"
                 value={title}
@@ -1052,7 +1074,9 @@ export function PrintLayoutDialog({
                   }
                 >
                   <option value="left">{t("printLayout.align.left")}</option>
-                  <option value="center">{t("printLayout.align.center")}</option>
+                  <option value="center">
+                    {t("printLayout.align.center")}
+                  </option>
                   <option value="right">{t("printLayout.align.right")}</option>
                 </Select>
               </div>
@@ -1098,7 +1122,9 @@ export function PrintLayoutDialog({
                   }
                 >
                   <option value="portrait">{t("printLayout.portrait")}</option>
-                  <option value="landscape">{t("printLayout.landscape")}</option>
+                  <option value="landscape">
+                    {t("printLayout.landscape")}
+                  </option>
                 </Select>
               </div>
             </div>
@@ -1228,7 +1254,7 @@ export function PrintLayoutDialog({
                   value={mapBorderWidth}
                   onChange={(e) =>
                     setMapBorderWidth(
-                      Math.max(0, Math.min(10, Number(e.target.value) || 0)),
+                      Math.max(0, Math.min(10, Number(e.target.value) || 0))
                     )
                   }
                 />
@@ -1263,7 +1289,7 @@ export function PrintLayoutDialog({
                         setScaleDraft(
                           currentRatio > 0
                             ? String(Math.round(currentRatio))
-                            : "",
+                            : ""
                         );
                     }}
                     onKeyDown={(e) => {
@@ -1335,11 +1361,7 @@ export function PrintLayoutDialog({
                       {t("printLayout.extent.useCustom")}
                     </label>
                   </fieldset>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearExtent}
-                  >
+                  <Button variant="ghost" size="sm" onClick={handleClearExtent}>
                     <RotateCcw className="me-1.5 h-3.5 w-3.5" />
                     {t("printLayout.extent.clear")}
                   </Button>
@@ -1464,8 +1486,8 @@ export function PrintLayoutDialog({
                             prev.map((x) =>
                               x.id === entry.id
                                 ? { ...x, color: e.target.value }
-                                : x,
-                            ),
+                                : x
+                            )
                           )
                         }
                       />
@@ -1478,8 +1500,8 @@ export function PrintLayoutDialog({
                             prev.map((x) =>
                               x.id === entry.id
                                 ? { ...x, label: e.target.value }
-                                : x,
-                            ),
+                                : x
+                            )
                           )
                         }
                       />
@@ -1489,7 +1511,7 @@ export function PrintLayoutDialog({
                         className="shrink-0 text-muted-foreground hover:text-foreground"
                         onClick={() =>
                           setCustomLegendEntries((prev) =>
-                            prev.filter((x) => x.id !== entry.id),
+                            prev.filter((x) => x.id !== entry.id)
                           )
                         }
                       >
@@ -1524,7 +1546,7 @@ export function PrintLayoutDialog({
                     value={customLegendPosition}
                     onChange={(e) =>
                       setCustomLegendPosition(
-                        e.target.value as typeof customLegendPosition,
+                        e.target.value as typeof customLegendPosition
                       )
                     }
                   >
@@ -1635,7 +1657,7 @@ export function PrintLayoutDialog({
                       value={colorbarOrientation}
                       onChange={(e) =>
                         setColorbarOrientation(
-                          e.target.value as "vertical" | "horizontal",
+                          e.target.value as "vertical" | "horizontal"
                         )
                       }
                     >
@@ -1656,7 +1678,7 @@ export function PrintLayoutDialog({
                       value={colorbarPosition}
                       onChange={(e) =>
                         setColorbarPosition(
-                          e.target.value as typeof colorbarPosition,
+                          e.target.value as typeof colorbarPosition
                         )
                       }
                     >
@@ -1737,7 +1759,7 @@ export function PrintLayoutDialog({
                     value={pageBorderWidth}
                     onChange={(e) =>
                       setPageBorderWidth(
-                        Math.max(1, Math.min(10, Number(e.target.value) || 1)),
+                        Math.max(1, Math.min(10, Number(e.target.value) || 1))
                       )
                     }
                   />
@@ -1900,8 +1922,8 @@ export function PrintLayoutDialog({
                                     legendConfig,
                                     row.key,
                                     e.target.value,
-                                    row.defaultLabel,
-                                  ),
+                                    row.defaultLabel
+                                  )
                                 )
                               }
                             />
@@ -1915,7 +1937,7 @@ export function PrintLayoutDialog({
                               className="shrink-0 text-muted-foreground hover:text-foreground"
                               onClick={() =>
                                 setLegendConfig(
-                                  toggleLegendItemHidden(legendConfig, row.key),
+                                  toggleLegendItemHidden(legendConfig, row.key)
                                 )
                               }
                             >

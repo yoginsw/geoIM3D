@@ -35,7 +35,12 @@ interface StoryMapPresenterProps {
 
 /** One scroll step in the presentation: a chapter card or an intro/outro slide. */
 type PresenterStep =
-  | { key: string; kind: "chapter"; chapter: StoryChapter; chapterIndex: number }
+  | {
+      key: string;
+      kind: "chapter";
+      chapter: StoryChapter;
+      chapterIndex: number;
+    }
   | {
       key: string;
       kind: "slide";
@@ -58,7 +63,7 @@ function buildPresenterSteps(story: StoryMap): PresenterStep[] {
     });
   }
   story.chapters.forEach((chapter, chapterIndex) =>
-    steps.push({ key: chapter.id, kind: "chapter", chapter, chapterIndex }),
+    steps.push({ key: chapter.id, kind: "chapter", chapter, chapterIndex })
   );
   if (story.endSlide !== "none") {
     steps.push({
@@ -94,7 +99,9 @@ const INSET_POSITION_CLASS: Record<string, string> = {
  * mirroring the standalone storytelling template. Rendering nothing unless a
  * presentation is active keeps it inert the rest of the time.
  */
-export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) {
+export function StoryMapPresenter({
+  mapControllerRef,
+}: StoryMapPresenterProps) {
   const { t } = useTranslation();
   const presenting = useAppStore((s) => s.ui.storymapPresenting);
   const setPresenting = useAppStore((s) => s.setStorymapPresenting);
@@ -134,7 +141,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
   // during a presentation, so this is stable while presenting).
   const steps = useMemo(
     () => (storymap ? buildPresenterSteps(storymap) : []),
-    [storymap],
+    [storymap]
   );
   const hasChapters = presenting && chapters.length > 0;
 
@@ -148,7 +155,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
   const jumpingRef = useRef(false);
   const goToStep = useCallback((stepIndex: number) => {
     const step = scrollRef.current?.querySelector<HTMLElement>(
-      `[data-step-index="${stepIndex}"]`,
+      `[data-step-index="${stepIndex}"]`
     );
     // Center the card, not the step: the step carries a tall bottom padding, so
     // centering it would push the card (and its drag bar) above the viewport.
@@ -166,18 +173,18 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
   // Per-chapter drag offset / explicit size so the reader can move and resize a
   // chapter card out of the way to explore the map beneath it.
   const [cardLayouts, setCardLayouts] = useState<
-    Record<string, { dx: number; dy: number; w: number | null; h: number | null }>
+    Record<
+      string,
+      { dx: number; dy: number; w: number | null; h: number | null }
+    >
   >({});
-  const gestureRef = useRef<
-    | {
-        id: string;
-        mode: "drag" | "resize";
-        startX: number;
-        startY: number;
-        base: { dx: number; dy: number; w: number | null; h: number | null };
-      }
-    | null
-  >(null);
+  const gestureRef = useRef<{
+    id: string;
+    mode: "drag" | "resize";
+    startX: number;
+    startY: number;
+    base: { dx: number; dy: number; w: number | null; h: number | null };
+  } | null>(null);
   // Detaches the active gesture's window listeners; set while a drag is live.
   const gestureCleanupRef = useRef<(() => void) | null>(null);
 
@@ -186,7 +193,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
       event: ReactPointerEvent,
       id: string,
       mode: "drag" | "resize",
-      cardEl: HTMLElement | null,
+      cardEl: HTMLElement | null
     ) => {
       event.preventDefault();
       event.stopPropagation();
@@ -207,8 +214,8 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         base: {
           dx: baseDx,
           dy: baseDy,
-          w: existing?.w ?? (mode === "resize" ? (rect?.width ?? null) : null),
-          h: existing?.h ?? (mode === "resize" ? (rect?.height ?? null) : null),
+          w: existing?.w ?? (mode === "resize" ? rect?.width ?? null : null),
+          h: existing?.h ?? (mode === "resize" ? rect?.height ?? null : null),
         },
       };
 
@@ -243,14 +250,11 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
           // of the card horizontally on screen.
           const minTop = viewport.top + TOP_INSET;
           const maxTop = viewport.bottom - TOP_INSET;
-          dy = Math.min(
-            maxTop - flowTop,
-            Math.max(minTop - flowTop, dy),
-          );
+          dy = Math.min(maxTop - flowTop, Math.max(minTop - flowTop, dy));
           const maxLeft = viewport.right - EDGE_KEEP;
           dx = Math.min(
             maxLeft - flowLeft,
-            Math.max(leftBoundary - flowLeft, dx),
+            Math.max(leftBoundary - flowLeft, dx)
           );
         }
         setCardLayouts((prev) => ({ ...prev, [g.id]: { ...g.base, dx, dy } }));
@@ -267,7 +271,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
     },
-    [cardLayouts, navOpen],
+    [cardLayouts, navOpen]
   );
 
   // Detach any in-flight drag/resize listeners when the presenter unmounts.
@@ -324,7 +328,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
     const steps = buildPresenterSteps(story);
 
     const stepEls = Array.from(
-      container.querySelectorAll<HTMLElement>("[data-step-index]"),
+      container.querySelectorAll<HTMLElement>("[data-step-index]")
     );
 
     // Main-map marker, created once and moved per chapter.
@@ -345,6 +349,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         zoom: 1,
         interactive: false,
         attributionControl: false,
+        reduceMotion: true,
       });
       insetMapRef.current = insetMap;
       const el = document.createElement("div");
@@ -359,7 +364,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         controller.setStoryLayerOpacity(
           change.layerId,
           change.opacity,
-          change.duration,
+          change.duration
         );
       }
     };
@@ -394,7 +399,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
       controller.applyStoryChapterCamera(
         chapter.location,
         chapter.mapAnimation || "flyTo",
-        chapter.rotateAnimation,
+        chapter.rotateAnimation
       );
       // Re-show the marker in case it was hidden by a preceding global slide.
       setMarkersVisible(true);
@@ -411,7 +416,8 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         // Chapter indices are always >= 0: a `previous` of -1 means "before
         // chapter 0", so the loop starts at i = 0 and only moves toward `index`.
         const dir = previous < index ? 1 : -1;
-        if (previous >= 0) applyEffects(chapters[previous]?.onChapterExit ?? []);
+        if (previous >= 0)
+          applyEffects(chapters[previous]?.onChapterExit ?? []);
         for (let i = previous + dir; i !== index; i += dir) {
           applyEffects(chapters[i]?.onChapterEnter ?? []);
           applyEffects(chapters[i]?.onChapterExit ?? []);
@@ -434,8 +440,8 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         step.mode === "global"
           ? STORY_GLOBAL_VIEW
           : step.position === "start"
-            ? (chapters[0]?.location ?? STORY_GLOBAL_VIEW)
-            : (chapters[chapters.length - 1]?.location ?? STORY_GLOBAL_VIEW);
+          ? chapters[0]?.location ?? STORY_GLOBAL_VIEW
+          : chapters[chapters.length - 1]?.location ?? STORY_GLOBAL_VIEW;
       controller.applyStoryChapterCamera(location, "flyTo", false);
       // The global overview shows no marker; the adjacent preview keeps the
       // chapter's marker and moves it to that chapter.
@@ -454,7 +460,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
       activeStepRef.current = index;
 
       stepEls.forEach((el, i) =>
-        el.classList.toggle("glsm-active", i === index),
+        el.classList.toggle("glsm-active", i === index)
       );
 
       if (step.kind === "chapter") {
@@ -473,9 +479,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         if (jumpingRef.current) return;
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          const index = Number(
-            (entry.target as HTMLElement).dataset.stepIndex,
-          );
+          const index = Number((entry.target as HTMLElement).dataset.stepIndex);
           if (Number.isFinite(index)) enterStep(index);
         }
       },
@@ -484,7 +488,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         // Treat a step as active once it crosses the vertical center.
         rootMargin: "-45% 0px -45% 0px",
         threshold: 0,
-      },
+      }
     );
     for (const el of stepEls) observer.observe(el);
 
@@ -540,8 +544,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
   const themeClass = theme === "light" ? "glsm-light" : "glsm-dark";
   // Chapters sit after the optional start slide, so a chapter's nav entry maps
   // to its scroll-step index by this offset.
-  const startOffset =
-    storymap && storymap.startSlide !== "none" ? 1 : 0;
+  const startOffset = storymap && storymap.startSlide !== "none" ? 1 : 0;
   // A start/closing slide is showing (no chapter highlighted). Slides are
   // documented as text-free, so the persistent story header/footer hide while
   // one is active (a blank/black cover already hides them; this also clears the
@@ -590,7 +593,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
                 "flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-xs transition-colors",
                 index === activeChapter
                   ? "bg-primary/15 font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted",
+                  : "text-muted-foreground hover:bg-muted"
               )}
             >
               <span
@@ -598,7 +601,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
                   "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
                   index === activeChapter
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground",
+                    : "bg-muted text-muted-foreground"
                 )}
               >
                 {index + 1}
@@ -641,7 +644,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
         ref={scrollRef}
         className={cn(
           "glsm-scroll absolute inset-0 overflow-y-auto",
-          navOpen && "glsm-with-nav",
+          navOpen && "glsm-with-nav"
         )}
       >
         {storymap &&
@@ -691,7 +694,12 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
                   <div
                     className="glsm-card-bar"
                     onPointerDown={(e) =>
-                      startGesture(e, chapter.id, "drag", e.currentTarget.parentElement)
+                      startGesture(
+                        e,
+                        chapter.id,
+                        "drag",
+                        e.currentTarget.parentElement
+                      )
                     }
                     onDoubleClick={() => resetCard(chapter.id)}
                     title={t("storymap.dragHint")}
@@ -723,7 +731,7 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
                         e,
                         chapter.id,
                         "resize",
-                        e.currentTarget.parentElement,
+                        e.currentTarget.parentElement
                       )
                     }
                   />
@@ -738,12 +746,16 @@ export function StoryMapPresenter({ mapControllerRef }: StoryMapPresenterProps) 
             className={`glsm-footer ${themeClass}`}
             style={slideActive ? { visibility: "hidden" } : undefined}
           >
-            <p dangerouslySetInnerHTML={{ __html: sanitizeStoryHtml(storymap.footer) }} />
+            <p
+              dangerouslySetInnerHTML={{
+                __html: sanitizeStoryHtml(storymap.footer),
+              }}
+            />
           </div>
         ) : null}
       </div>
     </div>,
-    container,
+    container
   );
 }
 
