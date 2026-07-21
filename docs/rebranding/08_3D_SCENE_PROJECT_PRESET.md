@@ -1,7 +1,7 @@
 # Phase 7E — 3D Scene Project Preset MVP
 
 - 제품: **지오아임3D(geoIM3D) 1.0.0**
-- 상태: **사용자 Intent 확정 / Acceptance·Architecture 독립 Review 대기**
+- 상태: **Acceptance·Architecture Review Finding 수정 / 재Review 대기**
 - 대상 Branch: `feat/geoim3d-3d-scene-preset`
 - 기준 Commit: `8e84bfb584e38ad139103a567d300b4c76e8ca05` (Phase 7D2 Viewshed)
 
@@ -187,13 +187,14 @@ SCENE_PRESET_INTERNAL
 
 ## 8. Atomic Store/Application 계약
 
-1. picker/read/parse/validate가 끝날 때까지 현재 Store 변경 0
-2. 새 Project DTO와 detached consumers 완성 후 Section 11.2 generation coordinator로 한 번의 atomic publish
+1. picker/read/parse/validate와 reference plan 준비가 끝날 때까지 현재 Store 변경 0
+2. 새 Project DTO와 prepared resource/placeholder plan을 완성한 뒤 Section 11.2 generation coordinator가 하나의 Store `set`으로 교체
 3. 기존 `loadProject` options에 explicit `markDirty`를 추가해 project path null, dirty true를 동일 Store mutation에서 적용
 4. recent Project 항목 추가 0
-5. 새 consumers의 detached activation/attach-readiness ack와 atomic publish 뒤에만 old consumers teardown
-6. 실패 시 기존 Project의 layers/map view/selection/history/path/dirty identity byte-equivalent 유지
-7. apply 중 중복 요청은 single-flight; cancel/unmount 후 stale completion 무시
+5. Store publish 직후 새 `projectGeneration`을 기준으로 Renderer/Plugin이 reconcile하며, 이전 generation의 request/worker/session은 stale 처리 후 idempotent teardown
+6. parse/validate/reference prepare 실패 시 기존 Project의 layers/map view/selection/history/path/dirty identity byte-equivalent 유지
+7. publish 이후 개별 Renderer 초기화 실패는 Project 전체 rollback으로 위장하지 않고 해당 Layer를 value-safe 오류/placeholder 상태로 표시하며 다른 Layer와 App은 계속 동작
+8. apply 중 중복 요청은 single-flight; cancel/unmount 후 stale completion 무시
 
 ## 9. UI
 
@@ -385,52 +386,23 @@ height/heading/roll DTO는 1.0에서 저장하지 않는다. 현재 MapLibre↔C
 Preset apply는 Store 밖의 generation coordinator가 소유하는 다음 transaction을 사용한다.
 
 ```text
-prepare → detached activate → all ack → publish barrier → retire old
+prepare → validate references/placeholders → single Store publish → reconcile new generation → retire stale generation
 ```
 
-1. 기존 Store/consumer/session generation은 active 상태로 유지한다.
-2. 새 DTO와 native resource/placeholder plan을 별도 pending generation에서 prepare한다. 각 reference
-   결과는 `ready`, `unresolved-allowed`, `hard-fail` 중 하나다. `ready`는 bounded preflight를 끝내고,
-   `unresolved-allowed`는 session handle 없이 placeholder plan을 만든다. `hard-fail`은 pending 전체를
-   폐기한다.
-3. Pending renderer/worker/plugin consumers는 immutable pending snapshot을 읽는 detached/offscreen
-   mode로 activate한다. 이들은 Zustand를 subscribe하거나 current map/scene에 attach할 수 없다.
-   Ready consumer와 unresolved placeholder consumer 모두 activation ack 대상이다. Ack에는 모든
-   fallible initialization, resource binding, shader/parser validation과 attach-readiness 검사가 포함된다.
-   Ack 결과는 current renderer slot에 설치 가능한 no-throw `PreparedAttachment` pointer이며 publish 뒤
-   별도 mount/init/effect/network/file 작업을 요구하지 않는다.
-4. 모든 pending consumer/session/placeholder가 ack한 뒤 coordinator가 Store-level dispatch barrier를
-   잡는다. `withGenerationBarrier` Zustand store enhancer가 `setState`와 `subscribe`를 감싸며 React
-   `useSyncExternalStore` listener, raw `api.subscribe`, selector subscriber를 포함한 **모든** listener
-   notification을 queue한다. Generation tag 유무와 관계없이 barrier 동안 callback 실행은 0이다.
-5. Coordinator는 JavaScript event-loop의 하나의 synchronous critical section에서 먼저 모든 prepared
-   pointer/assertion을 확인한 뒤, no-throw active-consumer pointer swap과 하나의 Store `set`을 수행한다.
-   Store에는 path null, recent unchanged, dirty true, history reset, workspace Cesium,
-   projectGeneration +1 및 동일 active generation을 publish한다. `PreparedAttachment` 설치는 이미
-   준비된 pointer를 current slot에 대입하는 no-throw operation이다. Pointer swap과 Store publish 사이에
-   `await`, callback, effect flush 또는 subscriber dispatch는 없다. Enhancer는 old/current snapshot
-   pair를 queue하고 둘이 모두 완료된 뒤 각 listener에 최종 new-generation notification을 정확히 한 번
-   전달한다. Nested barrier는 금지하고 release는 `finally`에서 한 번만 수행한다.
-6. Publish 뒤에는 fallible validation/activation/network/file operation이 없다. Old generation은 new
-   generation publish/attach 확인 후에만 retire하고 worker/plugin/request/handle을 teardown한다.
+1. 기존 Store/consumer/session generation은 prepare 동안 active 상태로 유지한다.
+2. 새 DTO와 native resource/placeholder plan을 별도 pending generation에서 prepare한다. 각 reference 결과는 `ready`, `unresolved-allowed`, `hard-fail` 중 하나다. `ready`는 bounded preflight를 끝내고, `unresolved-allowed`는 session handle 없이 placeholder plan을 만든다. `hard-fail`은 pending 전체를 폐기한다.
+3. Prepare 단계는 parser, schema/security validation, reference normalization, quota reservation과 native session 준비까지만 수행한다. MapLibre/Cesium/Plugin을 별도 offscreen tree에서 사전 mount하거나 기존 Zustand subscriber를 가로채지 않는다.
+4. 모든 동기 validation과 reference plan 준비가 완료되면 coordinator는 하나의 `loadProject`/Store `set`으로 path null, recent unchanged, dirty true, history reset, workspace Cesium, `projectGeneration + 1`과 새 Project DTO를 함께 publish한다. Publish 전 Store mutation은 0이며 중간 pending field를 Store에 노출하지 않는다.
+5. 기존 MapLibre/Cesium/Plugin React lifecycle은 새 generation을 구독해 정상 reconcile한다. Worker/request/session completion은 generation/request ID를 확인하고 stale completion을 폐기한다. 이전 generation의 request/worker/native session은 새 generation publish 후 idempotent teardown한다.
+6. Publish 이후 Renderer 또는 external resource materialization이 실패하면 전체 Project를 이전 상태로 보상 rollback하지 않는다. 실패한 Layer만 stable value-safe error 또는 unresolved placeholder 상태로 전환하고 다른 Layer와 App은 계속 동작한다. Credential/path/URL/parser 원문은 Store/UI/log에 노출하지 않는다.
 
-Prepare, detached activation, partial ack, timeout, cancel 또는 stale completion이 실패하면 pending
-consumer/session/placeholder만 dispose하고 Store publish를 호출하지 않는다. 따라서 old Store,
-MapLibre/Cesium, worker/plugin/native session은 byte-equivalent active 상태를 유지한다. Publish 전에
-old consumer를 teardown하거나 Store에 pending fields를 노출하는 compensation swap 방식은 금지한다.
-Pointer/assertion 검사는 critical section 전에 끝내며 pointer swap/Store set은 no-throw data assignment만
-허용한다. Activation throw/partial ack/timeout/stale completion과 barrier queue ordering을 직접 테스트한다.
+Parse, validation, reference prepare, timeout, cancel 또는 stale completion이 publish 전에 실패하면 pending resource/session/placeholder만 dispose하고 Store publish를 호출하지 않는다. 따라서 기존 Store와 active consumers는 변경되지 않는다. `disposePendingGeneration()`은 idempotent하며 각 worker/request/handle/session을 독립 `try/finally`로 정리하고 native registry entry를 마지막 `finally`에서 제거한다. Cleanup 실패는 stable counter만 기록하며 기존 Store와 active generation을 변경하지 않는다.
 
-Pending cleanup은 idempotent `disposePendingGeneration()` 하나로만 수행한다. 각 worker/request/handle/
-offscreen consumer dispose는 독립 `try/finally`에서 실행하며 외부로 throw하지 않는다. 이미 closed,
-partial prepare, duplicate cancel에서도 성공으로 끝나고 native registry entry를 마지막 `finally`에서
-강제 제거한다. Cleanup 실패 세부정보는 path/URL/session 없이 stable counter만 기록하며 old generation,
-Store 및 barrier state를 변경할 수 없다. Cleanup throw 주입, 중복 dispose, partial resource list를
-Acceptance test한다.
+Acceptance test는 validation/reference hard-fail 전 Store mutation 0, 단일 publish, generation 증가, stale completion 폐기, old-session teardown, cleanup throw/중복 dispose, publish 후 단일 Layer renderer 실패 격리를 검증한다. 제품 전체 Store subscriber notification을 정지시키는 enhancer와 모든 Renderer/Plugin의 detached pre-activation은 1.0 MVP 범위에 포함하지 않는다.
 
-이미 어느 tab이 mounted돼 있어도 새 generation의 Store 값이 우선한다. Cancel/error/stale generation은
+이미 어느 tab이 mounted돼 있어도 새 generation의 Store 값이 우선한다. Publish 전 cancel/error/stale request는
 workspace, Store, existing worker/plugin/native session을 포함한 active generation 전체를 변경하지 않는다.
-Old teardown은 commit 전 또는 new activation ack 전에 절대 실행하지 않는다.
+Old teardown은 새 generation의 단일 Store publish 전에 절대 실행하지 않는다.
 
 ### 11.3 Parser 및 memory ledger
 
@@ -541,11 +513,11 @@ Expected output identity는 다음과 같다.
 
 ```text
 phase7e-feature-25000-v1.geoim3d-preset.json
-  bytes: 2076245
-  sha256: 3d380dad92f3509761097de0059025df5d8873591119eb095afcfe4517f0faaf
+  bytes: 2076286
+  sha256: 77707a2c850ffdf89af45e909157cb3c7fc32fdb8a622e3dc656966cdae34dd2
 phase7e-coordinate-250000-v1.geoim3d-preset.json
-  bytes: 1501337
-  sha256: f03a3fc0f8e8a85b4c46e895d2db70001662599fe8bbfd94cd1840312923f4a5
+  bytes: 1501374
+  sha256: 0c75b2a145efcfbc87cbb12ab0d6825ac9eea0a6238a3b8cc72a811732aea5f5
 ```
 
 `--verify`와 generated file의 independent `sha256sum`이 모두 expected identity와 일치해야 sampler를
@@ -681,9 +653,9 @@ Relative Relink는 native file/root picker, HTTPS Relink는 새 URL 입력·cons
 사용한다. Import/apply 전 hard failure는 Store mutation 0이다. Runtime operational failure는 active
 Project를 유지하고 해당 Layer만 unresolved로 전환한다.
 
-Unresolved placeholder는 original normalized reference, format, ordinal 및 stable error code만 pending
-DTO에 보존하고 native file/network handle과 active session ID는 갖지 않는다. Placeholder consumer의
-activation ack는 “network/file request 0, placeholder render 준비 완료”를 뜻한다. Placeholder는
+Unresolved placeholder는 original normalized reference, format, ordinal 및 stable error code만 prepared
+plan에 보존하고 native file/network handle과 active session ID는 갖지 않는다. Placeholder 준비 완료는
+“network/file request 0, publish 후 placeholder로 reconcile 가능”을 뜻한다. Placeholder는
 Project generation이 유지되는 동안 보존되며 Relink/retry 성공 시 새 pending generation transaction으로
 active layer와 교체한다. Remove/Project replace/unmount/exit에서는 request 없이 teardown한다.
 
@@ -790,8 +762,10 @@ Phase 8 Release blocker로 명시하며 fabricated/sideload-success 주장으로
 - Custom save/import → map view/style/group/layer data identity
 - current Project에 merge 0
 - cancel/error before mutation, apply atomic one-shot
-- generation barrier에서 React/raw/selector subscriber callback 0 및 release 후 정확히 1회
-- attach-readiness/partial ack/timeout/cleanup throw·duplicate dispose에서 old generation byte-equivalent
+- publish 전 Store mutation 0, 단일 Store publish와 `projectGeneration` 정확히 1 증가
+- generation/request ID 기반 stale completion 폐기 및 publish 후 old session/request idempotent teardown
+- cleanup throw/duplicate dispose가 active generation을 변경하지 않음
+- publish 후 단일 Layer renderer 실패는 value-safe error/placeholder로 격리하고 다른 Layer/App 정상 유지
 - imported project dirty/new identity and recent entry 0
 - existing MapLibre/Cesium mounted state에서 workspace Cesium과 shared camera 결정론 적용
 - relative Project same-root Save/Open 성공, 다른-root Save As 전체 거부
@@ -852,7 +826,7 @@ Phase 8 Release blocker로 명시하며 fabricated/sideload-success 주장으로
 - undefined Project template을 exact Preset DTO와 변환 경계로 교체
 - resolved basemap credential URL 저장 차단
 - 폐쇄형 basemap ID registry와 bundled-style hash identity
-- shared camera와 rollback 가능한 two-generation Cesium/consumer swap
+- shared camera와 단일 Store publish, generation 기반 stale consumer/session 정리
 - byte-level parser와 실행 가능한 memory ledger
 - external model DTO, HTTPS native transport, relative root capability/session/Relink lifecycle
 - HTTPS/relative별 unavailable·hard-fail·Relink·reopen 상태기계

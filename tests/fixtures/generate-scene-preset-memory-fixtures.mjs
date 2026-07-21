@@ -8,9 +8,9 @@ import process from "node:process";
 const GENERATOR_VERSION = "phase7e-memory-fixtures-v1";
 const EXPECTED_SHA256 = Object.freeze({
   "phase7e-feature-25000-v1.geoim3d-preset.json":
-    "3d380dad92f3509761097de0059025df5d8873591119eb095afcfe4517f0faaf",
+    "77707a2c850ffdf89af45e909157cb3c7fc32fdb8a622e3dc656966cdae34dd2",
   "phase7e-coordinate-250000-v1.geoim3d-preset.json":
-    "f03a3fc0f8e8a85b4c46e895d2db70001662599fe8bbfd94cd1840312923f4a5",
+    "0c75b2a145efcfbc87cbb12ab0d6825ac9eea0a6238a3b8cc72a811732aea5f5",
 });
 
 function basicStyle() {
@@ -53,27 +53,28 @@ function basicStyle() {
 
 function projectWithData(data) {
   return {
-    basemap: {
-      id: "geoim3d-blank-v1",
-      visible: false,
-      opacity: 1,
-    },
+    projectName: "Memory Fixture",
     mapView: {
-      longitude: 127,
-      latitude: 37,
+      center: [127, 37],
       zoom: 8,
       bearing: 0,
       pitch: 0,
-      center: [127, 37],
+    },
+    basemap: {
+      builtInId: "geoim3d-blank-v1",
+      visible: false,
+      opacity: 1,
     },
     mapPreferences: {
-      projection: "mercator",
-      glyphsUrl: "",
-      scaleUnits: "metric",
-      zoomControls: true,
-      maxBounds: null,
+      restrictBounds: false,
+      bounds: [-180, -90, 180, 90],
       minZoom: 0,
       maxZoom: 22,
+      maxPitch: 85,
+      renderWorldCopies: true,
+      projection: "mercator",
+      ellipsoidId: "earth-wgs84",
+      scaleUnit: "metric",
     },
     groups: [],
     layers: [
@@ -90,17 +91,17 @@ function projectWithData(data) {
   };
 }
 
-function preset(id, data) {
+function preset(name, data) {
   return {
-    schema: "geoim3d-scene-preset/v1",
-    kind: "geoim3d-scene-project-preset",
-    id,
-    name: id,
+    schema: "geoim3d-scene-preset-v1",
+    version: 1,
+    kind: "3d-scene-project-template",
+    name,
     description: GENERATOR_VERSION,
     createdBy: "user",
     scene: {
-      workspaceTab: "cesium",
-      mapLayout: { rows: 1, columns: 1 },
+      workspace: "cesium",
+      mapGrid: { rows: 1, cols: 1 },
       project: projectWithData(data),
     },
   };
