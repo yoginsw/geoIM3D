@@ -1,4 +1,5 @@
 import type { FeatureCollection } from "geojson";
+import { assertNoPrivateAnalysisContent } from "./project-private-content";
 
 export type BinaryVectorExportFormat = "geoparquet" | "geopackage" | "shapefile";
 
@@ -57,6 +58,7 @@ export async function exportBinaryVectorLayer(
   format: BinaryVectorExportFormat,
   layerName: string,
 ): Promise<BinaryVectorExportResult> {
+  assertNoPrivateAnalysisContent(geojson);
   switch (format) {
     case "geoparquet":
       return {

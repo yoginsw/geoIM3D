@@ -9,6 +9,7 @@ import {
   type BinaryVectorExportFormat,
   exportBinaryVectorLayer,
 } from "./vector-exporter";
+import { assertNoPrivateAnalysisContent } from "./project-private-content";
 
 export type VectorExportFormat = "geojson" | "csv" | BinaryVectorExportFormat;
 
@@ -245,6 +246,7 @@ export async function exportVectorLayer(
   format: VectorExportFormat,
   baseName: string,
 ): Promise<string | null> {
+  assertNoPrivateAnalysisContent(geojson);
   if (format === "geojson" || format === "csv") {
     return exportTextLayer(format, geojson, baseName);
   }

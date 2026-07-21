@@ -502,6 +502,58 @@ describe("viewshed numerical core", () => {
     delete (globalThis as Record<string, unknown>).__WINDOWS_TAURI_BUILD__;
   });
 
+  it("blocks marker-stripped viewshed geometry at every vector export format", async () => {
+    const raster = rasterFromPlane(5, 5, () => 10);
+    const result = calculateViewshed({
+      raster,
+      boundary: boundaryForRaster(raster),
+      observer: observerAt(raster, 2, 2),
+      observerHeightMeters: 1.7,
+      targetHeightMeters: 0,
+      maximumRadiusMeters: 1_000,
+    });
+    const layer = buildViewshedLayer(result);
+    const geometryOnly = {
+      type: "FeatureCollection" as const,
+      features: [...layer.geojson.features].reverse().map((feature) => ({
+        type: "Feature" as const,
+        geometry: structuredClone(feature.geometry),
+        properties: {},
+      })),
+    };
+
+    (globalThis as { self?: unknown }).self ??= globalThis;
+    const { exportVectorLayer } = await import(
+      "../apps/geolibre-desktop/src/lib/vector-export"
+    );
+    const { exportBinaryVectorLayer } = await import(
+      "../apps/geolibre-desktop/src/lib/vector-exporter"
+    );
+    for (const format of [
+      "geojson",
+      "csv",
+      "geoparquet",
+      "geopackage",
+      "shapefile",
+    ] as const) {
+      await assert.rejects(
+        () => exportVectorLayer(geometryOnly, format, "private-viewshed"),
+        /VIEWSHED_PRIVATE_CONTENT_BLOCKED/
+      );
+    }
+    for (const format of [
+      "geoparquet",
+      "geopackage",
+      "shapefile",
+    ] as const) {
+      await assert.rejects(
+        () =>
+          exportBinaryVectorLayer(geometryOnly, format, "private-viewshed"),
+        /VIEWSHED_PRIVATE_CONTENT_BLOCKED/
+      );
+    }
+  });
+
   it("reopens canonical long runs in both approved projected CRSs", () => {
     for (const [sourceCrs, tieX, tieY] of [
       ["EPSG:5179", 1_000_000, 2_000_000],
