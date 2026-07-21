@@ -108,14 +108,14 @@ Strict rules:
 
 - Input/output: 정확히 8 MiB 허용, +1 byte 거부
 - JSON depth 32
-- object/array node 50,000
+- object/array node 400,000
 - layers 1,000
 - layer groups 1,000
 - total features 25,000
 - total coordinates 250,000
 - strings total UTF-8 2 MiB
 - external references 1,000
-- Worker/Main import ledger 128 MiB / 64 MiB
+- Worker/Main import ledger 128 MiB / 96 MiB
 
 Reject는 parse/apply/store mutation 전에 일어난다.
 
@@ -438,20 +438,21 @@ Input과 output cap은 각각 canonical UTF-8 bytes `<= 8 MiB`이며 `8 MiB + 1`
 Native read는 같은 file handle에서 `max + 1`만 읽고 size/identity/reparse 검증 후 bytes를
 transfer한다.
 
-Import는 일반 `JSON.parse`를 직접 호출하지 않는다. Dedicated Worker의 byte-level single-pass
-tokenizer가 fatal UTF-8, duplicate key, token, string bytes, number length, depth, node, array count를
-검사하면서 exact DTO를 구축한다. Parser가 허용된 field의 object/array를 만들기 전에 ledger를
-예약하며 limit 실패 시 해당 allocation 전에 종료한다.
+Import는 일반 `JSON.parse`를 직접 호출하지 않는다. Main은 raw `ArrayBuffer` ownership을 Dedicated
+Worker로 transfer한다. Worker의 byte-level single-pass preflight tokenizer는 DTO object graph를 만들지
+않고 fatal UTF-8, duplicate key, exact schema/token, string bytes, number length, depth, node, array 및
+semantic count를 검사한다. Limit은 해당 tokenizer bookkeeping allocation 전에 ledger에서 예약하며
+실패 시 allocation 전에 종료한다.
 
 Hard bounds:
 
 | 항목                        |               상한 |
 | --------------------------- | -----------------: |
 | raw input/output            |              8 MiB |
-| Worker memory ledger        |            128 MiB |
-| Main-thread apply ledger    |             64 MiB |
+| Worker logical ledger       |            128 MiB |
+| Main logical apply ledger   |             96 MiB |
 | JSON depth                  |                 32 |
-| object/array nodes          |             50,000 |
+| object/array nodes          |            400,000 |
 | layers/groups               |      1,000 / 1,000 |
 | features                    |             25,000 |
 | coordinates                 |            250,000 |
@@ -459,14 +460,119 @@ Hard bounds:
 | single string/property name | 64 KiB / 256 bytes |
 | external references         |              1,000 |
 
-Worker 128 MiB design reservation은 raw 8, tokenizer/decoded scalar 24, parser object 32,
-normalized DTO 32, canonical/output 8, scratch 16, margin 8 MiB로 구성한다. 각 buffer가
-unreachable/detached 되는 시점을 ledger에서 release한다. Main thread는 validated DTO만 transfer
-받고 fresh Project DTO 32, Store apply 24, scratch/margin 8 MiB를 예약한다. Exact limit/+1,
-normal/malformed/cancel/timeout에서 peak가 ledger를 넘지 않음을 instrumented test로 증명한다.
+Node는 Preset root부터 GeoJSON position/GeometryCollection container까지 raw JSON의 모든 `{`와 `[`
+token을 각각 1개로 센다. `400,000`은 exact `25,000` Point Feature fixture와 exact `250,000`
+MultiPoint position fixture를 각각 허용한다. 각 hard bound는 독립 ceiling이며 모든 semantic maximum의
+동시 수용을 보장하지 않는다. 어느 ceiling이든 먼저 도달하면 allocation 전에 fail-closed한다.
 
-Export는 Store에서 allowlist DTO를 먼저 구축하고 동일 ledger로 canonical byte length를 two-pass
-measure한다. `max + 1`은 native picker/write 호출 전에 거부한다.
+Worker 128 MiB logical reservation은 transferred raw 8, tokenizer state/duplicate bookkeeping 32,
+decoded key/string accounting 24, semantic index/reference state 16, scratch 16, margin 32 MiB다. Request
+시작 시 fixed-slot ledger가 이 여섯 reservation을 먼저 원자적으로 획득한 뒤에만 bookkeeping memory를
+할당한다. Token stack은 depth 33 fixed TypedArray, duplicate tracking은 object-scope ID와 decoded-key
+span/hash를 담는 fixed open-addressed TypedArray table, decoded key/string은 2 MiB fixed byte arena,
+group/layer/reference는 fixed-capacity TypedArray index, number token은 128-byte scratch를 사용한다.
+Build-time immutable schema table 외에 request 경로에서 `Map`, `Set`, dynamic array growth, string
+concatenation 또는 capacity resize를 금지한다. Table/arena full과 reservation/preallocation 실패는
+해당 추가 allocation 전에 `SCENE_PRESET_LIMIT_EXCEEDED`로 끝난다.
+
+Worker는 일반 JS DTO나 generic parser tree를 만들지 않는다. 성공 시 검증한 동일 raw `ArrayBuffer`를
+transfer list로 Main에 돌려보내므로 backing store는 복제되지 않고 Worker 쪽 buffer는 즉시
+detached된다. 성공 send, malformed, reservation failure, cancel 및 postMessage throw의 모든
+`finally`에서 table/arena/scratch reference와 ledger slot을 동기 release하고 stable redacted error만
+반환한다.
+
+Main의 Worker client는 전송되는 object brand를 신뢰하지 않는다. `crypto.getRandomValues`로 만든
+128-bit nonce, request ID, generation ID와 정확한 Worker instance의 closure-bound event handler를
+결합한다. Worker는 세 값을 그대로 echo하고 Main은 해당 instance의 응답에서 모두 일치할 때만
+반환된 transferred bytes를 받는다. 외부 `window.postMessage`, 다른 Worker, stale generation 및 이미
+settled된 응답은 capability를 만들 수 없다.
+
+Main은 Worker request를 capability와 분리해 다음 lifecycle로 관리한다.
+
+```text
+request: created -> in-flight -> response-accepted
+request: created|in-flight -> invalidated
+```
+
+`response-accepted`는 exact Worker instance, nonce, request ID, generation ID 및 transferred buffer를
+동기 검증한 뒤 listener/timer를 제거하고 Worker를 terminate한 terminal request state다. 검증 전에는
+capability가 존재하지 않는다. Invalidated 또는 terminal request의 completion은 duplicate/stale counter만
+올리고 Promise나 payload를 다시 settle하지 않는다.
+
+`response-accepted` 이후에만 Main은 module-private `WeakMap`에 bytes와 상태를 등록하고 Main-local
+opaque one-shot capability를 생성한다. Capability 자체는 IPC·Store·Project·파일에 직렬화하지 않는다.
+상태 전이는 다음만 허용한다.
+
+```text
+capability: ready -> consuming -> consumed
+capability: ready|consuming -> invalidated
+```
+
+Consuming API는 synchronous check-and-set으로 `ready -> consuming`을 먼저 수행한다. Main decoder가
+성공하면 `consuming -> consumed`, internal mismatch/allocation/exception이면
+`consuming -> invalidated`로 전이한다. User cancel은 `ready`까지만 interrupt할 수 있다. Decoder는 Main
+event loop에서 synchronous라 `consuming` 중 외부 cancel callback이 interleave하지 않으며, reentrant
+failure injection은 `invalidated` path를 사용한다. `invalidated` terminal은 `finally`에서 bytes reference,
+WeakMap entry, wrapper와 모든 Main ledger slot을 동기 release한다. `consumed` terminal은 raw/scratch,
+bytes reference, WeakMap entry와 wrapper를 release하되 exact DTO 80 MiB reservation을 candidate generation
+account로 원자적으로 re-key한다. 이 reservation은 publish 후 active generation이 소유하고 해당 generation
+retire 시 release한다. Publish 전 failure는 candidate reservation을 release하며 old generation account를
+변경하지 않는다. Replay, stale completion, duplicate response, cancel/consume race 및 double-consume은
+Promise를 정확히 한 번 settle하고 payload를 재사용하지 않은 채 stable counter만 남긴다.
+
+Main decoder는 capability가 소유한 preflight-complete bytes에서 allowlisted exact DTO를 직접 한 번만
+구축한다. 일반 `JSON.parse`, generic object tree 또는 DTO deep clone을 만들지 않는다. Worker와 Main
+parser의 token/schema decision table은 하나의 생성된 immutable table을 공유하고 divergence fixture를
+테스트한다. Main decoder의 unexpected mismatch도 mutation 전에 internal-invalid로 종료한다. Fresh
+Project는 구축된 GeoJSON/reference subtree의 유일한 live reference를 사용하며 wrapper를 즉시
+release한다. Main 96 MiB logical reservation은 raw 8, exact DTO 80, decode/apply scratch 8 MiB다.
+
+Logical ledger는 RSS 주장과 구분한다. Windows Release gate는 production Tauri/WebView2 build에서 native
+50 ms sampler로 app process tree의 private working set을 CSV로 기록한다. Deterministic generator는
+`tests/fixtures/generate-scene-preset-memory-fixtures.mjs`의
+`phase7e-memory-fixtures-v1`이며 다음 명령 외 생성 경로를 허용하지 않는다.
+
+```text
+node tests/fixtures/generate-scene-preset-memory-fixtures.mjs --verify
+node tests/fixtures/generate-scene-preset-memory-fixtures.mjs --out <empty-directory>
+```
+
+Expected output identity는 다음과 같다.
+
+```text
+phase7e-feature-25000-v1.geoim3d-preset.json
+  bytes: 2076245
+  sha256: 3d380dad92f3509761097de0059025df5d8873591119eb095afcfe4517f0faaf
+phase7e-coordinate-250000-v1.geoim3d-preset.json
+  bytes: 1501337
+  sha256: f03a3fc0f8e8a85b4c46e895d2db70001662599fe8bbfd94cd1840312923f4a5
+```
+
+`--verify`와 generated file의 independent `sha256sum`이 모두 expected identity와 일치해야 sampler를
+시작할 수 있다. Generator source SHA-256, generator version, Node version, command, fixture byte length와
+file SHA-256을 run manifest에 기록한다. CSV schema는 다음 exact columns다.
+
+```text
+utc_ns,run_id,fixture_id,phase,pid,parent_pid,process_creation_time,process_role,private_working_set_bytes
+```
+
+Process tree는 sampler 시작 시 Tauri root PID와 creation time을 고정하고 parent chain이 해당 root에
+도달하는 모든 live descendant를 포함한다. PID 재사용은 creation time 불일치로 제외한다. Role은
+`tauri-root|webview-renderer|webview-utility|other-child` 폐쇄형이며 Web Worker가 renderer process 내부면
+별도 PID를 만들지 않는다. Phase는 `idle|worker-scan|transfer-handoff|main-decode|store-apply|recovery`다.
+
+30초 idle 중 마지막 5초의 50 ms sample median을 PID별 baseline으로 하고 합계를 tree baseline으로
+사용한다. Fixture별 3회 run에서 `max(sample - matching PID baseline, 0)`의 renderer 합계 peak는
+`<= 160 MiB`, `max(tree sample sum - tree baseline, 0)`은 `<= 192 MiB`여야 한다. 각 run 완료 60초 후
+5초 median tree delta는 `<= 32 MiB`여야 하며 recovery delta가 `run1 < run2 < run3`으로 strict
+monotonic increase하면 실패한다. 새 child의 baseline은 0이며 종료된 child는 이후 sample에서 0이다.
+Exact fixture는 같은 fresh-start build/configuration에서 순차 실행한다. CSV, run manifest, hashes,
+baseline/peak/recovery 계산 JSON이 모두 없으면 Release Gate는 fail이다. Linux/Node RSS는 개발 참고값일
+뿐 승인 근거가 아니다.
+
+Export는 Store에서 allowlist DTO를 먼저 구축하고 fixed-order canonical writer로 byte length를 two-pass
+measure한다. 별도 output 8 MiB reservation을 사용하며 `max + 1`은 native picker/write 호출 전에
+거부한다.
 
 ### 11.4 External scene resource transport
 
@@ -664,10 +770,18 @@ Phase 8 Release blocker로 명시하며 fabricated/sideload-success 주장으로
 ### Schema/Bounds
 
 - native/Worker/output 각각 exact 8 MiB/+1, malformed/fatal UTF-8
-- tokenizer allocation 전 unknown/missing/duplicate key, depth/node/layer/feature/coordinate exact max/+1
+- tokenizer allocation 전 unknown/missing/duplicate key, depth, node 400,000 exact/+1,
+  layer/feature/coordinate exact max/+1
+- generic parser tree/DTO 재복제 0, transferred backing-store identity와 Worker-side detach 검증
+- exact Worker/Main decision-table divergence 0
+- Main-local capability 위조, 다른 Worker/nonce/request/generation, replay·stale·double-consume 거부
+- request created/in-flight/response-accepted/invalidated 및 capability
+  ready/consuming/consumed/invalidated exact 전이와 cancel/consume race single settlement
+- fixed TypedArray/table/arena preallocation failure와 full/+1에서 동적 growth 없이 allocation 전 거부
 - NaN/Infinity/-0 normalization, sparse/prototype/accessor object
 - canonical byte repeatability와 key-order independence
-- Worker/Main instrumented memory ledger exact max/+1 및 buffer detach/release
+- Worker 128 MiB/Main 96 MiB logical ledger exact max/+1, invalidated release 및 consumed generation re-key
+- Windows exact fixture/hash/CSV schema와 renderer 160 MiB/process-tree 192 MiB/recovery 32 MiB 계산 gate
 
 ### Preset Semantics
 
