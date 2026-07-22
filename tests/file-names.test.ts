@@ -3,9 +3,11 @@ import { describe, it } from "node:test";
 import {
   ensureHtmlFileName,
   ensureProjectFileName,
+  ensureScenePresetFileName,
   isCanonicalProjectFileName,
   isCanonicalProjectReference,
   isLegacyProjectFileName,
+  isScenePresetFileName,
 } from "../apps/geolibre-desktop/src/lib/file-names";
 
 describe("ensureHtmlFileName", () => {
@@ -87,5 +89,25 @@ describe("ensureProjectFileName", () => {
       isCanonicalProjectReference("https://example.com/api/projects/1"),
       false,
     );
+  });
+});
+
+describe("scene preset file names", () => {
+  it("keeps preset routing disjoint from canonical project routing", () => {
+    const preset = "C:\\Maps\\City.geoim3d-preset.json";
+    assert.equal(isScenePresetFileName(preset), true);
+    assert.equal(isCanonicalProjectFileName(preset), false);
+    assert.equal(isCanonicalProjectReference(preset), false);
+  });
+
+  it("normalizes only explicit preset save names", () => {
+    assert.equal(ensureScenePresetFileName("city"), "city.geoim3d-preset.json");
+    assert.equal(
+      ensureScenePresetFileName("city.geoim3d-preset.json"),
+      "city.geoim3d-preset.json",
+    );
+    assert.equal(isScenePresetFileName("city.geoim3d.json"), false);
+    assert.equal(isScenePresetFileName("city.GEOIM3D-PRESET.JSON"), false);
+    assert.equal(isScenePresetFileName("city.json"), false);
   });
 });

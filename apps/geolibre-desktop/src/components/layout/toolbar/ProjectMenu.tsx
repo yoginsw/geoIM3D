@@ -13,6 +13,7 @@ import {
 } from "@geolibre/ui";
 import {
   BookOpen,
+  Box,
   FileCode2,
   FilePen,
   FilePlus2,
@@ -26,12 +27,14 @@ import {
   Printer,
   Save,
   Share2,
+  Upload,
   Users,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDesktopSettingsStore } from "../../../hooks/useDesktopSettings";
 import { resolveViewerBaseUrl } from "../../../lib/html-export";
+import { isTauri } from "../../../lib/is-tauri";
 import { resolveShareBaseUrl } from "../../../lib/share-geolibre";
 import { isMenuItemVisible } from "../../../lib/ui-profile";
 import { formatRecentProjectTime, type ToolbarChrome } from "./constants";
@@ -40,6 +43,9 @@ interface ProjectMenuProps {
   chrome: ToolbarChrome;
   collaborationEnabled: boolean;
   onNewProject: () => void;
+  onNewBlank3dScene: () => void;
+  onImportScenePreset: () => void;
+  onExportScenePreset: () => void;
   onOpenFromFile: () => void;
   onOpenFromUrl: () => void;
   onOpenGallery: () => void;
@@ -58,6 +64,9 @@ export function ProjectMenu({
   chrome,
   collaborationEnabled,
   onNewProject,
+  onNewBlank3dScene,
+  onImportScenePreset,
+  onExportScenePreset,
   onOpenFromFile,
   onOpenFromUrl,
   onOpenGallery,
@@ -71,6 +80,7 @@ export function ProjectMenu({
   onOpenOfflineBasemap,
 }: ProjectMenuProps) {
   const { t } = useTranslation();
+  const desktop = isTauri();
   const projectPath = useAppStore((s) => s.projectPath);
   const recentProjects = useAppStore((s) => s.recentProjects);
   const forgetRecentProject = useAppStore((s) => s.forgetRecentProject);
@@ -85,6 +95,7 @@ export function ProjectMenu({
   const showSaveGroup =
     show("project.save") ||
     show("project.saveAs") ||
+    (desktop && show("project.exportScenePreset")) ||
     (shareConfigured && show("project.share")) ||
     (viewerConfigured && show("project.exportHtml")) ||
     (collaborationEnabled && show("project.collaborate"));
@@ -111,6 +122,18 @@ export function ProjectMenu({
           <DropdownMenuItem onSelect={onNewProject}>
             <FilePlus2 className="me-2 h-3.5 w-3.5" />
             {t("toolbar.item.newEllipsis")}
+          </DropdownMenuItem>
+        )}
+        {show("project.newBlank3d") && (
+          <DropdownMenuItem onSelect={onNewBlank3dScene}>
+            <Box className="me-2 h-3.5 w-3.5" />
+            {t("toolbar.item.newBlank3dScene")}
+          </DropdownMenuItem>
+        )}
+        {desktop && show("project.importScenePreset") && (
+          <DropdownMenuItem onSelect={onImportScenePreset}>
+            <Upload className="me-2 h-3.5 w-3.5" />
+            {t("toolbar.item.importScenePreset")}
           </DropdownMenuItem>
         )}
         {show("project.openFrom") && (
@@ -219,6 +242,12 @@ export function ProjectMenu({
           <DropdownMenuItem onSelect={onSaveAs}>
             <FilePen className="me-2 h-3.5 w-3.5" />
             {t("toolbar.item.saveAsEllipsis")}
+          </DropdownMenuItem>
+        )}
+        {desktop && show("project.exportScenePreset") && (
+          <DropdownMenuItem onSelect={onExportScenePreset}>
+            <Box className="me-2 h-3.5 w-3.5" />
+            {t("toolbar.item.exportScenePreset")}
           </DropdownMenuItem>
         )}
         {shareConfigured && show("project.share") && (

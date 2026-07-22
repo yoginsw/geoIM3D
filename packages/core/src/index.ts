@@ -26,6 +26,7 @@ export {
   useAppStore,
   type AppState,
   type ConversionToolKind,
+  type MapWorkspaceTab,
   type NetworkToolKind,
   type RasterToolKind,
   type StatisticsToolKind,

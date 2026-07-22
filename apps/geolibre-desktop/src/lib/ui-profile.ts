@@ -204,10 +204,13 @@ export interface MenuItemCatalogEntry {
 export const MENU_ITEM_CATALOG: readonly MenuItemCatalogEntry[] = [
   // Project
   { id: "project.new", menuId: "project", labelKey: "toolbar.item.newEllipsis", tier: "basic" },
+  { id: "project.newBlank3d", menuId: "project", labelKey: "toolbar.item.newBlank3dScene", tier: "basic" },
+  { id: "project.importScenePreset", menuId: "project", labelKey: "toolbar.item.importScenePreset", tier: "basic" },
   { id: "project.openFrom", menuId: "project", labelKey: "toolbar.item.openFrom", tier: "basic" },
   { id: "project.openRecent", menuId: "project", labelKey: "toolbar.item.openRecent", tier: "basic" },
   { id: "project.save", menuId: "project", labelKey: "common.save", tier: "basic" },
   { id: "project.saveAs", menuId: "project", labelKey: "toolbar.item.saveAsEllipsis", tier: "basic" },
+  { id: "project.exportScenePreset", menuId: "project", labelKey: "toolbar.item.exportScenePreset", tier: "basic" },
   { id: "project.share", menuId: "project", labelKey: "toolbar.item.shareEllipsis", tier: "intermediate" },
   { id: "project.exportHtml", menuId: "project", labelKey: "toolbar.item.exportHtmlEllipsis", tier: "intermediate" },
   { id: "project.collaborate", menuId: "project", labelKey: "toolbar.item.collaborateEllipsis", tier: "advanced" },

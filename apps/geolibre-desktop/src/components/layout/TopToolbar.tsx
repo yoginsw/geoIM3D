@@ -88,6 +88,7 @@ import type { ThemeMode } from "../../hooks/useThemeMode";
 
 import { useDesktopSettingsStore } from "../../hooks/useDesktopSettings";
 import { ensureProjectFileName } from "../../lib/file-names";
+import { isTauri } from "../../lib/is-tauri";
 import {
   MENU_MANAGED_PLUGIN_IDS,
   isMenuItemVisible,
@@ -196,6 +197,7 @@ export function TopToolbar({
   onOpenWindowsPrivateAnalysis,
 }: TopToolbarProps) {
   const { t } = useTranslation();
+  const desktop = isTauri();
   // The reverse-geocode plugin lives in the framework-agnostic plugins package
   // and cannot call t() itself, so push the translated popup strings into it
   // here and refresh them whenever the active language changes.
@@ -509,6 +511,9 @@ export function TopToolbar({
   >(undefined);
   const [netcdfDialogOpen, setNetcdfDialogOpen] = useState(false);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [pendingProjectReplacement, setPendingProjectReplacement] = useState<
+    (() => void) | null
+  >(null);
   const [managePluginsOpen, setManagePluginsOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [galleryDialogOpen, setGalleryDialogOpen] = useState(false);
@@ -544,6 +549,20 @@ export function TopToolbar({
       );
     }
     setControlsVisible(newProjectToolbarControlVisibility());
+  };
+
+  const requestProjectReplacement = (action: () => Promise<boolean>) => {
+    const execute = () => {
+      void action().then((applied) => {
+        if (applied) resetRuntimeControlsForNewProject();
+      });
+    };
+    if (!useAppStore.getState().isDirty) {
+      execute();
+      return;
+    }
+    setPendingProjectReplacement(() => execute);
+    setNewProjectDialogOpen(true);
   };
 
   // The appApi-backed "add layer" handlers shared by the Add Data menu and the
@@ -587,8 +606,41 @@ export function TopToolbar({
       keywords: "create",
       icon: FilePlus2,
       shortcut: { key: "n", mod: true, shift: false },
-      run: () => setNewProjectDialogOpen(true),
+      run: () => {
+        setPendingProjectReplacement(null);
+        setNewProjectDialogOpen(true);
+      },
     },
+    {
+      id: "project.new-blank-3d-scene",
+      title: t("toolbar.item.newBlank3dScene"),
+      group: t("toolbar.commandGroup.project"),
+      keywords: "3d cesium scene preset",
+      icon: FilePlus2,
+      run: () =>
+        requestProjectReplacement(projectFiles.handleNewBlank3dScene),
+    },
+    ...(desktop
+      ? [
+          {
+            id: "project.import-scene-preset",
+            title: t("toolbar.item.importScenePreset"),
+            group: t("toolbar.commandGroup.project"),
+            keywords: "3d cesium scene preset import",
+            icon: FolderOpen,
+            run: () =>
+              requestProjectReplacement(projectFiles.handleImportScenePreset),
+          },
+          {
+            id: "project.export-scene-preset",
+            title: t("toolbar.item.exportScenePreset"),
+            group: t("toolbar.commandGroup.project"),
+            keywords: "3d cesium scene preset export",
+            icon: Save,
+            run: () => void projectFiles.handleExportScenePreset(),
+          },
+        ]
+      : []),
     {
       id: "project.open-file",
       title: t("toolbar.command.projectOpenFile"),
@@ -1141,7 +1193,17 @@ export function TopToolbar({
         <ProjectMenu
           chrome={chrome}
           collaborationEnabled={collaboration.enabled}
-          onNewProject={() => setNewProjectDialogOpen(true)}
+          onNewProject={() => {
+            setPendingProjectReplacement(null);
+            setNewProjectDialogOpen(true);
+          }}
+          onNewBlank3dScene={() =>
+            requestProjectReplacement(projectFiles.handleNewBlank3dScene)
+          }
+          onImportScenePreset={() =>
+            requestProjectReplacement(projectFiles.handleImportScenePreset)
+          }
+          onExportScenePreset={() => void projectFiles.handleExportScenePreset()}
           onOpenFromFile={() => void projectFiles.handleOpenFromFile()}
           onOpenFromUrl={() => projectFiles.setProjectUrlDialogOpen(true)}
           onOpenGallery={() => setGalleryDialogOpen(true)}
@@ -1203,9 +1265,21 @@ export function TopToolbar({
       )}
       <NewProjectDialog
         open={newProjectDialogOpen}
-        onOpenChange={setNewProjectDialogOpen}
+        onOpenChange={(open) => {
+          setNewProjectDialogOpen(open);
+          if (!open) setPendingProjectReplacement(null);
+        }}
         onSaveCurrentProject={projectFiles.handleSave}
         onProjectCreated={resetRuntimeControlsForNewProject}
+        onDiscardConfirmed={
+          pendingProjectReplacement
+            ? () => {
+                const action = pendingProjectReplacement;
+                setPendingProjectReplacement(null);
+                action();
+              }
+            : undefined
+        }
       />
       {isMenuVisible(uiProfile, "addData") && (
         <AddDataMenu

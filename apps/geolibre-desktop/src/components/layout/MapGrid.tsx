@@ -1,4 +1,4 @@
-import { useAppStore } from "@geolibre/core";
+import { useAppStore, type MapWorkspaceTab } from "@geolibre/core";
 import {
   CesiumCanvas,
   isCesiumSupportedLayerType,
@@ -14,12 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@geolibre/ui";
 import { Globe, Layers, Map as MapIcon, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  isGeoIm3dProductMapWorkspaceEnabled,
-  PRODUCT_PROFILE,
-} from "../../config/product-profile";
+import { isGeoIm3dProductMapWorkspaceEnabled } from "../../config/product-profile";
 import { useCredentialStore } from "../../hooks/useCredentials";
 
 /**
@@ -130,8 +127,6 @@ export function MapGrid({ children }: MapGridProps) {
   );
 }
 
-type MapWorkspaceTab = "maplibre" | "cesium";
-
 function TabbedMapWorkspace({
   children,
   cesiumToken,
@@ -140,9 +135,8 @@ function TabbedMapWorkspace({
   cesiumToken?: string;
 }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<MapWorkspaceTab>(
-    PRODUCT_PROFILE.defaultMapTab
-  );
+  const activeTab = useAppStore((s) => s.ui.mapWorkspaceTab);
+  const setActiveTab = useAppStore((s) => s.setMapWorkspaceTab);
   const tabs: Array<{
     id: MapWorkspaceTab;
     label: string;

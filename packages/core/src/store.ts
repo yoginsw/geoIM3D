@@ -71,6 +71,9 @@ export type ConversionToolKind =
   | "raster-to-pmtiles"
   | "raster-to-cog";
 
+/** Ephemeral primary map workspace; deliberately excluded from project files. */
+export type MapWorkspaceTab = "maplibre" | "cesium";
+
 /**
  * Identifiers of the vector processing tools. Kept in sync by hand with the
  * `id` fields of `VECTOR_TOOLS` in `@geolibre/processing` (`vector-tools.ts`);
@@ -214,6 +217,7 @@ export interface AppState {
   // history (partialize never lists it).
   collaboration: CollaborationState;
   ui: {
+    mapWorkspaceTab: MapWorkspaceTab;
     processingOpen: boolean;
     /**
      * Tool id to preselect when the Whitebox toolbox dialog opens, set when the
@@ -259,6 +263,7 @@ export interface AppState {
   };
 
   setPointerCoords: (coords: [number, number] | null) => void;
+  setMapWorkspaceTab: (tab: MapWorkspaceTab) => void;
   setCollaboration: (patch: Partial<CollaborationState>) => void;
   updateCollaborationPresence: (
     clientId: string,
@@ -395,7 +400,12 @@ export interface AppState {
   loadProject: (
     project: GeoLibreProject,
     path?: string | null,
-    options?: { rememberRecent?: boolean; presenting?: boolean }
+    options?: {
+      rememberRecent?: boolean;
+      presenting?: boolean;
+      markDirty?: boolean;
+      workspaceTab?: MapWorkspaceTab;
+    }
   ) => void;
   setProjectPath: (path: string | null) => void;
   setProjectName: (name: string) => void;
@@ -685,6 +695,7 @@ export const useAppStore = create<AppState>()(
       attributeFilter: "",
       collaboration: DEFAULT_COLLABORATION_STATE,
       ui: {
+        mapWorkspaceTab: "cesium",
         processingOpen: false,
         processingInitialTool: null,
         conversionOpen: null,
@@ -714,6 +725,12 @@ export const useAppStore = create<AppState>()(
       },
 
       setPointerCoords: (coords) => set({ pointerCoords: coords }),
+      setMapWorkspaceTab: (mapWorkspaceTab) =>
+        set((s) =>
+          s.ui.mapWorkspaceTab === mapWorkspaceTab
+            ? s
+            : { ui: { ...s.ui, mapWorkspaceTab } },
+        ),
       setCollaboration: (patch) =>
         set((s) => ({ collaboration: { ...s.collaboration, ...patch } })),
       // Add or remove a single remote participant's presence without rebuilding
@@ -1512,6 +1529,7 @@ export const useAppStore = create<AppState>()(
           // Don't carry an active story presentation into a different project.
           ui: {
             ...s.ui,
+            mapWorkspaceTab: "cesium",
             storymapPresenting: false,
             storymapReturnToEditor: false,
             storymapPanelOpen: false,
@@ -1533,7 +1551,7 @@ export const useAppStore = create<AppState>()(
           ...applied,
           projectPath: path,
           projectGeneration: s.projectGeneration + 1,
-          isDirty: false,
+          isDirty: options.markDirty === true,
           selectedLayerId: applied.layers[0]?.id ?? null,
           selectedFeatureId: null,
           selectedFeatureIds: [],
@@ -1542,6 +1560,7 @@ export const useAppStore = create<AppState>()(
           // carried over from the previous project.
           ui: {
             ...s.ui,
+            mapWorkspaceTab: options.workspaceTab ?? "cesium",
             storymapPresenting: presentStory,
             // A bundled story auto-presents for viewing, so exiting it should
             // not pop open the editor (#918).

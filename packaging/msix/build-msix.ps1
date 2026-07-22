@@ -86,6 +86,7 @@ if (-not $binaryNameMatch.Success) {
 
 $binaryName = $binaryNameMatch.Groups[1].Value
 $binaryPath = Join-Path $targetDir "$binaryName.exe"
+$packageExecutableName = "$productName.exe"
 if (-not (Test-Path $binaryPath)) {
   throw "Could not find $binaryPath. Run a Windows Tauri release build before MSIX packaging."
 }
@@ -100,9 +101,23 @@ $packagePath = Join-Path $bundleDir $packageName
 Remove-Item -Recurse -Force $stagingDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stagingDir, $assetsDir, $backendPackageDir, $bundleDir | Out-Null
 
-Copy-Item -Force $binaryPath (Join-Path $stagingDir "$binaryName.exe")
+Copy-Item -Force $binaryPath (Join-Path $stagingDir $packageExecutableName)
+Copy-Item -Force (Join-Path $repoRoot "THIRD_PARTY_NOTICES.md") $stagingDir
+Copy-Item -Force (Join-Path $repoRoot "LICENSE") $stagingDir
+Copy-Item -Recurse -Force (Join-Path $repoRoot "licenses") (Join-Path $stagingDir "licenses")
 Copy-Item -Force (Join-Path $targetDir "*.dll") $stagingDir -ErrorAction SilentlyContinue
-Copy-Item -Recurse -Force (Join-Path $backendDir "*") $backendPackageDir
+# Exclude local virtualenv/build artifacts before recursion. WSL venv symlinks
+# such as `.venv/lib64` cannot be copied by Windows PowerShell.
+Get-ChildItem -Force -Path $backendDir |
+  Where-Object {
+    $_.Name -notin @("venv", ".venv", "env", "dist", "build", ".pytest_cache", ".mypy_cache", ".ruff_cache", "htmlcov") -and
+    $_.Name -notlike ".env*" -and
+    $_.Name -notlike "*.egg-info" -and
+    $_.Name -ne ".coverage" -and
+    $_.Name -ne "coverage.xml" -and
+    $_.Name -ne "AGENTS.md"
+  } |
+  Copy-Item -Recurse -Force -Destination $backendPackageDir
 Get-ChildItem -Recurse -Path $backendPackageDir -Include "__pycache__", "*.pyc", "*.pyo", "tests", "test_*.py" |
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 $devArtifacts = @(
@@ -145,7 +160,7 @@ $manifest = @"
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Applications>
-    <Application Id="geoIM3D" Executable="$(ConvertTo-XmlText "$binaryName.exe")" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="geoIM3D" Executable="$(ConvertTo-XmlText $packageExecutableName)" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="$(ConvertTo-XmlText $productName)"
         Description="$(ConvertTo-XmlText $description)"

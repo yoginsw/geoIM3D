@@ -4,6 +4,7 @@ import type { GeoLibreLayer } from "../packages/core/src/types";
 import {
   CesiumLayerSync,
   isCesiumSupportedLayerType,
+  isCesiumScenePresetBlockedLayer,
 } from "../packages/map/src/cesium-layer-sync";
 
 // Verifies the store → Cesium reconciler against a fake Cesium namespace + viewer
@@ -26,6 +27,8 @@ function makeFakes() {
     wmsProviders: [] as Record<string, unknown>[],
     geojsonLoads: [] as { data: unknown; options: Record<string, unknown> }[],
     tilesetUrls: [] as unknown[],
+    modelUrls: [] as unknown[],
+    modelOptions: [] as Record<string, unknown>[],
   };
 
   const viewer = {
@@ -121,6 +124,19 @@ function makeFakes() {
         });
       },
     },
+    Model: {
+      fromGltfAsync: (options: { url: unknown; modelMatrix?: unknown }) => {
+        const { url } = options;
+        calls.modelUrls.push(url);
+        calls.modelOptions.push(options);
+        return Promise.resolve({
+          kind: "model",
+          show: true,
+          color: null,
+          destroy: () => {},
+        });
+      },
+    },
     Color: {
       fromCssColorString: (css: string) => ({
         css,
@@ -130,6 +146,35 @@ function makeFakes() {
     },
     Resource: class {
       constructor(public opts: Record<string, unknown>) {}
+    },
+    Math: { toRadians: (degrees: number) => degrees * Math.PI / 180 },
+    Cartesian3: {
+      fromDegrees: (longitude: number, latitude: number, altitude: number) => ({
+        longitude,
+        latitude,
+        altitude,
+      }),
+    },
+    HeadingPitchRoll: class {
+      constructor(
+        public heading: number,
+        public pitch: number,
+        public roll: number,
+      ) {}
+    },
+    Transforms: {
+      headingPitchRollToFixedFrame: (origin: unknown, hpr: unknown) => ({
+        kind: "fixed-frame",
+        origin,
+        hpr,
+      }),
+    },
+    Matrix4: {
+      multiplyByUniformScale: (
+        matrix: Record<string, unknown>,
+        scale: number,
+        result: Record<string, unknown>,
+      ) => Object.assign(result, matrix, { scale }),
     },
   };
 
@@ -370,6 +415,81 @@ describe("CesiumLayerSync", () => {
     assert.equal(f.calls.primitivesAdded.length, 1);
   });
 
+  it("renders an active scene-preset GLB as a Cesium model", async () => {
+    const sync = newSync(f);
+    const url = "http://geoim3d-preset-resource.localhost/session/resource";
+    sync.sync([
+      mkLayer({
+        id: "model",
+        type: "gaussian-splat",
+        source: { assetType: "model", url, scenePresetStatus: "active" },
+        opacity: 0.4,
+        visible: false,
+      }),
+    ]);
+    await f.flush();
+    assert.deepEqual(f.calls.modelUrls, [url]);
+    assert.equal(f.calls.primitivesAdded.length, 1);
+    const model = f.calls.primitivesAdded[0] as {
+      show: boolean;
+      color: { alpha: number };
+    };
+    assert.equal(model.show, false);
+    assert.equal(model.color.alpha, 0.4);
+    assert.deepEqual(sync.getLayerRuntimeState("model"), { status: "ready" });
+  });
+
+  it("places a scene-preset GLB in a fixed frame and rebuilds when placement changes", async () => {
+    const sync = newSync(f);
+    const base = mkLayer({
+      id: "placed-model",
+      type: "gaussian-splat",
+      source: {
+        assetType: "model",
+        url: "http://geoim3d-preset-resource.localhost/model",
+        scenePresetStatus: "active",
+        scenePresetPlacement: {
+          longitude: -100,
+          latitude: 40,
+          altitudeMeters: 500,
+          bearingDegrees: 30,
+          scale: 250,
+        },
+      },
+    });
+    sync.sync([base]);
+    await f.flush();
+    const matrix = f.calls.modelOptions[0]?.modelMatrix as {
+      kind: string;
+      origin: unknown;
+      hpr: { heading: number; pitch: number; roll: number };
+      scale: number;
+    };
+    assert.equal(matrix.kind, "fixed-frame");
+    assert.deepEqual(matrix.origin, {
+      longitude: -100,
+      latitude: 40,
+      altitude: 500,
+    });
+    assert.equal(matrix.hpr.heading, Math.PI / 6);
+    assert.equal(matrix.hpr.pitch, 0);
+    assert.equal(matrix.hpr.roll, 0);
+    assert.equal(matrix.scale, 250);
+
+    sync.sync([{
+      ...base,
+      source: {
+        ...base.source,
+        scenePresetPlacement: {
+          ...(base.source.scenePresetPlacement as Record<string, number>),
+          bearingDegrees: 45,
+        },
+      },
+    }]);
+    await f.flush();
+    assert.equal(f.calls.modelOptions.length, 2, "placement changes rebuild the model");
+  });
+
   it("keeps the Google Maps API key header on a Google Photorealistic tileset", async () => {
     const sync = newSync(f);
     sync.sync([
@@ -430,6 +550,116 @@ describe("CesiumLayerSync", () => {
     ]);
     assert.equal(f.calls.imageryAdded.length, 3, "minzoom change rebuilds");
     assert.equal(f.calls.urlProviders[2].minimumLevel, 5);
+  });
+
+  it("blocks unresolved and errored scene-preset layers without creating Cesium resources", async () => {
+    const sync = newSync(f);
+    const unresolved = mkLayer({
+      id: "unresolved",
+      type: "3d-tiles",
+      source: {
+        reference: "https://example.invalid/scene/root.json",
+        referenceType: "https",
+        format: "3d-tiles",
+        scenePresetStatus: "unresolved",
+      },
+      metadata: {
+        scenePresetExternal: true,
+        scenePresetStatus: "unresolved",
+        scenePresetError: "SCENE_PRESET_REMOTE_UNAVAILABLE",
+      },
+    });
+    const errored = mkLayer({
+      id: "errored",
+      type: "3d-tiles",
+      source: { reference: "C:\\private\\scene\\root.json", scenePresetStatus: "error" },
+      metadata: { scenePresetStatus: "error", scenePresetError: "SCENE_PRESET_INTERNAL" },
+    });
+    const valid = mkLayer({
+      id: "valid",
+      type: "xyz",
+      source: { tiles: ["https://tiles/{z}/{x}/{y}.png"] },
+    });
+
+    assert.equal(isCesiumScenePresetBlockedLayer(unresolved), true);
+    assert.equal(isCesiumScenePresetBlockedLayer(errored), true);
+    sync.sync([unresolved, errored, valid]);
+    await f.flush();
+
+    assert.equal(f.calls.tilesetUrls.length, 0);
+    assert.equal(f.calls.primitivesAdded.length, 0);
+    assert.equal(f.calls.urlProviders.length, 1, "Project sync continues for valid layers");
+    assert.deepEqual(sync.getLayerRuntimeState("unresolved"), {
+      status: "placeholder",
+      error: "SCENE_PRESET_REMOTE_UNAVAILABLE",
+    });
+    assert.deepEqual(sync.getLayerRuntimeState("errored"), {
+      status: "error",
+      error: "SCENE_PRESET_INTERNAL",
+    });
+  });
+
+  it("cancels an in-flight materialization when the layer becomes unresolved", async () => {
+    const sync = newSync(f);
+    const loading = mkLayer({
+      id: "pending-scene",
+      type: "3d-tiles",
+      source: { url: "https://tiles/pending.json" },
+    });
+    sync.sync([loading]);
+    assert.equal(f.calls.tilesetUrls.length, 1);
+    assert.equal(f.calls.primitivesAdded.length, 0);
+
+    sync.sync([
+      {
+        ...loading,
+        source: {
+          reference: "models/pending.json",
+          referenceType: "relative",
+          scenePresetStatus: "unresolved",
+        },
+        metadata: {
+          scenePresetStatus: "unresolved",
+          scenePresetError: "SCENE_PRESET_REMOTE_UNAVAILABLE",
+        },
+      },
+    ]);
+    await f.flush();
+    assert.equal(
+      f.calls.primitivesAdded.length,
+      0,
+      "late materialization must not attach after placeholder publish",
+    );
+    assert.deepEqual(sync.getLayerRuntimeState("pending-scene"), {
+      status: "placeholder",
+      error: "SCENE_PRESET_REMOTE_UNAVAILABLE",
+    });
+  });
+
+  it("does not retain a renderer handle when a materialized layer becomes unresolved", async () => {
+    const sync = newSync(f);
+    const base = mkLayer({
+      id: "scene",
+      type: "3d-tiles",
+      source: { url: "https://tiles/root.json" },
+    });
+    sync.sync([base]);
+    await f.flush();
+    assert.equal(f.calls.primitivesAdded.length, 1);
+
+    sync.sync([
+      {
+        ...base,
+        source: { reference: "scene.glb", referenceType: "path", scenePresetStatus: "unresolved" },
+        metadata: { scenePresetStatus: "unresolved", scenePresetError: "SCENE_PRESET_REMOTE_UNAVAILABLE" },
+      },
+    ]);
+    assert.equal(f.calls.primitivesRemoved.length, 1);
+    assert.equal(f.calls.tilesetUrls.length, 1, "blocked transition must not fetch again");
+    assert.deepEqual(sync.getLayerRuntimeState("scene"), {
+      status: "placeholder",
+      error: "SCENE_PRESET_REMOTE_UNAVAILABLE",
+    });
   });
 
   it("removes a layer's handle when it leaves the layer list", () => {

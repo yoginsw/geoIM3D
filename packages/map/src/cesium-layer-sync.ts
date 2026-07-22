@@ -2,7 +2,13 @@ import {
   resolveThreeDTilesRequestHeaders,
   type GeoLibreLayer,
 } from "@geolibre/core";
-import type { Cesium3DTileset, DataSource, ImageryLayer, Viewer } from "cesium";
+import type {
+  Cesium3DTileset,
+  DataSource,
+  ImageryLayer,
+  Model,
+  Viewer,
+} from "cesium";
 import { readMapGoogleMapsApiKey } from "./private-credential-runtime";
 
 // Reconciles the store's `GeoLibreLayer[]` onto a Cesium globe, mirroring what
@@ -21,18 +27,57 @@ type CesiumNs = typeof import("cesium");
 /** Layer kinds this pass renders on the globe. */
 const IMAGERY_TYPES = new Set(["raster", "xyz", "wms", "wmts"]);
 
-type EntryKind = "imagery" | "geojson" | "3dtiles";
+type EntryKind = "imagery" | "geojson" | "3dtiles" | "model";
+
+export type CesiumLayerRuntimeState =
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "placeholder"; error: string }
+  | { status: "error"; error: string };
 
 interface LayerEntry {
   kind: EntryKind;
   /** The layer as last applied, for change detection. */
   layer: GeoLibreLayer;
   /** The Cesium object, or null while an async create is in flight. */
-  handle: ImageryLayer | DataSource | Cesium3DTileset | null;
+  handle: ImageryLayer | DataSource | Cesium3DTileset | Model | null;
   /** Set when the entry is removed mid-load so the resolved handle is discarded. */
   cancelled: boolean;
+  /** Stable runtime state for the layer panel/placeholder seam. */
+  runtimeState: CesiumLayerRuntimeState;
   /** Last opacity key applied in place to a geojson entry (skips redundant restyles). */
   appliedAlpha?: string;
+}
+
+const SCENE_PRESET_BLOCKED_STATUSES = new Set(["unresolved", "error"]);
+
+function scenePresetRuntimeState(
+  layer: GeoLibreLayer
+): Extract<CesiumLayerRuntimeState, { status: "placeholder" | "error" }> | undefined {
+  const sourceStatus = layer.source.scenePresetStatus;
+  const metadataStatus = layer.metadata.scenePresetStatus;
+  const status =
+    typeof sourceStatus === "string"
+      ? sourceStatus
+      : typeof metadataStatus === "string"
+        ? metadataStatus
+        : undefined;
+  if (!status || !SCENE_PRESET_BLOCKED_STATUSES.has(status)) return undefined;
+
+  const error =
+    (typeof layer.metadata.scenePresetError === "string" &&
+      layer.metadata.scenePresetError) ||
+    (status === "unresolved"
+      ? "SCENE_PRESET_REMOTE_UNAVAILABLE"
+      : "SCENE_PRESET_ERROR");
+  return status === "unresolved"
+    ? { status: "placeholder", error }
+    : { status: "error", error };
+}
+
+/** True when a scene-preset layer is intentionally not materialized for Cesium. */
+export function isCesiumScenePresetBlockedLayer(layer: GeoLibreLayer): boolean {
+  return scenePresetRuntimeState(layer) !== undefined;
 }
 
 function str(value: unknown): string | undefined {
@@ -46,6 +91,35 @@ function firstTile(layer: GeoLibreLayer): string | undefined {
 
 function tilesetUrl(layer: GeoLibreLayer): string | undefined {
   return str(layer.source.url) ?? str(layer.sourcePath);
+}
+
+interface ScenePresetPlacement {
+  longitude: number;
+  latitude: number;
+  altitudeMeters: number;
+  bearingDegrees: number;
+  scale: number;
+}
+
+function scenePresetPlacement(layer: GeoLibreLayer): ScenePresetPlacement | undefined {
+  const value = layer.source.scenePresetPlacement;
+  if (typeof value !== "object" || value === null) return undefined;
+  const placement = value as Record<string, unknown>;
+  const fields = [
+    placement.longitude,
+    placement.latitude,
+    placement.altitudeMeters,
+    placement.bearingDegrees,
+    placement.scale,
+  ];
+  if (!fields.every((field) => typeof field === "number" && Number.isFinite(field))) {
+    return undefined;
+  }
+  return value as ScenePresetPlacement;
+}
+
+function placementSignature(layer: GeoLibreLayer): string {
+  return JSON.stringify(scenePresetPlacement(layer) ?? null);
 }
 
 function preservesGeoJsonAltitude(layer: GeoLibreLayer): boolean {
@@ -67,6 +141,7 @@ export function isCesiumSupportedLayerType(layer: GeoLibreLayer): boolean {
   return (
     layer.type === "geojson" ||
     layer.type === "3d-tiles" ||
+    (layer.type === "gaussian-splat" && layer.source.assetType === "model") ||
     IMAGERY_TYPES.has(layer.type)
   );
 }
@@ -76,6 +151,7 @@ function isSupported(layer: GeoLibreLayer): boolean {
   if (!isCesiumSupportedLayerType(layer)) return false;
   if (layer.type === "geojson") return Boolean(layer.geojson?.features?.length);
   if (layer.type === "3d-tiles") return Boolean(tilesetUrl(layer));
+  if (layer.type === "gaussian-splat") return Boolean(tilesetUrl(layer));
   // Mirror createImagery's real capability: WMS builds from source.url, but
   // xyz/raster/wmts need a tile template — a url alone would render nothing.
   return layer.type === "wms"
@@ -86,6 +162,7 @@ function isSupported(layer: GeoLibreLayer): boolean {
 function entryKind(layer: GeoLibreLayer): EntryKind {
   if (layer.type === "geojson") return "geojson";
   if (layer.type === "3d-tiles") return "3dtiles";
+  if (layer.type === "gaussian-splat") return "model";
   return "imagery";
 }
 
@@ -137,11 +214,13 @@ function needsRebuild(prev: GeoLibreLayer, next: GeoLibreLayer): boolean {
         prev.source.transparent !== next.source.transparent
       );
     case "3dtiles":
+    case "model":
       return (
         tilesetUrl(prev) !== tilesetUrl(next) ||
         JSON.stringify(prev.source.requestHeaders ?? null) !==
           JSON.stringify(next.source.requestHeaders ?? null) ||
-        prev.source.altitudeOffset !== next.source.altitudeOffset
+        prev.source.altitudeOffset !== next.source.altitudeOffset ||
+        placementSignature(prev) !== placementSignature(next)
       );
   }
 }
@@ -171,6 +250,19 @@ export class CesiumLayerSync {
     // is unchanged.
     let imageryRebuilt = false;
     for (const layer of layers) {
+      const blockedState = scenePresetRuntimeState(layer);
+      if (blockedState) {
+        const existing = this.entries.get(layer.id);
+        if (existing) {
+          this.destroyEntry(existing);
+          this.entries.delete(layer.id);
+        }
+        // Use a fresh entry. Reusing the old entry would reset `cancelled` and
+        // allow an in-flight async loader to attach after placeholder publish.
+        this.createEntry(layer, blockedState);
+        continue;
+      }
+
       if (!isSupported(layer)) {
         // A previously-supported layer that became unrenderable (e.g. its data
         // was cleared) is torn down.
@@ -206,7 +298,10 @@ export class CesiumLayerSync {
     // an opacity drag), and each raiseToTop is O(n), so reordering every time
     // would be a needless O(n²) on that hot path.
     const imageryOrder = layers
-      .filter((l) => this.entries.get(l.id)?.kind === "imagery")
+      .filter((l) => {
+        const entry = this.entries.get(l.id);
+        return entry?.kind === "imagery" && entry.handle !== null;
+      })
       .map((l) => l.id)
       .join("\n");
     if (imageryRebuilt || imageryOrder !== this.lastImageryOrder) {
@@ -220,18 +315,34 @@ export class CesiumLayerSync {
     }
   }
 
+  /** Stable state for the layer-panel/placeholder runtime seam. */
+  getLayerRuntimeState(id: string): CesiumLayerRuntimeState | undefined {
+    return this.entries.get(id)?.runtimeState;
+  }
+
   destroy(): void {
     for (const entry of this.entries.values()) this.destroyEntry(entry);
     this.entries.clear();
   }
 
-  private createEntry(layer: GeoLibreLayer): void {
+  private createEntry(
+    layer: GeoLibreLayer,
+    blockedState = scenePresetRuntimeState(layer),
+  ): void {
     const kind = entryKind(layer);
-    const entry: LayerEntry = { kind, layer, handle: null, cancelled: false };
+    const entry: LayerEntry = {
+      kind,
+      layer,
+      handle: null,
+      cancelled: false,
+      runtimeState: blockedState ?? { status: "loading" },
+    };
     this.entries.set(layer.id, entry);
+    if (blockedState) return;
     if (kind === "imagery") this.createImagery(entry);
     else if (kind === "geojson") void this.createGeoJson(entry);
-    else void this.createTileset(entry);
+    else if (kind === "3dtiles") void this.createTileset(entry);
+    else void this.createModel(entry);
   }
 
   private createImagery(entry: LayerEntry): void {
@@ -270,6 +381,7 @@ export class CesiumLayerSync {
       // layers), so store order maps to Cesium's bottom-to-top stacking.
       const imageryLayer = viewer.imageryLayers.addImageryProvider(provider);
       entry.handle = imageryLayer;
+      entry.runtimeState = { status: "ready" };
       this.applyAppearance(entry);
     } catch {
       // A provider that throws synchronously (e.g. malformed WMS params) should
@@ -307,11 +419,13 @@ export class CesiumLayerSync {
         return;
       }
       entry.handle = dataSource;
+      entry.runtimeState = { status: "ready" };
       // applyAppearance → applyGeoJsonStyle fades every entity kind (fill,
       // stroke, marker) by the layer opacity right after load, so points/lines
       // match the 2D map instead of rendering fully opaque.
       this.applyAppearance(entry);
     } catch {
+      entry.runtimeState = { status: "error", error: "CESIUM_GEOJSON_LOAD_FAILED" };
       // A malformed FeatureCollection should not break the whole sync.
     }
   }
@@ -339,13 +453,71 @@ export class CesiumLayerSync {
         tileset.destroy();
         return;
       }
+      const placementMatrix = this.createPlacementMatrix(layer);
+      if (placementMatrix) tileset.modelMatrix = placementMatrix;
       viewer.scene.primitives.add(tileset);
-      this.applyTilesetAltitude(tileset, Number(layer.source.altitudeOffset));
+      if (!placementMatrix) {
+        this.applyTilesetAltitude(tileset, Number(layer.source.altitudeOffset));
+      }
       entry.handle = tileset;
+      entry.runtimeState = { status: "ready" };
       this.applyAppearance(entry);
     } catch {
+      entry.runtimeState = { status: "error", error: "CESIUM_TILESET_LOAD_FAILED" };
       // A tileset that fails to load should not break the whole sync.
     }
+  }
+
+  private async createModel(entry: LayerEntry): Promise<void> {
+    const { Cesium, viewer } = this;
+    const url = tilesetUrl(entry.layer);
+    if (!url) return;
+    try {
+      const modelMatrix = this.createPlacementMatrix(entry.layer);
+      const model = await Cesium.Model.fromGltfAsync({
+        url,
+        ...(modelMatrix ? { modelMatrix } : {}),
+      });
+      if (entry.cancelled) {
+        model.destroy();
+        return;
+      }
+      viewer.scene.primitives.add(model);
+      if (entry.cancelled) {
+        viewer.scene.primitives.remove(model);
+        return;
+      }
+      entry.handle = model;
+      entry.runtimeState = { status: "ready" };
+      this.applyAppearance(entry);
+    } catch {
+      entry.runtimeState = {
+        status: "error",
+        error: "CESIUM_MODEL_LOAD_FAILED",
+      };
+    }
+  }
+
+  private createPlacementMatrix(layer: GeoLibreLayer) {
+    const placement = scenePresetPlacement(layer);
+    if (!placement) return undefined;
+    const { Cesium } = this;
+    const origin = Cesium.Cartesian3.fromDegrees(
+      placement.longitude,
+      placement.latitude,
+      placement.altitudeMeters
+    );
+    const hpr = new Cesium.HeadingPitchRoll(
+      Cesium.Math.toRadians(placement.bearingDegrees),
+      0,
+      0
+    );
+    const matrix = Cesium.Transforms.headingPitchRollToFixedFrame(origin, hpr);
+    return Cesium.Matrix4.multiplyByUniformScale(
+      matrix,
+      placement.scale,
+      matrix
+    );
   }
 
   /** Raise/lower a tileset by an altitude offset (metres) at its centre. */
@@ -383,8 +555,12 @@ export class CesiumLayerSync {
     } else if (entry.kind === "geojson") {
       (handle as DataSource).show = layer.visible;
       this.applyGeoJsonStyle(entry);
-    } else {
+    } else if (entry.kind === "3dtiles") {
       (handle as Cesium3DTileset).show = layer.visible;
+    } else {
+      const model = handle as Model;
+      model.show = layer.visible;
+      model.color = this.Cesium.Color.WHITE.withAlpha(layer.opacity);
     }
   }
 

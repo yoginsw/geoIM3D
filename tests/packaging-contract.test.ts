@@ -186,10 +186,23 @@ describe("geoIM3D Phase 6 packaging contract", () => {
     assert.match(portable, /\$productName = \[string\] \$config\.productName/);
     assert.match(portable, /\$zipName = "\$productName-\$version-\$\{Architecture\}-portable\.zip"/);
     assert.match(portable, /geoIM3D/);
+    assert.match(portable, /\$portableExecutableName = "\$productName\.exe"/);
+    assert.match(portable, /THIRD_PARTY_NOTICES\.md/);
+    assert.match(portable, /Join-Path \$repoRoot "LICENSE"/);
+    assert.match(portable, /Join-Path \$repoRoot "licenses"/);
+    assert.match(portable, /Get-ChildItem -Force -Path \$backendDir/);
     assert.match(portable, /\.pytest_cache/);
     assert.match(portable, /AGENTS\.md/);
     assert.match(portable, /CARGO_TARGET_DIR/);
     assert.doesNotMatch(portable, /GeoLibre Desktop/);
+
+    const tauriConfig = JSON.parse(
+      read("apps/geolibre-desktop/src-tauri/tauri.conf.json"),
+    ) as { bundle: { resources: string[] } };
+    assert.ok(tauriConfig.bundle.resources.includes("../../../LICENSE"));
+    assert.ok(
+      tauriConfig.bundle.resources.includes("../../../THIRD_PARTY_NOTICES.md"),
+    );
 
     const msix = read("packaging/msix/build-msix.ps1");
     assert.match(msix, /\[string\] \$PublisherDisplayName = "JBT"/);
@@ -204,6 +217,10 @@ describe("geoIM3D Phase 6 packaging contract", () => {
       false,
     );
     assert.match(msix, /\[string\] \$Language = "ko-KR"/);
+    assert.match(msix, /\$packageExecutableName = "\$productName\.exe"/);
+    assert.match(msix, /THIRD_PARTY_NOTICES\.md/);
+    assert.match(msix, /Join-Path \$repoRoot "LICENSE"/);
+    assert.match(msix, /Get-ChildItem -Force -Path \$backendDir/);
     assert.doesNotMatch(msix, /windows\.fileTypeAssociation|uap:FileType/);
     assert.match(msix, /\.pytest_cache/);
     assert.match(msix, /AGENTS\.md/);

@@ -1840,6 +1840,9 @@
     },
     "item": {
       "newEllipsis": "New...",
+      "newBlank3dScene": "New Blank 3D Scene",
+      "blank3dSceneName": "Blank 3D Scene",
+      "importScenePreset": "Import 3D Scene Preset...",
       "openFrom": "Open From",
       "fileEllipsis": "File...",
       "urlEllipsis": "URL...",
@@ -1849,6 +1852,7 @@
       "removeFromRecent": "Remove {{name}} from recent projects",
       "clearRecentProjects": "Clear Recent Projects",
       "saveAsEllipsis": "Save As...",
+      "exportScenePreset": "Export 3D Scene Preset...",
       "shareEllipsis": "Share...",
       "exportHtmlEllipsis": "Export as HTML...",
       "htmlFile": "HTML",

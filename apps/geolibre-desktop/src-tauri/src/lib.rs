@@ -4,6 +4,9 @@ mod earthwork_file;
 #[cfg(feature = "native-duckdb")]
 mod native_duckdb;
 mod project_file;
+mod resource_session;
+mod scene_preset_file;
+mod scene_preset_remote;
 #[cfg(target_os = "windows")]
 mod terrain_safety_file;
 #[cfg(target_os = "windows")]
@@ -46,7 +49,7 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::Manager;
@@ -194,8 +197,13 @@ pub fn run() {
     configure_linux_webkit();
 
     let startup_project_path = select_startup_project_path(env::args_os().skip(1));
+    let resource_registry = Arc::new(resource_session::ResourceSessionRegistry::default());
+    let protocol_registry = Arc::clone(&resource_registry);
 
     tauri::Builder::default()
+        .register_uri_scheme_protocol("geoim3d-preset-resource", move |_context, request| {
+            resource_session::protocol_response(&protocol_registry, &request)
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         // Must init after the fs plugin: it restores previously-granted fs
@@ -227,6 +235,8 @@ pub fn run() {
             token: Mutex::new(None),
             startup: Mutex::new(()),
         })
+        .manage(scene_preset_file::ScenePresetTransportState::default())
+        .manage(resource_registry)
         .manage(vworld::VWorldState::default())
         .invoke_handler(tauri::generate_handler![
             close_oauth_popups,
@@ -249,6 +259,11 @@ pub fn run() {
             read_env_vars,
             read_local_file,
             read_project_file,
+            scene_preset_file::pick_and_read_scene_preset,
+            scene_preset_file::pick_scene_preset_save_target,
+            scene_preset_file::write_scene_preset,
+            scene_preset_file::close_scene_preset_session,
+            resource_session::prepare_relative_scene_resource,
             take_startup_project_path,
             read_shapefile_siblings,
             resolve_url_redirect,
@@ -2960,6 +2975,20 @@ fn create_main_window(app: &mut tauri::App) -> tauri::Result<()> {
         .expect("GeoLibre Desktop requires a main window config");
 
     let builder = tauri::WebviewWindowBuilder::from_config(app, &window_config)?;
+
+    // Runtime smoke only: expose a fixed local CDP port from Windows debug builds.
+    // Release builds do not compile this branch, and arbitrary browser arguments
+    // are never accepted from the environment.
+    #[cfg(all(windows, debug_assertions))]
+    let builder = if env::var("GEOIM3D_ENABLE_CDP").as_deref() == Ok("1") {
+        builder
+            .additional_browser_args("--remote-debugging-port=9227")
+            .data_directory(
+                env::temp_dir().join(format!("geoim3d-cdp-webview2-{}", std::process::id())),
+            )
+    } else {
+        builder
+    };
 
     // Only desktop opens OAuth flows in child windows; on mobile they navigate
     // in-page (or via the system browser), so skip the new-window handler.

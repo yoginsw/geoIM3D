@@ -1,0 +1,57 @@
+{
+  "schema": "geoim3d-phase7e-evidence-manifest-v1",
+  "sourceState": "uncommitted-working-tree",
+  "captures": [
+    {
+      "file": "phase7e-runtime-current-security-fixed-clean.png",
+      "sha256": "5593b683c2fa8102bf62d52196cbcb0f8794babc113e4be60934f9e8e8c45834",
+      "classification": "runtime-smoke-evidence",
+      "captureType": "Windows-Tauri-WebView2-debug-CDP",
+      "proves": [
+        "actual Project menu to native picker Preset import on the security-remediated source",
+        "visible self-contained GLB model in the Cesium workspace",
+        "clean fresh-run diagnostics count of zero"
+      ],
+      "doesNotProve": [
+        "immutable exact-commit identity",
+        "release installer runtime",
+        "owner-deferred scenario-based memory thresholds",
+        "offline or no-egress operation"
+      ]
+    },
+    {
+      "file": "phase7e-runtime-current-security-fixed.png",
+      "sha256": "f99b512b5e8f1d0d5bd86d3bcb9fd89c9ceaee0110a17e5134b055b413b05afc",
+      "classification": "diagnostic-non-acceptance",
+      "reason": "same security-remediated debug runtime after deliberate malformed-range and closed-session rejection probes; Diagnostics: 2 is expected test residue"
+    },
+    {
+      "file": "phase7e-runtime-placement-tauri-v2.png",
+      "sha256": "86cd2a82875d10381754415b6dbc4026a54ba11f83c2e6af11195c3c85508221",
+      "classification": "acceptance-candidate",
+      "captureType": "Windows-Tauri-WebView2-debug-CDP",
+      "proves": [
+        "picker-worker-store-native-protocol-cesium vertical slice",
+        "visible GLB model placement"
+      ],
+      "doesNotProve": [
+        "immutable exact-commit identity",
+        "offline or no-egress operation",
+        "release installer runtime",
+        "memory thresholds"
+      ]
+    },
+    {
+      "file": "phase7e-runtime-placement-tauri.png",
+      "sha256": "b5f7d9821d286da2166fcc2bae749fbb2192e4941174c5e4e6b39dfb642afc64",
+      "classification": "diagnostic-non-acceptance",
+      "reason": "earlier placement attempt without final visible model proof"
+    },
+    {
+      "file": "phase7e-runtime-tauri.png",
+      "sha256": "fe13668a31dc5f545222ec13b8d3a1faf76e478ec589f84f68a00484edbf2812",
+      "classification": "diagnostic-non-acceptance",
+      "reason": "earlier runtime capture before final placement proof"
+    }
+  ]
+}

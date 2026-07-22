@@ -6,6 +6,8 @@ import { DEFAULT_PROJECT_NAME } from "@geolibre/core";
 
 export const PROJECT_FILE_SUFFIX = ".geoim3d.json";
 export const PROJECT_FILE_DIALOG_EXTENSION = "geoim3d.json";
+export const SCENE_PRESET_FILE_SUFFIX = ".geoim3d-preset.json";
+export const SCENE_PRESET_FILE_DIALOG_EXTENSION = "geoim3d-preset.json";
 
 const LEGACY_PROJECT_SUFFIXES = [".geolibre.json", ".geolibre"] as const;
 
@@ -16,6 +18,11 @@ function leafFileName(path: string): string {
 /** Whether a path or file name uses the one canonical geoIM3D project suffix. */
 export function isCanonicalProjectFileName(path: string): boolean {
   return leafFileName(path).toLowerCase().endsWith(PROJECT_FILE_SUFFIX);
+}
+
+/** Presets are a separate route and are never canonical project files. */
+export function isScenePresetFileName(path: string): boolean {
+  return leafFileName(path).endsWith(SCENE_PRESET_FILE_SUFFIX);
 }
 
 /** Whether a local path or HTTP(S) URL uses the canonical project suffix. */
@@ -53,6 +60,14 @@ export function ensureProjectFileName(name: string): string {
   );
   const base = withoutOldSuffix.trim() || DEFAULT_PROJECT_NAME;
   return `${base}${PROJECT_FILE_SUFFIX}`;
+}
+
+/** Ensure an explicit preset export uses the dedicated preset suffix. */
+export function ensureScenePresetFileName(name: string): string {
+  const trimmed = name.trim() || DEFAULT_PROJECT_NAME;
+  if (isScenePresetFileName(trimmed)) return trimmed;
+  const base = trimmed.replace(/(?:\.geoim3d-preset\.json|\.json)$/i, "").trim();
+  return `${base || DEFAULT_PROJECT_NAME}${SCENE_PRESET_FILE_SUFFIX}`;
 }
 
 /**

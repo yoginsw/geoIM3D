@@ -138,6 +138,9 @@ describe("menu presets and predicates", () => {
     assert.ok(sets.hiddenMenuItems.includes("processing.raster"));
     assert.ok(sets.hiddenMenuItems.includes("help.diagnostics"));
     assert.ok(!sets.hiddenMenuItems.includes("project.save"));
+    assert.ok(!sets.hiddenMenuItems.includes("project.newBlank3d"));
+    assert.ok(!sets.hiddenMenuItems.includes("project.importScenePreset"));
+    assert.ok(!sets.hiddenMenuItems.includes("project.exportScenePreset"));
     assert.ok(!sets.hiddenMenuItems.includes("edit.undo"));
     // Default-on controls stay reachable for beginners.
     assert.ok(!sets.hiddenMenuItems.includes("controls.mapControl.globe"));

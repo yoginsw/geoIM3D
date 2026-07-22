@@ -294,11 +294,46 @@ function containsBoundedPrivateProjectContent(value: unknown): boolean {
   return highKeys.size >= 2 || (highKeys.size >= 1 && lowKeys.size >= 2);
 }
 
+function projectForSerialization(project: GeoLibreProject): GeoLibreProject {
+  let changed = false;
+  const layers = project.layers.map((layer) => {
+    const reference = layer.source.reference;
+    const referenceType = layer.source.referenceType;
+    const url = layer.source.url;
+    if (
+      referenceType !== "relative" ||
+      typeof reference !== "string" ||
+      typeof url !== "string" ||
+      (!url.startsWith("http://geoim3d-preset-resource.localhost/") &&
+        !url.startsWith("geoim3d-preset-resource://"))
+    ) {
+      return layer;
+    }
+    changed = true;
+    const { url: _runtimeUrl, ...portableSource } = layer.source;
+    const { scenePresetError: _runtimeError, ...portableMetadata } =
+      layer.metadata;
+    return {
+      ...layer,
+      source: {
+        ...portableSource,
+        scenePresetStatus: "unresolved",
+      },
+      metadata: {
+        ...portableMetadata,
+        scenePresetExternal: true,
+        scenePresetStatus: "unresolved",
+      },
+    };
+  });
+  return changed ? { ...project, layers } : project;
+}
+
 export function serializeProject(project: GeoLibreProject): string {
   if (containsBoundedPrivateProjectContent(project)) {
     throw new Error("PRIVATE_ANALYSIS_CONTENT_BLOCKED");
   }
-  return JSON.stringify(project, null, 2);
+  return JSON.stringify(projectForSerialization(project), null, 2);
 }
 
 export function parseProject(json: string): GeoLibreProject {

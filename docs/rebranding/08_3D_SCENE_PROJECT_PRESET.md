@@ -548,6 +548,14 @@ measure한다. 별도 output 8 MiB reservation을 사용하며 `max + 1`은 nati
 
 ### 11.4 External scene resource transport
 
+**현재 1.0 executable Runtime 범위(2026-07-22):** relative self-contained `.glb`만 활성화한다.
+HTTPS reference는 URL 문법·credential 검사를 통과하더라도 direct peer-pinned TLS adapter가 연결되지
+않았으므로 import prepare 중 `SCENE_PRESET_REMOTE_UNAVAILABLE`로 hard-fail하며 Store mutation은 0이다.
+Relative `3d-tiles`와 `i3s`도 nested URI의 native rewrite가 구현되기 전까지 strict parser/materializer에서
+`SCENE_PRESET_REFERENCE_INVALID`로 거부한다. 아래 HTTPS·3D Tiles/I3S transport 절은 승인된 목표
+아키텍처이며, 해당 adapter/rewrite와 consent Runtime·tests가 구현되기 전에는 Release 지원으로 주장하지
+않는다.
+
 External resource는 모두 Windows Tauri의 native-owned transport를 사용한다. Renderer가 HTTPS를
 직접 fetch하거나 absolute path를 받는 경로는 없다.
 
@@ -816,6 +824,10 @@ Phase 8 Release blocker로 명시하며 fabricated/sideload-success 주장으로
 - [ ] NSIS/Portable/MSI extraction/MSIX manifest association 0
 - [ ] Gitleaks
 - [ ] Geospatial/3D, Security/Privacy, Windows/Tauri/Packaging 독립 Review
+
+> 2026-07-22 Product Owner 지시: 실행 가능한 scenario 기반 Windows Memory 3회 Gate는
+> 이번 진행 범위에서 제외한다. 이 항목은 PASS가 아니라 deferred이며 CSV/manifest/calculations와
+> threshold/recovery 결과를 주장하지 않는다. Phase 8 최종 Release 판단에는 예외로 명시한다.
 
 ### 13.1 Independent Review Remediation
 

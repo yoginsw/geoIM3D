@@ -59,6 +59,23 @@ import {
   selectLayersWithoutPrivateEarthwork,
 } from "../lib/project-private-content";
 import { serializeViewshedProjectUtf8 } from "../lib/viewshed-project-serializer";
+import {
+  buildScenePresetFromProject,
+  createProjectFromScenePreset,
+  serializeScenePreset,
+} from "../lib/scene-preset-contract";
+import {
+  createScenePresetParserClient,
+  type ScenePresetParserClient,
+} from "../lib/scene-preset-parser";
+import { assertScenePresetExportPolicy } from "../lib/scene-preset-export-policy";
+import { createScenePresetApplyCoordinator } from "../lib/scene-preset-apply-coordinator";
+import { scenePresetNative } from "../lib/scene-preset-native";
+import { materializeRelativeSceneResources } from "../lib/scene-preset-resource-materializer";
+import {
+  BLANK_3D_SCENE_PRESET_ID,
+  getBuiltInScenePreset,
+} from "../lib/scene-preset-builtins";
 
 async function sanitizeIncomingDesktopProject(
   project: GeoLibreProject,
@@ -138,6 +155,11 @@ function isReloadableLocalFileLayer(layer: GeoLibreLayer): boolean {
   );
 }
 
+interface ScenePresetApplyInput {
+  bytes: Uint8Array;
+  importCapability?: string;
+}
+
 /**
  * Bundles every project file action (open from file/URL/recent, save, save as)
  * along with the related dialog state (Open-from-URL, save prompts, and the
@@ -176,6 +198,87 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // dialog is open would overwrite the pending prompt and strand the first
   // call's unresolved promise.
   const isSavingRef = useRef(false);
+  const isPresetSavingRef = useRef(false);
+  const scenePresetSessionsRef = useRef(new Map<number, string>());
+  const scenePresetParserRef = useRef<ScenePresetParserClient | null>(null);
+  if (scenePresetParserRef.current === null) {
+    scenePresetParserRef.current = createScenePresetParserClient();
+  }
+  const scenePresetCoordinatorRef = useRef<
+    ReturnType<typeof createScenePresetApplyCoordinator<ScenePresetApplyInput>> | null
+  >(null);
+  if (scenePresetCoordinatorRef.current === null) {
+    scenePresetCoordinatorRef.current =
+      createScenePresetApplyCoordinator<ScenePresetApplyInput>({
+        prepare: async (input, context) => {
+          let project: GeoLibreProject;
+          let sessionCapability = input.importCapability;
+          try {
+            const preset = await scenePresetParserRef.current!.parse(
+              input.bytes,
+              {
+                requestId: context.requestId,
+                generation: context.generation,
+                signal: context.signal,
+              },
+            );
+            project = createProjectFromScenePreset(preset);
+            const needsNativeSession = await materializeRelativeSceneResources(
+              preset,
+              project,
+              {
+                importCapability: sessionCapability,
+                generation: context.generation + 1,
+                signal: context.signal,
+                native: scenePresetNative,
+              },
+            );
+            if (sessionCapability && !needsNativeSession) {
+              await scenePresetNative.close(sessionCapability);
+              sessionCapability = undefined;
+            }
+          } catch (error) {
+            if (sessionCapability) {
+              await scenePresetNative.close(sessionCapability).catch(() => {});
+            }
+            throw error;
+          }
+          let retained = false;
+          return {
+            project,
+            disposePending: async () => {
+              if (sessionCapability && !retained) {
+                await scenePresetNative.close(sessionCapability);
+              }
+            },
+            retainForGeneration: (generation) => {
+              if (!sessionCapability) return;
+              retained = true;
+              scenePresetSessionsRef.current.set(
+                generation,
+                sessionCapability,
+              );
+            },
+          };
+        },
+        publish: (project) => {
+          loadProject(project, null, {
+            rememberRecent: false,
+            presenting: false,
+            markDirty: true,
+            workspaceTab: "cesium",
+          });
+          return useAppStore.getState().projectGeneration;
+        },
+        getGeneration: () => useAppStore.getState().projectGeneration,
+        retireGeneration: async (oldGeneration) => {
+          const capability = scenePresetSessionsRef.current.get(oldGeneration);
+          if (!capability) return;
+          scenePresetSessionsRef.current.delete(oldGeneration);
+          await scenePresetNative.close(capability);
+        },
+      });
+  }
 
   useEffect(() => {
     if (startupProjectOpenStartedRef.current || !isTauri()) return;
@@ -206,6 +309,27 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       }
     })();
   }, [loadProject, t]);
+
+  useEffect(() => {
+    const sessions = scenePresetSessionsRef.current;
+    const unsubscribe = useAppStore.subscribe((state, previous) => {
+      if (state.projectGeneration === previous.projectGeneration) return;
+      for (const [generation, capability] of sessions) {
+        if (generation === state.projectGeneration) continue;
+        sessions.delete(generation);
+        void scenePresetNative.close(capability).catch(() => {});
+      }
+    });
+    return () => {
+      unsubscribe();
+      scenePresetCoordinatorRef.current?.cancel();
+      scenePresetParserRef.current?.cancel();
+      for (const capability of sessions.values()) {
+        void scenePresetNative.close(capability).catch(() => {});
+      }
+      sessions.clear();
+    };
+  }, []);
 
   const handleOpenFromFile = async () => {
     const result = await openProjectFile();
@@ -436,7 +560,8 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
   // project content (including the current map view and plugin state).
   const buildCurrentProject = async (
     nameOverride?: string,
-    layersOverride?: GeoLibreLayer[]
+    layersOverride?: GeoLibreLayer[],
+    assertSource?: (project: GeoLibreProject) => void,
   ) => {
     const state = useAppStore.getState();
     const defaultProjectName =
@@ -468,6 +593,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       primaryMapLabel: state.primaryMapLabel,
       metadata: state.metadata,
     });
+    // Preset export requires rejection on the untouched snapshot. Generic
+    // Project save intentionally omits this callback and keeps its sanitizer.
+    assertSource?.(project);
     const portableProject = prepareProjectForFileSave(project);
     const sanitizedProject = await sanitizeDesktopProjectForLocalSave(
       portableProject
@@ -478,6 +606,7 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
       : serializeProject(sanitizedProject);
     return {
       project: sanitizedProject,
+      sourceProject: project,
       defaultProjectName,
       content: hasViewshed ? "" : (localContent as string),
       localContent,
@@ -820,6 +949,70 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     }
   };
 
+  const handleNewBlank3dScene = async (): Promise<boolean> => {
+    try {
+      const preset = getBuiltInScenePreset(
+        BLANK_3D_SCENE_PRESET_ID,
+        t("toolbar.item.blank3dSceneName", { defaultValue: "빈 3D 장면" }),
+      );
+      const bytes = serializeScenePreset(preset);
+      const result = await scenePresetCoordinatorRef.current!.apply({ bytes });
+      return result.status === "applied";
+    } catch (error) {
+      setActionError(scenePresetNative.toPublicError(error));
+      return false;
+    }
+  };
+
+  const handleImportScenePreset = async (): Promise<boolean> => {
+    if (!isTauri()) {
+      setActionError("SCENE_PRESET_REMOTE_DENIED");
+      return false;
+    }
+    try {
+      const selected = await scenePresetNative.pickAndRead();
+      const result = await scenePresetCoordinatorRef.current!.apply({
+        bytes: selected.bytes,
+        importCapability: selected.importCapability,
+      });
+      return result.status === "applied";
+    } catch (error) {
+      const code = scenePresetNative.toPublicError(error);
+      if (code !== "SCENE_PRESET_CANCELLED") setActionError(code);
+      return false;
+    }
+  };
+
+  const handleExportScenePreset = async (): Promise<boolean> => {
+    if (isPresetSavingRef.current) return false;
+    if (!isTauri()) {
+      setActionError("SCENE_PRESET_REMOTE_DENIED");
+      return false;
+    }
+    isPresetSavingRef.current = true;
+    try {
+      // Validate and fully serialize before opening a save target. A contract
+      // failure therefore cannot create or mutate any filesystem entry.
+      const { sourceProject } = await buildCurrentProject(
+        undefined,
+        undefined,
+        assertScenePresetExportPolicy,
+      );
+      const bytes = serializeScenePreset(
+        buildScenePresetFromProject(sourceProject),
+      );
+      const target = await scenePresetNative.pickSaveTarget();
+      await scenePresetNative.write(target.saveCapability, bytes);
+      return true;
+    } catch (error) {
+      const code = scenePresetNative.toPublicError(error);
+      if (code !== "SCENE_PRESET_CANCELLED") setActionError(code);
+      return false;
+    } finally {
+      isPresetSavingRef.current = false;
+    }
+  };
+
   // Open-change handler for the Open-from-URL dialog; aborts an in-flight fetch
   // and resets the form when the dialog closes.
   const handleProjectUrlDialogOpenChange = (open: boolean) => {
@@ -862,6 +1055,9 @@ export function useProjectFileActions(mapControllerRef: MapControllerRef) {
     handleSave,
     handleSaveAs,
     handleExportHtml,
+    handleNewBlank3dScene,
+    handleImportScenePreset,
+    handleExportScenePreset,
   };
 }
 

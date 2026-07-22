@@ -1671,6 +1671,9 @@
     },
     "item": {
       "newEllipsis": "새로 만들기...",
+      "newBlank3dScene": "새 빈 3D 장면",
+      "blank3dSceneName": "빈 3D 장면",
+      "importScenePreset": "3D 장면 Preset 가져오기...",
       "openFrom": "다음에서 열기",
       "fileEllipsis": "파일...",
       "urlEllipsis": "URL...",
@@ -1680,6 +1683,7 @@
       "removeFromRecent": "최근 프로젝트에서 {{name}} 제거",
       "clearRecentProjects": "최근 프로젝트 지우기",
       "saveAsEllipsis": "다른 이름으로 저장...",
+      "exportScenePreset": "3D 장면 Preset 내보내기...",
       "shareEllipsis": "공유...",
       "exportHtmlEllipsis": "HTML로 내보내기...",
       "htmlFile": "HTML",

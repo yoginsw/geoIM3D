@@ -99,6 +99,8 @@ interface NewProjectDialogProps {
   onOpenChange: (open: boolean) => void;
   onSaveCurrentProject: () => Promise<boolean>;
   onProjectCreated?: () => void;
+  /** Optional replacement action that reuses this dialog's unsaved-work gate. */
+  onDiscardConfirmed?: () => void;
 }
 
 export function NewProjectDialog({
@@ -106,6 +108,7 @@ export function NewProjectDialog({
   onOpenChange,
   onSaveCurrentProject,
   onProjectCreated,
+  onDiscardConfirmed,
 }: NewProjectDialogProps) {
   const { t } = useTranslation();
   const [selectedBasemapId, setSelectedBasemapId] =
@@ -239,7 +242,14 @@ export function NewProjectDialog({
       const saved = await onSaveCurrentProject();
       // Advance to the configuration form only once the current project is
       // safely saved; a cancelled or failed save keeps the prompt up.
-      if (saved) setShowSavePrompt(false);
+      if (saved) {
+        if (onDiscardConfirmed) {
+          onDiscardConfirmed();
+          handleOpenChange(false);
+        } else {
+          setShowSavePrompt(false);
+        }
+      }
     } catch (error) {
       console.error("Failed to save project", error);
     } finally {
@@ -271,7 +281,14 @@ export function NewProjectDialog({
                 type="button"
                 variant="secondary"
                 disabled={isSaving}
-                onClick={() => setShowSavePrompt(false)}
+                onClick={() => {
+                  if (onDiscardConfirmed) {
+                    onDiscardConfirmed();
+                    handleOpenChange(false);
+                  } else {
+                    setShowSavePrompt(false);
+                  }
+                }}
               >
                 {t("newProject.doNotSave")}
               </Button>

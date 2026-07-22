@@ -40,6 +40,7 @@ if (-not $binaryNameMatch.Success) {
 
 $binaryName = $binaryNameMatch.Groups[1].Value
 $binaryPath = Join-Path $targetDir "$binaryName.exe"
+$portableExecutableName = "$productName.exe"
 if (-not (Test-Path $binaryPath)) {
   throw "Could not find $binaryPath. Run a Windows Tauri release build before portable packaging."
 }
@@ -59,10 +60,25 @@ $zipPath = Join-Path $bundleDir $zipName
 Remove-Item -Recurse -Force $stagingDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $payloadDir, $backendPackageDir, $bundleDir | Out-Null
 
-Copy-Item -Force $binaryPath (Join-Path $payloadDir "$binaryName.exe")
+Copy-Item -Force $binaryPath (Join-Path $payloadDir $portableExecutableName)
+Copy-Item -Force (Join-Path $repoRoot "THIRD_PARTY_NOTICES.md") $payloadDir
+Copy-Item -Force (Join-Path $repoRoot "LICENSE") $payloadDir
+Copy-Item -Recurse -Force (Join-Path $repoRoot "licenses") (Join-Path $payloadDir "licenses")
 # Ship any sidecar DLLs (e.g. WebView2Loader) the build emitted next to the exe.
 Copy-Item -Force (Join-Path $targetDir "*.dll") $payloadDir -ErrorAction SilentlyContinue
-Copy-Item -Recurse -Force (Join-Path $backendDir "*") $backendPackageDir
+# Exclude local virtualenv/build artifacts before recursion. Copying first and
+# deleting later breaks on WSL venv symlinks (for example `.venv/lib64`) and
+# needlessly traverses developer-only data.
+Get-ChildItem -Force -Path $backendDir |
+  Where-Object {
+    $_.Name -notin @("venv", ".venv", "env", "dist", "build", ".pytest_cache", ".mypy_cache", ".ruff_cache", "htmlcov") -and
+    $_.Name -notlike ".env*" -and
+    $_.Name -notlike "*.egg-info" -and
+    $_.Name -ne ".coverage" -and
+    $_.Name -ne "coverage.xml" -and
+    $_.Name -ne "AGENTS.md"
+  } |
+  Copy-Item -Recurse -Force -Destination $backendPackageDir
 Get-ChildItem -Recurse -Path $backendPackageDir -Include "__pycache__", "*.pyc", "*.pyo", "tests", "test_*.py" |
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 # Strip developer-only artifacts so a locally built zip can never leak secrets
@@ -79,7 +95,7 @@ Get-ChildItem -Recurse -Force -Path $backendPackageDir -Include $devArtifacts |
 $readme = @"
 geoIM3D $version (portable, $Architecture)
 
-Unzip this folder anywhere and run $binaryName.exe. No installation or admin
+Unzip this folder anywhere and run $portableExecutableName. No installation or admin
 rights are required.
 
 Requirements:
