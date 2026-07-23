@@ -22,14 +22,16 @@
       ]
     },
     {
-      "comment": "Approved geocoding hosts routed through the native HTTP client to bypass WebView CORS and send the required User-Agent. Keep this allowlist in sync with the geocoding provider registry. Share and collaboration hosts remain absent until deployment endpoints are approved.",
+      "comment": "Approved geocoding hosts and exact loopback Ollama endpoints routed through the native HTTP client to bypass WebView CORS. Keep geocoding hosts in sync with the provider registry. Share and collaboration hosts remain absent until deployment endpoints are approved.",
       "identifier": "http:default",
       "allow": [
         { "url": "https://nominatim.openstreetmap.org/*" },
         { "url": "https://api.geocode.earth/*" },
         { "url": "https://geocode.arcgis.com/*" },
         { "url": "https://api.mapbox.com/*" },
-        { "url": "https://maps.googleapis.com/*" }
+        { "url": "https://maps.googleapis.com/*" },
+        { "url": "http://localhost:11434/*" },
+        { "url": "http://127.0.0.1:11434/*" }
       ]
     }
   ]

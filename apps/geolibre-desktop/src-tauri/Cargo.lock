@@ -1789,6 +1789,8 @@ dependencies = [
  "tauri-plugin-persisted-scope",
  "tokio",
  "webkit2gtk-sys",
+ "webview2-com",
+ "windows",
  "windows-sys 0.59.0",
  "zip 8.6.0",
 ]

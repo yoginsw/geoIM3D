@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   availableProviders,
   configForProvider,
+  isNativeOllamaUrl,
+  modelsForProvider,
   resolveProviderConfig,
   type RuntimeEnv,
 } from "../apps/geolibre-desktop/src/lib/assistant/provider";
@@ -130,6 +132,39 @@ describe("availableProviders", () => {
     assert.deepEqual(availableProviders({ ANTHROPIC_API_KEY: "a" }), [
       "anthropic",
     ]);
+  });
+});
+
+describe("modelsForProvider", () => {
+  it("puts the configured Ollama model in the picker even when it is not a preset", () => {
+    const models = modelsForProvider("ollama", {
+      OLLAMA_BASE_URL: "http://localhost:11434/",
+      OLLAMA_MODEL: "gemma4:latest",
+    });
+
+    assert.equal(models[0], "gemma4:latest");
+    assert.equal(models.filter((model) => model === "gemma4:latest").length, 1);
+  });
+
+  it("does not duplicate a configured model that is already a preset", () => {
+    const models = modelsForProvider("ollama", {
+      OLLAMA_BASE_URL: "http://localhost:11434",
+      OLLAMA_MODEL: "llama3.2",
+    });
+
+    assert.equal(models[0], "llama3.2");
+    assert.equal(models.filter((model) => model === "llama3.2").length, 1);
+  });
+});
+
+describe("isNativeOllamaUrl", () => {
+  it("accepts only the loopback Ollama endpoints covered by the Tauri capability", () => {
+    assert.equal(isNativeOllamaUrl("http://localhost:11434/v1"), true);
+    assert.equal(isNativeOllamaUrl("http://127.0.0.1:11434/v1"), true);
+    assert.equal(isNativeOllamaUrl("https://localhost:11434/v1"), false);
+    assert.equal(isNativeOllamaUrl("http://localhost:8080/v1"), false);
+    assert.equal(isNativeOllamaUrl("http://192.168.0.10:11434/v1"), false);
+    assert.equal(isNativeOllamaUrl("not a url"), false);
   });
 });
 

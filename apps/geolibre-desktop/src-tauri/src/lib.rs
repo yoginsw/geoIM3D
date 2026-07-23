@@ -64,6 +64,44 @@ const MARTIN_VERSION: &str = "martin-v1.10.1";
 const MARTIN_RELEASE_BASE_URL: &str = "https://github.com/maplibre/martin/releases/download";
 const MARTIN_START_ATTEMPTS: usize = 3;
 const MARTIN_HEALTH_ATTEMPTS: usize = 30;
+
+// WebView2 can retain an installer predecessor's cached index.html while the
+// newly installed executable contains content-hashed chunks from a newer Vite
+// build. The stale index then requests chunks that no longer exist and leaves
+// #root empty (a white window). This main-window initialization script asks the
+// Windows host to clear only WebView asset caches when the app is still blank
+// after eight seconds. Local storage, cookies, credentials and projects remain
+// untouched.
+const STARTUP_ASSET_RECOVERY_SCRIPT: &str = r#"
+(() => {
+  const key = "geoim3d_asset_recovery";
+  if (window.location.origin !== "http://tauri.localhost") return;
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.has(key)) {
+    window.setTimeout(() => {
+      const root = document.getElementById("root");
+      if (root?.childElementCount) {
+        window.history.replaceState(null, "", `${url.pathname}${url.hash}`);
+      }
+    }, 10_000);
+    return;
+  }
+
+  window.setTimeout(() => {
+    const root = document.getElementById("root");
+    if (!root || root.childElementCount !== 0) return;
+    url.searchParams.set(key, Date.now().toString(36));
+    window.history.replaceState(null, "", url.toString());
+    const invoke = window.__TAURI_INTERNALS__?.invoke;
+    if (typeof invoke === "function") {
+      invoke("recover_stale_asset_cache").catch(() => window.location.reload());
+    } else {
+      window.location.reload();
+    }
+  }, 8_000);
+})();
+"#;
 const SIDECAR_HEALTH_ATTEMPTS: usize = 180;
 const SIDECAR_PORT: u16 = 8765;
 // The desktop JupyterLab server for the Notebook panel. Loopback-bound and
@@ -240,6 +278,7 @@ pub fn run() {
         .manage(vworld::VWorldState::default())
         .invoke_handler(tauri::generate_handler![
             close_oauth_popups,
+            recover_stale_asset_cache,
             credential_store::credential_clear,
             credential_store::credential_delete,
             credential_store::credential_load,
@@ -2974,7 +3013,8 @@ fn create_main_window(app: &mut tauri::App) -> tauri::Result<()> {
         .cloned()
         .expect("GeoLibre Desktop requires a main window config");
 
-    let builder = tauri::WebviewWindowBuilder::from_config(app, &window_config)?;
+    let builder = tauri::WebviewWindowBuilder::from_config(app, &window_config)?
+        .initialization_script(STARTUP_ASSET_RECOVERY_SCRIPT);
 
     // Runtime smoke only: expose a fixed local CDP port from Windows debug builds.
     // Release builds do not compile this branch, and arbitrary browser arguments
@@ -3003,6 +3043,55 @@ fn create_main_window(app: &mut tauri::App) -> tauri::Result<()> {
     builder.build()?;
 
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn recover_stale_asset_cache(window: tauri::WebviewWindow) -> Result<(), String> {
+    use webview2_com::{
+        Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2_13, ICoreWebView2Profile2,
+            COREWEBVIEW2_BROWSING_DATA_KINDS_CACHE_STORAGE,
+            COREWEBVIEW2_BROWSING_DATA_KINDS_DISK_CACHE,
+            COREWEBVIEW2_BROWSING_DATA_KINDS_SERVICE_WORKERS,
+        },
+        ClearBrowsingDataCompletedHandler,
+    };
+    use windows::core::Interface;
+
+    window
+        .with_webview(|webview| unsafe {
+            let core = webview.controller().CoreWebView2();
+            let Ok(core) = core else {
+                return;
+            };
+            let profile = core
+                .cast::<ICoreWebView2_13>()
+                .and_then(|webview| webview.Profile())
+                .and_then(|profile| profile.cast::<ICoreWebView2Profile2>());
+            let Ok(profile) = profile else {
+                let _ = core.Reload();
+                return;
+            };
+            let reload = core.clone();
+            let completed = ClearBrowsingDataCompletedHandler::create(Box::new(move |_| {
+                reload.Reload()?;
+                Ok(())
+            }));
+            let kinds = COREWEBVIEW2_BROWSING_DATA_KINDS_DISK_CACHE
+                | COREWEBVIEW2_BROWSING_DATA_KINDS_CACHE_STORAGE
+                | COREWEBVIEW2_BROWSING_DATA_KINDS_SERVICE_WORKERS;
+            if profile.ClearBrowsingData(kinds, &completed).is_err() {
+                let _ = core.Reload();
+            }
+        })
+        .map_err(|error| format!("asset_cache_recovery_unavailable: {error}"))
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn recover_stale_asset_cache(_window: tauri::WebviewWindow) -> Result<(), String> {
+    Err("asset_cache_recovery_unsupported".to_string())
 }
 
 #[cfg(desktop)]
