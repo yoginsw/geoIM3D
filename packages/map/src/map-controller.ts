@@ -443,6 +443,7 @@ export class MapController {
       zoom: view?.zoom ?? 2,
       bearing: view?.bearing ?? 0,
       pitch: view?.pitch ?? 0,
+			reduceMotion: true,
       minZoom,
       maxZoom,
       maxPitch,

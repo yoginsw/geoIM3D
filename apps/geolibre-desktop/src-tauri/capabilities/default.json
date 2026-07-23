@@ -30,7 +30,9 @@
         { "url": "https://geocode.arcgis.com/*" },
         { "url": "https://api.mapbox.com/*" },
         { "url": "https://maps.googleapis.com/*" },
-        { "url": "https://share.geolibre.app/*" }
+        { "url": "https://share.geolibre.app/*" },
+        { "url": "http://localhost:11434/*" },
+        { "url": "http://127.0.0.1:11434/*" }
       ]
     }
   ]

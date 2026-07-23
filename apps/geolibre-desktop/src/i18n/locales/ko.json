@@ -1190,8 +1190,8 @@
   },
   "mapGrid": {
     "viewMode": "지도 보기 모드",
-    "mapLibre2d": "MapLibre 2D Pane",
-    "cesium3d": "Cesium 3D Globe",
+    "mapLibre2d": "MapLibre",
+    "cesium3d": "Cesium",
     "layers": "레이어",
     "layersLabel": "지도 {{number}}의 레이어 표시 여부",
     "noLayers": "아직 레이어가 없습니다",

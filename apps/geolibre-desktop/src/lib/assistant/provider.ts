@@ -1,6 +1,7 @@
 import type { Model } from "@strands-agents/sdk";
 import { getRuntimeEnvironment } from "@geolibre/core";
 import { readPrivateCredentialEnvironment } from "../private-credential-runtime";
+import { isTauri } from "../is-tauri";
 
 /**
  * Supported LLM providers for the natural-language assistant. The boundary is
@@ -287,6 +288,25 @@ export function defaultModelFor(provider: AssistantProviderId): string {
   return DEFAULT_MODEL[provider];
 }
 
+/**
+ * Models shown by the assistant picker. A provider-specific configured model is
+ * placed first even when it is not one of the built-in examples. This is
+ * especially important for Ollama, whose locally pulled model names are not a
+ * finite catalog the app can hard-code.
+ */
+export function modelsForProvider(
+  provider: AssistantProviderId,
+  env: RuntimeEnv = readRuntimeEnv()
+): readonly string[] {
+  const configuredModel = resolveModelId(provider, undefined, env);
+  return configuredModel
+    ? [
+        configuredModel,
+        ...PROVIDER_MODELS[provider].filter((model) => model !== configuredModel),
+      ]
+    : PROVIDER_MODELS[provider];
+}
+
 /** Resolve the model id for a provider: explicit → env → provider default. */
 function resolveModelId(
   provider: AssistantProviderId,
@@ -400,6 +420,42 @@ export function hasProviderKey(env: RuntimeEnv = readRuntimeEnv()): boolean {
   return resolveProviderConfig(env) !== null;
 }
 
+/**
+ * True when an Ollama base URL is the loopback endpoint covered by the desktop
+ * HTTP capability. Production Tauri pages use `http://tauri.localhost`, which
+ * Ollama rejects during CORS preflight, so these requests must use Tauri's
+ * native HTTP client instead of the WebView fetch implementation.
+ */
+export function isNativeOllamaUrl(baseURL: string | undefined): boolean {
+  if (!baseURL) return false;
+  try {
+    const url = new URL(baseURL);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.port === "11434"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function nativeOllamaFetch(
+  baseURL: string | undefined
+): Promise<typeof globalThis.fetch | undefined> {
+  if (!isTauri() || !isNativeOllamaUrl(baseURL)) return undefined;
+  const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+  return ((input, init = {}) => {
+    // The HTTP plugin otherwise injects the production WebView origin
+    // (`http://tauri.localhost`), which Ollama rejects with HTTP 403. The
+    // unsafe-headers feature lets this narrowly scoped adapter preserve the
+    // canonical Tauri origin that Ollama allows by default.
+    const headers = new Headers(init.headers);
+    headers.set("Origin", "tauri://localhost");
+    return tauriFetch(input, { ...init, headers });
+  }) as typeof globalThis.fetch;
+}
+
 /** Providers that are currently configured, in preference order. */
 export function availableProviders(
   env: RuntimeEnv = readRuntimeEnv()
@@ -454,6 +510,10 @@ export async function createModel(
       // Ollama and custom endpoints speak the OpenAI Chat Completions API; the
       // Responses API (OpenAI's default) is not generally supported there.
       const { OpenAIModel } = await import("@strands-agents/sdk/models/openai");
+      const fetch =
+        config.provider === "ollama"
+          ? await nativeOllamaFetch(config.baseURL)
+          : undefined;
       return new OpenAIModel({
         api: "chat",
         apiKey: config.apiKey ?? "not-needed",
@@ -461,6 +521,7 @@ export async function createModel(
         clientConfig: {
           baseURL: config.baseURL,
           dangerouslyAllowBrowser: true,
+          ...(fetch ? { fetch } : {}),
         },
       }) as unknown as Model;
     }
