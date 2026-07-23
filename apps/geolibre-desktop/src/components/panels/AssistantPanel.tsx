@@ -32,8 +32,8 @@ import {
   availableProviders,
   defaultModelFor,
   hasProviderKey,
+  modelsForProvider,
   PROVIDER_LABELS,
-  PROVIDER_MODELS,
   type AssistantProviderId,
 } from "../../lib/assistant/provider";
 // Paired with MapCanvas so it suspends pointer interaction while dragging.
@@ -285,12 +285,16 @@ export function AssistantPanel({ mapControllerRef }: AssistantPanelProps) {
       session.setSelection(null);
       return;
     }
-    const models = PROVIDER_MODELS[provider];
+    const models = modelsForProvider(provider);
     const effectiveModel =
-      model && models.includes(model) ? model : defaultModelFor(provider);
+      model && models.includes(model)
+        ? model
+        : models[0] || defaultModelFor(provider);
     if (effectiveModel !== model) setModel(effectiveModel);
     session.setSelection({ provider, model: effectiveModel });
   }, [provider, model, session]);
+
+  const providerModels = provider ? modelsForProvider(provider) : [];
 
   // Keep the latest turn in view. Skip when there is no conversation (e.g. the
   // no-key setup card) so its heading stays pinned to the top instead of being
@@ -523,7 +527,7 @@ export function AssistantPanel({ mapControllerRef }: AssistantPanelProps) {
                   ))}
                 </Select>
               ) : null}
-              {PROVIDER_MODELS[provider].length > 0 ? (
+              {providerModels.length > 0 ? (
                 <Select
                   aria-label={t("assistant.model")}
                   className="h-8 w-auto text-xs"
@@ -531,7 +535,7 @@ export function AssistantPanel({ mapControllerRef }: AssistantPanelProps) {
                   disabled={running}
                   onChange={(event) => onModelChange(event.target.value)}
                 >
-                  {PROVIDER_MODELS[provider].map((id) => (
+                  {providerModels.map((id) => (
                     <option key={id} value={id}>
                       {id}
                     </option>

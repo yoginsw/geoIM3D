@@ -287,6 +287,25 @@ export function defaultModelFor(provider: AssistantProviderId): string {
   return DEFAULT_MODEL[provider];
 }
 
+/**
+ * Models shown by the assistant picker. A provider-specific configured model is
+ * placed first even when it is not one of the built-in examples. This is
+ * especially important for Ollama, whose locally pulled model names are not a
+ * finite catalog the app can hard-code.
+ */
+export function modelsForProvider(
+  provider: AssistantProviderId,
+  env: RuntimeEnv = readRuntimeEnv()
+): readonly string[] {
+  const configuredModel = resolveModelId(provider, undefined, env);
+  return configuredModel
+    ? [
+        configuredModel,
+        ...PROVIDER_MODELS[provider].filter((model) => model !== configuredModel),
+      ]
+    : PROVIDER_MODELS[provider];
+}
+
 /** Resolve the model id for a provider: explicit → env → provider default. */
 function resolveModelId(
   provider: AssistantProviderId,
